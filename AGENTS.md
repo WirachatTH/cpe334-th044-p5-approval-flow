@@ -194,17 +194,20 @@ IDs are stable: never renumber them. Mark a retired ID *withdrawn* instead of re
 
 ## 10. Commands
 
-_Not set up yet. Fill this in when the project scaffold lands (Issue #8, project foundation)._
+Node 24. Run from the repository root; the README has the full setup (`.env` files, passwords, database).
 
 | Purpose | Command |
 |---|---|
-| Install | _TBD_ |
-| DB migrate | _TBD_ |
-| DB seed | _TBD_ |
-| Unit + API tests | _TBD_ |
-| E2E tests | _TBD_ |
-| Build | _TBD_ |
-| Run locally (app + DB) | _TBD_ |
+| Start the database | `docker compose up -d db` (PostgreSQL 16 on host port 5433) |
+| Install | `cd server && npm ci`, then `cd client && npm ci` |
+| DB migrate | `cd server && npm run db:deploy` (apply); `npm run db:migrate` (create a new migration in development) |
+| DB seed | `cd server && npm run db:seed` (idempotent; needs `DEMO_USER_PASSWORD`) |
+| Unit + API tests | `cd server && npm test` (needs the database and `DATABASE_URL`) |
+| Client tests | `cd client && npm test` |
+| E2E tests | `cd client && npm run e2e` (needs the API running with seeded data) |
+| Type-check | `npm run typecheck` in `server` and in `client` |
+| Build | `npm run build` in `server` and in `client` |
+| Run locally | `cd server && npm run dev` (API, port 3000) and `cd client && npm run dev` (UI, port 5173) |
 
 ---
 
