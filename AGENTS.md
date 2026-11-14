@@ -46,7 +46,11 @@ The repository is **PUBLIC**: https://github.com/WirachatTH/cpe334-th044-p5-appr
   (every merge into `main` is a release and deploys).
 - Before you open a PR: pull `staging` again and merge it into your branch (merge, not rebase, once the
   branch is pushed), then re-run the tests.
-- Fill in every section of `.github/PULL_REQUEST_TEMPLATE.md`. Link the Issue with `Closes #N`.
+- Write the PR description in the style of `.github/PULL_REQUEST_TEMPLATE.md`: written by the author in the
+  first person, with specific evidence (commands, tested commit, counts, test names) and an honest account of
+  what was not verified. Link the Issue with `Closes #N`. Do not add "Generated with ..." or similar
+  tool footers to PRs, or AI-tool `Co-authored-by` trailers to commits. AI use is declared in the
+  assessment PDFs instead.
 - On GitHub, merge with **"Create a merge commit"** only.
   - *Squash and merge* would erase the `docs` → `test` (red) → `feat` (green) sequence from `staging`.
   - *Rebase and merge* changes the commit SHAs that are recorded as evidence.
