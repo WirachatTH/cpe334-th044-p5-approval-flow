@@ -7,7 +7,8 @@ private/
 
 # Scratch / runtime folders that must never reach Git or the image
 tmp/
-uploads/
+# Server-side upload folder only (anchored, so a source folder named "uploads" elsewhere is not hidden)
+/server/uploads/
 
 # Environment files: commit ONLY .env.example with placeholder values
 # (the generic rules in the "dotenv" section below also cover these)
