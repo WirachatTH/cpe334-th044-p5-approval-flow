@@ -20,7 +20,8 @@
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-14 | Menelaus122 | Skeleton created | Repository structure | #13 |
 | 0.2 | 2026-11-14 | Menelaus122 | First complete draft | Issue #7 (F-02 part) | #23 |
-| 0.3 | 2026-11-14 | Menelaus122 | The policy lookup comes before the session, and sessions are attached only for `roles` and `optional` routes, so `public` routes never touch the session table. Routing is exact (case-sensitive, strict). A body over 100 KB answers `413`. AC-F02-04 asserts on the policy error codes and skips `public` routes. AC-F02-13 (no session lookup on public routes), AC-F02-14 (path variants), and AC-F02-15 (`413`) added. Status: Agreed. | Review of PR #23 | this PR |
+| 0.3 | 2026-11-14 | Menelaus122 | The policy lookup comes before the session, and sessions are attached only for `roles` and `optional` routes, so `public` routes never touch the session table. Routing is exact (case-sensitive, strict). A body over 100 KB answers `413`. AC-F02-04 asserts on the policy error codes and skips `public` routes. AC-F02-13 (no session lookup on public routes), AC-F02-14 (path variants), and AC-F02-15 (`413`) added. Status: Agreed. | Review of PR #23 | #26 |
+| 0.4 | 2026-11-15 | Menelaus122 | AC-F02-15 and TEST-F02-15 use exact sizes: a JSON body of 102,400 bytes (Express's 100 KB limit) is not refused for size, and one of 102,401 bytes answers `413`. | Review of PR #26 | this PR |
 
 ---
 
@@ -168,7 +169,7 @@ No change.
 | AC-F02-12 | A signed-in requester, and separately a signed-out visitor | The requester opens `/reviews`; the visitor opens `/requests` | The requester sees "This page is not available to you." and the inbox endpoint is not requested. The visitor is sent to `/login`. | negative | FR-10, NFR-02 |
 | AC-F02-13 | An app whose Prisma stub throws on any session lookup but answers `$queryRaw` | `GET /api/health` and `GET /api/ready` are sent with an `af_session` cookie | Both answer `200`, and the stub's session lookup was never called | normal | NFR-06, FR-12 |
 | AC-F02-14 | A signed-in requester | It calls `GET /api/reviews/inbox/`, `GET /API/REVIEWS/INBOX`, `GET //api/reviews/inbox`, `POST /api/requests/1/decision/`, and `POST /api/Requests/1/decision` | Each answers `404 NOT_FOUND`; none answers `200` | negative | NFR-02 |
-| AC-F02-15 | A signed-in requester, and separately no session | The requester sends `POST /api/requests` with a valid JSON body over 100 KB; the anonymous client sends `POST /api/auth/login` with one | Both answer `413 PAYLOAD_TOO_LARGE` with the fixed message and only the `error` key | negative | NFR-06 |
+| AC-F02-15 | A signed-in requester, and separately no session | For each caller, a valid JSON object body of exactly 102,400 bytes, then one of exactly 102,401 bytes: the requester sends them to `POST /api/requests`, the anonymous client to `POST /api/auth/login` | The 102,400-byte body is not refused for its size: it reaches validation and answers `400 VALIDATION_ERROR`. The 102,401-byte body answers `413 PAYLOAD_TOO_LARGE` with the fixed message and only the `error` key. | boundary | NFR-06 |
 
 ## 4. Software Test Specification (STS)
 
@@ -188,7 +189,7 @@ No change.
 | TEST-F02-12 | AC-F02-12 | component | Requester context with a fetch spy; then a signed-out context | Navigate to `/reviews`; then to `/requests` | The message is shown and the spy has no call to `/api/reviews/inbox`; the location becomes `/login` | `client/tests/sprint-1/Navigation.test.tsx` |
 | TEST-F02-13 | AC-F02-13 | API | `createApp({ prisma: stub })`: `session.findUnique` rejects and is a spy; `$queryRaw` resolves | `GET /api/health` and `/api/ready` with `Cookie: af_session=anything` | Both `200`; the spy has zero calls | `server/tests/sprint-1/errors.api.test.ts` |
 | TEST-F02-14 | AC-F02-14 | API | A requester agent | Table-driven over the five variants | Each `404` with code `NOT_FOUND` | `server/tests/sprint-1/authorization.api.test.ts` |
-| TEST-F02-15 | AC-F02-15 | API | A requester agent; no cookie | Send each body of about 101 KB (a valid JSON object with one long string) | `413`, code `PAYLOAD_TOO_LARGE`, body keys `["error"]` | `server/tests/sprint-1/errors.api.test.ts` |
+| TEST-F02-15 | AC-F02-15 | API | A requester agent; no cookie | Build each body as `{"x":"` + padding + `"}` with `Buffer.byteLength` exactly 102,400, then exactly 102,401; send both to each route | 102,400: `400`, code `VALIDATION_ERROR`. 102,401: `413`, code `PAYLOAD_TOO_LARGE`, body keys `["error"]` | `server/tests/sprint-1/errors.api.test.ts` |
 
 **Coverage check:** AC-F02-01 to AC-F02-15 each map to exactly one TEST, and every test is automated. Thirteen run against the API (the backend-enforcement evidence for NFR-01, NFR-02, and NFR-06) and two are component tests of the UI conveniences. The record-scope `404` for other users' requests (BR-08) is specified and tested in F-03 and F-04.
 
