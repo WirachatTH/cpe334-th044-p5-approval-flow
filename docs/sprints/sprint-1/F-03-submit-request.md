@@ -20,7 +20,8 @@
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-14 | Menelaus122 | Skeleton created | Repository structure | #13 |
 | 0.2 | 2026-11-14 | Menelaus122 | First complete draft | Issue #7 (F-03 part) | #24 |
-| 0.3 | 2026-11-14 | Menelaus122 | Constraints are named, and AC-F03-09 uses a valid base row, a control insert, and one changed column per case, asserting the constraint name. The decision-fields `CHECK` is stricter. FKs point to `app_user`. AC-F03-05 lists the message per input. AC-F03-21 added (markup shown as text). AC-F03-20 relinked. Status: Agreed. | Review of PR #24 | this PR |
+| 0.3 | 2026-11-14 | Menelaus122 | Constraints are named, and AC-F03-09 uses a valid base row, a control insert, and one changed column per case, asserting the constraint name. The decision-fields `CHECK` is stricter. FKs point to `app_user`. AC-F03-05 lists the message per input. AC-F03-21 added (markup shown as text). AC-F03-20 relinked. Status: Agreed. | Review of PR #24 | #26 |
+| 0.4 | 2026-11-15 | Menelaus122 | The data change is applied as **two additive migrations**: `add_requests` (the enums, the two tables, their indexes and foreign keys) and `add_request_rules` (the number sequence and default, the four named `CHECK` constraints, and the append-only trigger). The split lets the constraint tests (TEST-F03-09) fail first, against tables that exist but have no rules, instead of failing on a missing table. | Found while planning the red tests for #10 | #10 |
 
 ---
 
@@ -116,7 +117,7 @@ checks need the database, so they run inside the transaction (§1.2 step 3).
 
 - **F-01 and F-02:** the session, and the policies for the four routes, already in `ROUTE_POLICIES` from #9.
 - **F-05:** the `User` table, the seeded accounts (two requesters, two reviewers), and `createApp({ prisma, config })`.
-- **The migration `add_requests`**, additive (§2.3).
+- **The migrations `add_requests` and `add_request_rules`**, both additive (§2.3).
 - **F-04** decides the requests this feature creates and reuses `RequestDetail` and the Request Detail screen.
 
 ## 2. Layer specifications
@@ -171,7 +172,7 @@ other than the requester, the assigned reviewer, the decider, and the history ac
 
 ### 2.3 Data
 
-Migration **`add_requests`** (additive; hand-written SQL for the parts Prisma cannot express):
+Two additive migrations. **`add_requests`** creates the enums, the two tables, their indexes, and the foreign keys. **`add_request_rules`** (hand-written SQL for what Prisma cannot express) adds the number sequence and default, the four named `CHECK` constraints, and the append-only trigger. The table below is the result of both:
 
 | Object | Definition |
 |---|---|
