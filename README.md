@@ -54,6 +54,19 @@ Run the commands from the repository root. On Windows, use Git Bash, or replace 
    Check the API: `http://localhost:3000/api/health` answers `{"status":"ok"}`, and
    `http://localhost:3000/api/ready` answers `{"status":"ready","db":"connected"}` once the database is up.
 
+### If a port is already in use
+
+The defaults are **5433** (database), **3000** (API), and **5173** (UI). Another project on your computer may
+already use one of them.
+
+- **Database:** change `POSTGRES_PORT` in `.env`, and the port inside `DATABASE_URL` in `server/.env`, to match.
+- **API:** set `PORT` in `server/.env`, and `API_PROXY_TARGET=http://localhost:<port>` in `client/.env`, so the UI
+  still finds it.
+- **UI:** the UI's address must be in `CLIENT_ORIGINS` in `server/.env` (default `http://localhost:5173`). If Vite
+  starts on another port, add that address there.
+
+Check what answers before you trust a result: `/api/health` of this project returns exactly `{"status":"ok"}`.
+
 ## Demo accounts
 
 The seed creates four synthetic accounts. All use the password you set as `DEMO_USER_PASSWORD`.
