@@ -260,3 +260,32 @@ td.amount {
 .request-form {
   max-width: 560px;
 }
+
+.decision-panel {
+  max-width: 560px;
+  margin: 24px 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.decision-panel h2 {
+  margin-top: 0;
+}
+
+.hint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+button.primary {
+  background: var(--accent);
+  color: var(--accent-text);
+}

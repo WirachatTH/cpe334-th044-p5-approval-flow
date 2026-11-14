@@ -6,6 +6,7 @@ import type { AppConfig } from "./config.js";
 import { errorHandler, notFound } from "./errors.js";
 import { LoginThrottle } from "./loginThrottle.js";
 import { registerRequestRoutes } from "./requests.js";
+import { registerReviewRoutes } from "./reviews.js";
 
 // The application factory. It receives its dependencies so that tests can pass their own Prisma client and
 // configuration (F-05 §1.7). index.ts is the only server-runtime file that creates the real client.
@@ -46,7 +47,7 @@ export function createApp({ prisma, config, throttle = new LoginThrottle() }: Ap
 
   registerAuthRoutes(app, { prisma, config, throttle });
   registerRequestRoutes(app, { prisma });
-  // F-04 registers its routes here; each one needs a policy in ROUTE_POLICIES first.
+  registerReviewRoutes(app, { prisma });
 
   app.use(notFound);
   app.use(errorHandler);

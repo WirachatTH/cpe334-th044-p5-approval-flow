@@ -7,8 +7,8 @@ import { Login } from "./screens/Login.js";
 import { MyRequests } from "./screens/MyRequests.js";
 import { NewRequest } from "./screens/NewRequest.js";
 import { NotAvailable } from "./screens/NotAvailable.js";
-import { Placeholder } from "./screens/Placeholder.js";
 import { RequestDetail } from "./screens/RequestDetail.js";
+import { ReviewInbox } from "./screens/ReviewInbox.js";
 
 // The routes (SDS §4.1). Guards are a convenience for people: the API refuses the same calls on its own.
 
@@ -28,7 +28,7 @@ export function AppRoutes() {
         <Route path="/requests/new" element={<NewRequest />} />
         <Route path="/requests/:id" element={<RequestDetail />} />
         <Route element={<RequireRole role="REVIEWER" />}>
-          <Route path="/reviews" element={<Placeholder title="Review Inbox" />} />
+          <Route path="/reviews" element={<ReviewInbox />} />
         </Route>
         <Route path="*" element={<NotAvailable />} />
       </Route>
