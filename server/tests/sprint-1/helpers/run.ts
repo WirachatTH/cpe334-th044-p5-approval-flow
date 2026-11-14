@@ -8,13 +8,21 @@ export const SERVER_DIR = path.resolve(import.meta.dirname, "../../..");
 export const PRISMA_CLI = path.join(SERVER_DIR, "node_modules/prisma/build/index.js");
 export const TSC_CLI = path.join(SERVER_DIR, "node_modules/typescript/bin/tsc");
 
-// The variables the tests control. A child process never inherits them by accident from the developer's shell
+// The variables the tests control. A child process must never inherit them by accident from the developer's shell
 // or from server/.env.
-const CONTROLLED = ["DATABASE_URL", "DEMO_USER_PASSWORD", "PORT", "NODE_ENV", "CLIENT_ORIGINS"];
+//
+// Importing @prisma/client loads server/.env into process.env, filling every variable that is not already
+// defined, and a variable defined as an empty string counts as defined. So deleting a variable is not enough to
+// make it "missing": a developer's real .env would fill it in, and a test would pass or fail depending on the
+// machine. The variables whose empty value means "not set" are therefore blanked. PORT and NODE_ENV are deleted,
+// because an empty value is invalid for them; every test that depends on them passes them explicitly.
+const BLANKED = ["DATABASE_URL", "DEMO_USER_PASSWORD", "CLIENT_ORIGINS"];
+const DELETED = ["PORT", "NODE_ENV"];
 
 export function childEnv(overrides: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env };
-  for (const key of CONTROLLED) delete env[key];
+  for (const key of BLANKED) env[key] = "";
+  for (const key of DELETED) delete env[key];
   for (const [key, value] of Object.entries(overrides)) {
     if (value !== undefined) env[key] = value;
   }
