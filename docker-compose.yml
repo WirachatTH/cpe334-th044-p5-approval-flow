@@ -1,0 +1,24 @@
+# Local development database. The application containers come with Lab 5 (Dockerfile).
+# Values come from ./.env (git-ignored); copy .env.example and choose your own password.
+name: approval-flow
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-approval_flow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
+      POSTGRES_DB: ${POSTGRES_DB:-approval_flow}
+    ports:
+      # 5433 on the host, because a local PostgreSQL install often already uses 5432.
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:
