@@ -7,8 +7,9 @@ reviewer approves or rejects it with a recorded reason, and every decision leave
 Nobody can decide their own request.
 
 > **Status: Sprint 1 in progress.** The database, the seeded demo accounts, configuration loading, and the
-> `/api/health` and `/api/ready` endpoints work (F-05). Login, requests, and the review screens arrive with F-01 to
-> F-04.
+> `/api/health` and `/api/ready` endpoints work (F-05). Sign-in, sign-out, sessions, and role-based access work
+> (F-01, F-02), and so does submitting a request and viewing your own requests (F-03). Deciding a request and
+> the review screens arrive with F-04.
 
 **Stack:** Node 24 + TypeScript, Express 4, Prisma 5 + PostgreSQL 16, React 18 + Vite, Vitest + Supertest,
 Playwright, Docker.
@@ -87,7 +88,7 @@ unrelated reviewer. Share the password with other people privately, never in the
 |---|---|---|
 | Server unit, API, and database tests | `cd server && npm test` | the database running and `server/.env` (or `DATABASE_URL` in your shell) |
 | Client tests | `cd client && npm test` | nothing else |
-| End-to-end tests (Playwright) | `cd client && npm run e2e` | the API running with seeded data (from the first e2e feature on) |
+| End-to-end tests (Playwright) | `cd client && npm run e2e` | the API running on seeded data, with `CLIENT_ORIGINS` including `http://localhost:5174`; Playwright's dev server uses that port, and `API_PROXY_TARGET` must point at your API |
 | Type-check | `npm run typecheck` in `server` and in `client` | |
 | Build | `npm run build` in `server` and in `client` | |
 

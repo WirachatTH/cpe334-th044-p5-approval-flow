@@ -20,7 +20,8 @@
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-14 | Menelaus122 | Skeleton created | Repository structure | #13 |
 | 0.2 | 2026-11-14 | Menelaus122 | First complete draft. Uses the BR-09 wording and the 1000-character reason boundary asked for in the review of PR #22. | Issue #7 (F-04 part) | #24 |
-| 0.3 | 2026-11-14 | Menelaus122 | Stricter, named decision-fields `CHECK`, so a half-set decision or a reason on a submitted request is refused. AC-F04-14 uses a valid base row, a control insert, and one changed column per case, asserting constraint names, and adds the half-null cases. A reason that is not a string gets its own message. AC-F04-21 to AC-F04-23 added. The `TRUNCATE` gap is documented. AC-F04-20 relinked. Status: Agreed. | Review of PR #24 | this PR |
+| 0.3 | 2026-11-14 | Menelaus122 | Stricter, named decision-fields `CHECK`, so a half-set decision or a reason on a submitted request is refused. AC-F04-14 uses a valid base row, a control insert, and one changed column per case, asserting constraint names, and adds the half-null cases. A reason that is not a string gets its own message. AC-F04-21 to AC-F04-23 added. The `TRUNCATE` gap is documented. AC-F04-20 relinked. Status: Agreed. | Review of PR #24 | #26 |
+| 0.4 | 2026-11-15 | Menelaus122 | Wording only: the tables, constraints, and trigger come from F-03's two migrations (`add_requests` and `add_request_rules`). No change to any AC or test. | F-03 v0.4 | #10 |
 
 ---
 
@@ -119,7 +120,7 @@ decisions safe, because the database lets only one `UPDATE` match `status = 'SUB
 ### 1.7 Dependencies
 
 - **F-02:** the two policies, both `REVIEWER` only, already in place from #9.
-- **F-03:** the tables, constraints, and trigger (migration `add_requests`), the `RequestDetail` shape, and the Request Detail screen, which F-04 extends with the decision panel.
+- **F-03:** the tables, constraints, and trigger (migrations `add_requests` and `add_request_rules`), the `RequestDetail` shape, and the Request Detail screen, which F-04 extends with the decision panel.
 - **Test data:** the four seeded accounts. Requests are created in each test through the F-03 API, or by direct inserts for the constraint tests.
 
 ## 2. Layer specifications
@@ -165,7 +166,7 @@ decisions safe, because the database lets only one `UPDATE` match `status = 'SUB
 
 No change. F-04 writes `request.status`, `decided_by_id`, `decided_at`, `decision_reason`, and `updated_at`, and
 inserts `request_event` rows. All of these columns, the `CHECK` constraints, and the trigger were created by F-03's
-`add_requests` migration.
+migrations (`add_requests` and `add_request_rules`).
 
 ## 3. Acceptance criteria
 
