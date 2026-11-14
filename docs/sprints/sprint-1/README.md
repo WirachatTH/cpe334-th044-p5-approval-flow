@@ -17,7 +17,7 @@ See `AGENTS.md` section 3 for the full rules.
 
 | Feature | Contract | Issue | Author | Reviewer | Status |
 |---|---|---|---|---|---|
-| F-01 | [F-01-authentication.md](F-01-authentication.md) | #7 (contract), #9 (implementation) | | | Skeleton |
+| F-01 | [F-01-authentication.md](F-01-authentication.md) | #7 (contract), #9 (implementation) | Menelaus122 | WirachatTH | Draft |
 | F-02 | [F-02-access-control.md](F-02-access-control.md) | #7 (contract), #9 (implementation) | | | Skeleton |
 | F-03 | [F-03-submit-request.md](F-03-submit-request.md) | #7 (contract), #10 (implementation) | | | Skeleton |
 | F-04 | [F-04-review-decision.md](F-04-review-decision.md) | #7 (contract), #11 (implementation) | | | Skeleton |
