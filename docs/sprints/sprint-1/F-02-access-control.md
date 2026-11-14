@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-02 |
 | Sprint | 1 |
-| Status | Agreed (Draft → Agreed → Implemented → Verified) |
+| Status | Implemented (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-10; BR-01, BR-02, BR-09 (role part); NFR-01, NFR-02, NFR-06 |
 | GitHub Issue | #7 (contract), #9 (implementation) |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -206,9 +206,9 @@ The [Product Definition of Done](README.md#product-definition-of-done) applies, 
 
 | Item | Value |
 |---|---|
-| Contract commit(s) | |
-| Red commit(s) and failing test | |
-| Green commit(s) | |
-| PR (author → reviewer) | |
-| Test run (command, commit, pass / fail / skip) | |
-| Known limitations | The origin guard checks `POST` only, because Sprint 1 has no `PUT`, `PATCH`, or `DELETE` routes. Add them to the guard if such routes appear. |
+| Contract commit(s) | `94ea631` v0.2 (PR #23), `e623f76` v0.3 (PR #26), `cb2c028` v0.4 and `f3fd9a0` v0.5 (this branch, before any test) |
+| Red commit(s) and failing test | `89f2ff9` (with the stubs `2c112c4`): TEST-F02-01 to 15 against the stubs. **14 failed on assertions and 1 passed**: TEST-F02-13 (`/api/health` and `/api/ready`, written in F-05, never touch the session table), so it guards against a regression but is not red evidence. |
+| Green commit(s) | `efd8fdf`: the same tests, **15 passed** |
+| PR (author → reviewer) | Menelaus122 → WirachatTH; branch `feat/9-auth-rbac` into `staging` (the PR number is in Issue #9) |
+| Test run (command, commit, pass / fail / skip) | The same runs as F-01 (`efd8fdf`): server 73 passed, client 10 passed, e2e 2 passed, 0 failed, 0 skipped. TEST-F02-06 lists the 5 routes the app registers (`health`, `ready`, `login`, `logout`, `me`) and finds exactly one policy for each. |
+| Known limitations | The origin guard checks `POST` only, because Sprint 1 has no `PUT`, `PATCH`, or `DELETE` routes. Add them to the guard if such routes appear. The policies for the F-03 and F-04 routes exist, but their handlers do not yet: an allowed role gets 404 for them (AC-F02-04, AC-F02-15). |
