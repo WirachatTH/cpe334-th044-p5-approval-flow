@@ -20,7 +20,8 @@
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-14 | Menelaus122 | Skeleton created | Repository structure | #13 |
 | 0.2 | 2026-11-14 | Menelaus122 | First complete draft | Issue #7 (F-01 part) | #23 |
-| 0.3 | 2026-11-14 | Menelaus122 | Sessions are looked up only for `roles` and `optional` routes (F-02 v0.3). AC-F01-05 now sends six invalid bodies for one email. AC-F01-08 pins the exact 15:00 boundary. AC-F01-20 (burst) and AC-F01-21 (independent sessions) added. `roles` instead of `any`. AC-F01-06 relinked. Non-string fields covered in §1.4. Status: Agreed. | Review of PR #23 | this PR |
+| 0.3 | 2026-11-14 | Menelaus122 | Sessions are looked up only for `roles` and `optional` routes (F-02 v0.3). AC-F01-05 now sends six invalid bodies for one email. AC-F01-08 pins the exact 15:00 boundary. AC-F01-20 (burst) and AC-F01-21 (independent sessions) added. `roles` instead of `any`. AC-F01-06 relinked. Non-string fields covered in §1.4. Status: Agreed. | Review of PR #23 | #26 |
+| 0.4 | 2026-11-15 | Menelaus122 | §1.5 says an attempt is refused until the oldest failure is *at least* 15 minutes old, so exactly 15:00.000 is allowed, as AC-F01-08 already specifies. | Review of PR #26 | this PR |
 
 ---
 
@@ -88,7 +89,7 @@ The email format is not otherwise checked: an address that is not on file simply
 
 ### 1.5 Failure and boundary cases
 
-- **The 5th failure, then a correct password:** the 6th attempt answers `429`, even with the right password, until the oldest failure is more than 15 minutes old.
+- **The 5th failure, then a correct password:** the 6th attempt answers `429`, even with the right password, until the oldest failure is at least 15 minutes old (an attempt at exactly 15:00.000 after it is allowed, AC-F01-08).
 - **A success inside the window** clears the count for that email. Failures for other emails are unaffected.
 - **Burst of simultaneous wrong attempts:** attempts are reserved before the password check, so no more than 5 pass the limit.
 - **Session expires while the app is open:** the next protected call answers `401`, and the client goes to Login with the "session has ended" message.
