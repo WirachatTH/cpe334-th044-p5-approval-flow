@@ -1,12 +1,15 @@
 import express, { type Express } from "express";
 import type { PrismaClient } from "@prisma/client";
 import type { AppConfig } from "./config.js";
+import type { LoginThrottle } from "./loginThrottle.js";
 
 // The application factory. It receives its dependencies so that tests can pass their own Prisma client and
 // configuration (F-05 §1.7). index.ts is the only server-runtime file that creates the real client.
 export interface AppDeps {
   prisma: PrismaClient;
   config: AppConfig;
+  // The sign-in throttle. Each app gets its own unless a test passes one in, so the tests can reset it.
+  throttle?: LoginThrottle;
 }
 
 export function createApp({ prisma }: AppDeps): Express {
