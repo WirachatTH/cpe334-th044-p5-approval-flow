@@ -1,10 +1,12 @@
 import { expect } from "vitest";
+import { randomBytes } from "node:crypto";
 import type { Express } from "express";
 import type { PrismaClient } from "@prisma/client";
 import request from "supertest";
 import { createApp } from "../../../src/app.js";
 import type { AppConfig } from "../../../src/config.js";
 import { LoginThrottle } from "../../../src/loginThrottle.js";
+import { hashPassword } from "../../../src/password.js";
 import { createThrowawaySchema, migrate, seed, type ThrowawaySchema } from "./db.js";
 
 // A real app (createApp) on a throwaway, migrated, and seeded PostgreSQL schema, for the API tests of F-01 and F-02.
@@ -65,4 +67,20 @@ export function tokenOf(res: { headers: Record<string, unknown> }): string {
   const cookie = setCookies(res).find((c) => c.startsWith("af_session="));
   expect(cookie, "the response sets an af_session cookie").toBeDefined();
   return cookie!.split(";")[0].slice("af_session=".length);
+}
+
+// The ids of the four seeded accounts.
+export async function userIds(t: TestApp) {
+  const users = await t.prisma.user.findMany({ where: { email: { in: Object.values(ACCOUNTS) } } });
+  const id = (email: string) => users.find((u) => u.email === email)!.id;
+  return { ploy: id(ACCOUNTS.ploy), nattapong: id(ACCOUNTS.nattapong), mint: id(ACCOUNTS.mint), korn: id(ACCOUNTS.korn) };
+}
+
+// A new account that can sign in with PASSWORD, so a test does not depend on requests that other tests made for
+// the seeded accounts.
+export async function freshUser(t: TestApp, role: "REQUESTER" | "REVIEWER", label: string) {
+  const email = `${label}.${randomBytes(4).toString("hex")}@example.com`;
+  return t.prisma.user.create({
+    data: { name: `Test ${label}`, email, role, passwordHash: await hashPassword(PASSWORD) },
+  });
 }
