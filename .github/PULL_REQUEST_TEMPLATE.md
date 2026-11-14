@@ -4,7 +4,8 @@ Write this as the author, in your own words, like a report to your teammate.
 - Under each acceptance criterion, say how you know it is met: the test, the command, the number.
   Leave a box unticked if it is not met yet, and say why.
 - Give real commands, the tested commit, and the runner's own counts. Say what you did not verify.
-- Pair work: name both members.
+- Fill in the "Pair work" line: "none", or both members and who did what.
+- Release PRs (`staging` -> `main`) fill in the "Release PR only" section; normal PRs delete it.
 - No secrets, passwords, connection strings, or keys. No "Generated with ..." footers.
 - Base `staging` (release PRs: `staging` -> `main`). Merge with "Create a merge commit".
   The author never approves or merges their own PR.
@@ -13,6 +14,8 @@ Write this as the author, in your own words, like a report to your teammate.
 I have done Issue N: ...
 
 Closes #N
+
+Pair work: <none, or both members' GitHub names and who did what>
 
 ## 🎯 Acceptance Criteria Verification
 
@@ -49,6 +52,15 @@ Tested commit: `<sha>`
 1. <What changed and where, and any choice the reviewer may want to change.>
 2. <What you did not verify; known limitations; failed or skipped tests.>
 3. <Documents updated. GitHub does not close the Issue when a PR merges into `staging`; close it by hand.>
+
+## 🚀 Release PR only (`staging` → `main`)
+
+<!-- Delete this section on a normal PR. -->
+
+- PRs included in this release: #
+- Integration and acceptance checks on `staging` (command, commit, result):
+- Release tag to create after the merge (for example `v1.0.0-sprint1`):
+- Deploy workflow run, and the running Cloud Run revision with its commit (after the merge; Lab 5 C-06):
 
 ---
 
