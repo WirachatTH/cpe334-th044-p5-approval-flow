@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-03 |
 | Sprint | 1 |
-| Status | Agreed (Draft → Agreed → Implemented → Verified) |
+| Status | Implemented (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-04, FR-05, FR-06; BR-03, BR-04, BR-05, BR-06, BR-07, BR-08, BR-13 (submission entry), BR-15; NFR-02, NFR-07, NFR-11 |
 | GitHub Issue | #7 (contract), #10 (implementation) |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -20,7 +20,8 @@
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-14 | Menelaus122 | Skeleton created | Repository structure | #13 |
 | 0.2 | 2026-11-14 | Menelaus122 | First complete draft | Issue #7 (F-03 part) | #24 |
-| 0.3 | 2026-11-14 | Menelaus122 | Constraints are named, and AC-F03-09 uses a valid base row, a control insert, and one changed column per case, asserting the constraint name. The decision-fields `CHECK` is stricter. FKs point to `app_user`. AC-F03-05 lists the message per input. AC-F03-21 added (markup shown as text). AC-F03-20 relinked. Status: Agreed. | Review of PR #24 | this PR |
+| 0.3 | 2026-11-14 | Menelaus122 | Constraints are named, and AC-F03-09 uses a valid base row, a control insert, and one changed column per case, asserting the constraint name. The decision-fields `CHECK` is stricter. FKs point to `app_user`. AC-F03-05 lists the message per input. AC-F03-21 added (markup shown as text). AC-F03-20 relinked. Status: Agreed. | Review of PR #24 | #26 |
+| 0.4 | 2026-11-15 | Menelaus122 | The data change is applied as **two additive migrations**: `add_requests` (the enums, the two tables, their indexes and foreign keys) and `add_request_rules` (the number sequence and default, the four named `CHECK` constraints, and the append-only trigger). The split lets the constraint tests (TEST-F03-09) fail first, against tables that exist but have no rules, instead of failing on a missing table. | Found while planning the red tests for #10 | #10 |
 
 ---
 
@@ -116,7 +117,7 @@ checks need the database, so they run inside the transaction (§1.2 step 3).
 
 - **F-01 and F-02:** the session, and the policies for the four routes, already in `ROUTE_POLICIES` from #9.
 - **F-05:** the `User` table, the seeded accounts (two requesters, two reviewers), and `createApp({ prisma, config })`.
-- **The migration `add_requests`**, additive (§2.3).
+- **The migrations `add_requests` and `add_request_rules`**, both additive (§2.3).
 - **F-04** decides the requests this feature creates and reuses `RequestDetail` and the Request Detail screen.
 
 ## 2. Layer specifications
@@ -171,7 +172,7 @@ other than the requester, the assigned reviewer, the decider, and the history ac
 
 ### 2.3 Data
 
-Migration **`add_requests`** (additive; hand-written SQL for the parts Prisma cannot express):
+Two additive migrations. **`add_requests`** creates the enums, the two tables, their indexes, and the foreign keys. **`add_request_rules`** (hand-written SQL for what Prisma cannot express) adds the number sequence and default, the four named `CHECK` constraints, and the append-only trigger. The table below is the result of both:
 
 | Object | Definition |
 |---|---|
@@ -256,9 +257,9 @@ The [Product Definition of Done](README.md#product-definition-of-done) applies, 
 
 | Item | Value |
 |---|---|
-| Contract commit(s) | |
-| Red commit(s) and failing test | |
-| Green commit(s) | |
-| PR (author → reviewer) | |
-| Test run (command, commit, pass / fail / skip) | |
+| Contract commit(s) | `56053da` v0.2 (PR #24), `8dabe76` v0.3 (PR #26), `a3ce9fe` v0.4 (this branch, before any test: the data change is two migrations) |
+| Red commit(s) and failing test | `93251c6`, after the table stubs `a739b4a` (migration `add_requests`): TEST-F03-01 to 21 against tables that exist but have no rules. Of 36 test cases, **33 failed on assertions** (server 19, client 13, e2e 1) and **3 passed**: the control row of TEST-F03-09, and its NOT NULL and unique cases, which the Prisma schema already enforces. The three `CHECK` cases and every API case failed. `c90f9e7` is a test-only fix made during implementation: the e2e locator for the New Request link matched two links on an empty My Requests page, so it is scoped to the menu. |
+| Green commit(s) | `fabe92d`: the same tests, **36 passed** (migration `add_request_rules`, four route handlers, three screens) |
+| PR (author → reviewer) | Menelaus122 → WirachatTH; branch `feat/10-submit-request` (the PR number is in Issue #10) |
+| Test run (command, commit, pass / fail / skip) | At `fabe92d`: `cd server && npm test`: 11 files, **95 passed, 0 failed, 0 skipped** (121 s; 22 are F-03, 73 are from F-01, F-02, and F-05). `cd client && npm test`: 6 files, **23 passed**. `cd client && npm run e2e` against an API built from this commit on port 3100: **3 passed** (Chromium). Type-check and build: exit 0 on both sides. After the server run there were 0 leftover throwaway schemas. Node 24.14.0, PostgreSQL 16. |
 | Known limitations | Lists are not paginated in Sprint 1 (SRS A-04; F-08 in Sprint 3). Request numbers can have gaps after failed inserts. Text is stored exactly as typed and only ever rendered as text (AC-F03-21). |
