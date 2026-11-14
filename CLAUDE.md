@@ -12,4 +12,5 @@ and is the single source of truth. Read and follow all of it before taking any a
 - When asked to commit feature work, follow `AGENTS.md` section 3: one commit per step
   (`docs` → `test` red → `feat` green). Never combine the steps into one commit.
 - Never approve or merge a PR, and never edit rulesets or branch protection.
+- PR descriptions follow the template's author-report style. Never add a "Generated with Claude Code" line.
 - Never read or print `.env` files. Do not edit `private/` unless asked.
