@@ -9,7 +9,7 @@
 
 CPE 334 group project **TH-044_P5, Theme 5: Workflow & Approval System**. A requester submits a request;
 an assigned reviewer approves or rejects it with a recorded reason, and every decision appends an
-immutable history entry. Stack: Node 22 + TypeScript, Express 4, Prisma 5 + PostgreSQL, Vitest + Supertest,
+immutable history entry. Stack: Node 24 + TypeScript, Express 4, Prisma 5 + PostgreSQL, Vitest + Supertest,
 React 18 + Vite, Playwright, Docker. Deploy target: GCP (Cloud Run, Cloud SQL for PostgreSQL, Artifact Registry,
 Secret Manager, GitHub Actions with Workload Identity Federation).
 The repository is **PUBLIC**: https://github.com/WirachatTH/cpe334-th044-p5-approval-flow
@@ -114,8 +114,9 @@ For every Sprint feature and every meaningful business rule, use this commit ord
   constraints where possible. Competing decisions use a conditional update (`WHERE status = 'SUBMITTED'`)
   or a transaction, so that two decisions cannot both succeed.
 - `401`, `403`, and `404` responses never leak private record data.
-- **Migrations are additive only** (add tables or columns). Never edit an applied migration, and never drop
-  or rename in place. Rollback to an older image depends on this.
+- **Migrations are backward-compatible with the previously deployed revision.** They are additive by default
+  (add tables, columns, or enum values). Never edit an applied migration, and never drop or rename in place.
+  Lab 5 migrates before it deploys, and rollback to an older image depends on this (Product DoD FD-06).
 - Cloud-ready by default: no app data on local disk (Cloud Run containers are ephemeral), sessions stored
   in the DB, the port read from `PORT`, every setting read from env vars, and a `/api/ready` endpoint that
   checks the DB.
