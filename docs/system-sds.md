@@ -4,10 +4,8 @@
 > access rules, and delivery design for the Workflow & Approval System (Theme 5).
 > Feature contracts in `docs/sprints/sprint-*/` give the detailed endpoints, screens, and tests.
 >
-> **Requirement links.** Rules are named here in words. Their stable `FR`/`BR`/`NFR` IDs come from
-> [`srs.md`](srs.md) (Issue #3), and [`traceability.md`](traceability.md) (Issue #5) maps them to this design.
-> Where the SRS sets a value this design depends on, it is marked *(SRS)*. The value shown is the proposal
-> from the team plan.
+> **Requirement links.** Requirement IDs (`FR`, `BR`, `NFR`, `D`) refer to [`srs.md`](srs.md).
+> [`traceability.md`](traceability.md) (Issue #5) maps every requirement to its feature, design, and tests.
 
 ## Version history
 
@@ -16,6 +14,7 @@
 | 0.1 | 2026-11-14 | Menelaus122 | Skeleton created | Repository structure (#2) |
 | 0.2 | 2026-11-14 | Menelaus122 | First complete draft | Issue #4 |
 | 0.3 | 2026-11-14 | Menelaus122 | Rejection-reason `CHECK` made NULL-safe; `NOT NULL` columns stated; naming convention and `ApprovalRequest` model name; origin-guard behaviour and `CLIENT_ORIGINS` on Cloud Run; aligned with the F-05 contract (`DEMO_USER_PASSWORD` required everywhere, `NODE_ENV=test`, read-then-write seed) | Review of PR #18 and PR #19 |
+| 0.4 | 2026-11-14 | Menelaus122 | Node 24, as agreed for local, Docker, and CI. Table `app_user`. Named constraints, with the stricter `request_decision_fields` `CHECK`. Reasons up to 1000 characters. Guard order with the policy lookup before the session. `413 PAYLOAD_TOO_LARGE`. `{ "user": ... }` responses. `CLIENT_ORIGINS` set from the deterministic URL before the first deploy. Migrations backward-compatible rather than strictly additive. *(SRS)* markers replaced by requirement IDs. | Reviews of PRs #20 and #22–#25; team decision on Node 24 |
 
 ---
 
@@ -24,7 +23,7 @@
 | Layer | Technology | Responsibility |
 |---|---|---|
 | UI | React 18 + TypeScript, Vite, React Router | Screens, navigation by role, client-side validation for fast feedback, and loading/empty/error states. Holds no authority: every rule is enforced again by the API. |
-| API / application | Node 22 + TypeScript, Express 4 | Authentication, the route-policy authorization table, request validation, business rules and status transitions, and safe error responses. |
+| API / application | Node 24 + TypeScript, Express 4 | Authentication, the route-policy authorization table, request validation, business rules and status transitions, and safe error responses. |
 | Data access | Prisma 5 (client + Migrate) | Typed queries, transactions, and migrations. Constraints Prisma cannot express (`CHECK`, trigger) are hand-written in migration SQL. |
 | Database | PostgreSQL 16 | The system of record for users, sessions, requests, and history. Integrity constraints are the last line of defence for the business rules. |
 | Unit and API tests | Vitest + Supertest | Unit tests for rules; API tests against a real PostgreSQL for persistence and permissions. |
@@ -81,15 +80,16 @@ The client also hides controls a role cannot use, but that is feedback for peopl
 |---|---|---|---|---|
 | `User` | `id`, `name` (1–100), `email` (stored trimmed and lowercased), `passwordHash` (scrypt string), `role` (`REQUESTER` \| `REVIEWER`), `isActive`, `createdAt`, `updatedAt` | has many `Session`, requests as requester, requests as assigned reviewer, events as actor | `email` unique; users are deactivated, never deleted | Self |
 | `Session` | `id`, `tokenHash` (SHA-256 hex of the cookie token), `userId`, `createdAt`, `expiresAt` | belongs to `User` (`ON DELETE CASCADE`: a session is not history) | `tokenHash` unique; indexes on `userId`, `expiresAt` | The user it belongs to |
-| `Request` (Prisma model `ApprovalRequest`) | `id`, `requestNumber` (`REQ-######`), `requesterId`, `assignedReviewerId`, `title` (1–120), `description` (1–2000), `amount` (`DECIMAL(12,2)`, THB), `status`, `decidedById`, `decisionReason`, `decidedAt`, `createdAt`, `updatedAt` | belongs to `User` (requester), `User` (assigned reviewer), `User` (decider, nullable); has many `RequestEvent` | see 3.3; FKs `ON DELETE RESTRICT`; indexes `(requesterId, createdAt)`, `(assignedReviewerId, status)` | The requester owns it; the assigned reviewer may decide it |
-| `RequestEvent` | `id`, `requestId`, `actorId`, `type` (`SUBMITTED` \| `APPROVED` \| `REJECTED`), `fromStatus` (nullable), `toStatus`, `reason` (nullable), `createdAt` | belongs to `Request` and `User` (actor), both `ON DELETE RESTRICT` | append-only (trigger); index `(requestId, createdAt, id)` | Part of its request's history; visible to whoever may see the request |
+| `Request` (Prisma model `ApprovalRequest`) | `id`, `requestNumber` (`REQ-######`), `requesterId`, `assignedReviewerId`, `title` (1–120), `description` (1–2000), `amount` (`DECIMAL(12,2)`, THB), `status`, `decidedById`, `decisionReason` (≤ 1000), `decidedAt`, `createdAt`, `updatedAt` | belongs to `User` (requester), `User` (assigned reviewer), `User` (decider, nullable); has many `RequestEvent` | see 3.3; FKs `ON DELETE RESTRICT`; indexes `(requesterId, createdAt)`, `(assignedReviewerId, status)` | The requester owns it; the assigned reviewer may decide it |
+| `RequestEvent` | `id`, `requestId`, `actorId`, `type` (`SUBMITTED` \| `APPROVED` \| `REJECTED`), `fromStatus` (nullable), `toStatus`, `reason` (nullable, ≤ 1000), `createdAt` | belongs to `Request` and `User` (actor), both `ON DELETE RESTRICT` | append-only (trigger); index `(requestId, createdAt, id)` | Part of its request's history; visible to whoever may see the request |
 
 **Enums.**
-- `Role`: `REQUESTER`, `REVIEWER`. One role per account in Sprint 1. A `REVIEWER` may also submit requests, which makes "no self-approval" a real, testable rule *(SRS)*.
+- `Role`: `REQUESTER`, `REVIEWER`. One role per account in Sprint 1. A `REVIEWER` may also submit requests, which makes "no self-approval" a real, testable rule (SRS D-02, BR-10).
 - `RequestStatus`: `SUBMITTED`, `APPROVED`, `REJECTED`. Sprint 2 adds `RETURNED` with `ALTER TYPE ... ADD VALUE`, which is additive.
 
 **Naming.**
 - Prisma models are PascalCase and map to snake_case tables (`@@map`), with snake_case columns (`@map`). The SQL in §3.3 and the migrations uses the snake_case names; the API's JSON uses camelCase.
+- `User` maps to the table **`app_user`** (`@@map("app_user")`), because `user` is a reserved word in PostgreSQL. `Session` maps to `session`.
 - The request entity's model is **`ApprovalRequest`** (`@@map("request")`), so the Prisma type never clashes with Express's or the browser's global `Request` type. The history model is `RequestEvent` (`@@map("request_event")`).
 
 **Nullability.** Every column is `NOT NULL` except these:
@@ -127,13 +127,13 @@ Every other transition is invalid and answers `409 INVALID_TRANSITION`. Sprint 2
 
 | Constraint | Rule it protects |
 |---|---|
-| `CHECK (amount > 0 AND amount <= 1000000.00)` | Amount is positive and within the maximum *(SRS: maximum)* |
-| `CHECK (requester_id <> assigned_reviewer_id)` | Nobody is assigned their own request |
-| `CHECK ((status = 'SUBMITTED') = (decided_at IS NULL AND decided_by_id IS NULL))` | A decided request always records who decided and when; a submitted one never does |
-| `CHECK (status <> 'REJECTED' OR (decision_reason IS NOT NULL AND length(btrim(decision_reason)) > 0))` | A rejection always has a reason that is not empty or blank |
-| `UNIQUE (request_number)` | Request numbers are unique |
+| `request_amount_range`: `CHECK (amount > 0 AND amount <= 1000000.00)` | Amount is positive and within the maximum (BR-04) |
+| `request_reviewer_not_requester`: `CHECK (requester_id <> assigned_reviewer_id)` | Nobody is assigned their own request (BR-06) |
+| `request_decision_fields`: `CHECK ((status = 'SUBMITTED' AND decided_at IS NULL AND decided_by_id IS NULL AND decision_reason IS NULL) OR (status <> 'SUBMITTED' AND decided_at IS NOT NULL AND decided_by_id IS NOT NULL))` | A decided request always records both who decided and when, and a submitted one has no decider, date, or reason (BR-11) |
+| `request_rejection_reason`: `CHECK (status <> 'REJECTED' OR (decision_reason IS NOT NULL AND length(btrim(decision_reason)) > 0))`; `decision_reason` and `request_event.reason` are `varchar(1000)` | A rejection always has a reason that is not empty or blank, and no reason is longer than 1000 characters (BR-12) |
+| `request_number_unique`: `UNIQUE (request_number)` | Request numbers are unique (BR-07) |
 | `request_number` default `'REQ-' \|\| lpad(nextval('request_number_seq')::text, 6, '0')` | The number is generated by the database, never by the client |
-| Trigger `request_event_append_only` (`BEFORE UPDATE OR DELETE ... RAISE EXCEPTION`) | History cannot be changed or removed, even by a bug |
+| Trigger `request_event_append_only` (`BEFORE UPDATE OR DELETE ... RAISE EXCEPTION 'request_event is append-only'`) | History cannot be changed or removed, even by a bug (BR-13). Known gap: row triggers do not fire on `TRUNCATE`; the application never truncates, and F-10 can revoke it from the runtime role. |
 | FKs `ON DELETE RESTRICT` on requests and events | Deleting a user or request cannot erase history |
 
 A `CHECK` passes when its expression is `NULL`. So every `CHECK` above either applies only to `NOT NULL` columns
@@ -150,8 +150,10 @@ The submission handler enforces it inside the same transaction as the insert.
 - **Migrations.** Prisma Migrate. Locally `prisma migrate dev`; in CI and in the Cloud Run job
   `prisma migrate deploy`. Hand-written SQL in the migration adds the `CHECK` constraints, the sequence, and the
   trigger.
-  - After the first release, **migrations are additive only** (new tables, columns, enum values), so the previous
-    image keeps working after a rollback.
+  - After the first release, every migration is **backward-compatible with the previously deployed revision**.
+    Lab 5 migrates before it deploys, so the old image must keep working against the new schema, and a rollback
+    must stay possible. Additive changes (new tables, columns, enum values) are the default. A change such as
+    Sprint 2's widened `CHECK` for `RETURNED` must still accept every row the previous revision writes.
   - An applied migration is never edited.
 - **Seed** (`prisma/seed.ts`) is idempotent. It reads each demo account by email, creates it if it is missing,
   and otherwise writes only the fields that differ. The hash is rewritten only when it no longer verifies against
@@ -199,9 +201,9 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 | Topic | Convention |
 |---|---|
 | Base path | `/api`. Resources are plural nouns; IDs in paths are integers. |
-| Format | JSON in and out (`Content-Type: application/json`), body limit 100 KB. Timestamps are ISO-8601 UTC. Amounts are decimal **strings** (`"1250.00"`) so no precision is lost. |
+| Format | JSON in and out (`Content-Type: application/json`), body limit 100 KB (larger → `413 PAYLOAD_TOO_LARGE`). Timestamps are ISO-8601 UTC. Amounts are decimal **strings** (`"1250.00"`) so no precision is lost. |
 | Authentication | The session cookie only. A client-supplied user ID, role, or `requesterId` in a body is ignored. |
-| Guard order | 1 origin guard (state-changing methods) → 2 session → 3 role policy → 4 record scope → 5 validation → 6 business rules. The first failure answers; the JSON body is read only after step 3, so a caller who may not use a route learns nothing by sending one. |
+| Guard order | 1 origin guard (state-changing methods) → 2 policy lookup (an unlisted method or path → `404`; routing is case-sensitive and strict) → 3 session, only for `roles` and `optional` routes → 4 role → 5 record scope → 6 validation → 7 business rules. The first failure answers. The JSON body is read only after step 4, so a caller who may not use a route learns nothing by sending one. `public` routes such as `/api/health` and `/api/ready` never look up a session. |
 | Success | `200` read or decision, `201` create (with the created resource), `204` logout. |
 | Error envelope | `{ "error": { "code": "VALIDATION_ERROR", "message": "Some fields need attention.", "fields": { "amount": "Enter an amount greater than 0." } } }`. `message` is always safe to show: no stack trace, SQL, file path, or secret. |
 | Lists | Sprint 1 lists are not paginated (the data set is small). F-08 (Sprint 3) adds filtering and pagination. |
@@ -215,8 +217,8 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 | `GET /api/ready` | public; `503` if the database is unreachable | F-05 |
 | `POST /api/auth/login` | public; throttled | F-01 |
 | `POST /api/auth/logout` | with or without a session | F-01 |
-| `GET /api/auth/me` | any signed-in user | F-01 |
-| `GET /api/reviewers` | any signed-in user | F-03 |
+| `GET /api/auth/me` | `REQUESTER`, `REVIEWER` | F-01 |
+| `GET /api/reviewers` | `REQUESTER`, `REVIEWER` | F-03 |
 | `POST /api/requests` | `REQUESTER`, `REVIEWER` | F-03 |
 | `GET /api/requests/mine` | `REQUESTER`, `REVIEWER` | F-03 |
 | `GET /api/requests/:id` | `REQUESTER`, `REVIEWER`; record scope | F-03 |
@@ -236,6 +238,7 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 | `SELF_APPROVAL_FORBIDDEN` | 403 | A reviewer tried to decide a request they submitted |
 | `NOT_FOUND` | 404 | The record does not exist, or the caller is neither its requester nor its assigned reviewer |
 | `INVALID_TRANSITION` | 409 | The request is not `SUBMITTED` (already decided), including the loser of two competing decisions |
+| `PAYLOAD_TOO_LARGE` | 413 | The JSON body is over 100 KB |
 | `TOO_MANY_ATTEMPTS` | 429 | Login throttled for this email; a `Retry-After` header gives the seconds |
 | `INTERNAL_ERROR` | 500 | An unexpected failure; the message is always "Something went wrong. Please try again." |
 
@@ -259,7 +262,7 @@ and one event.
 | View request detail and history | ❌ 401 | ✅ own | ✅ own or assigned | Otherwise `404`, no data |
 | List review inbox | ❌ 401 | ❌ 403 | ✅ | `assignedReviewerId = caller`, `SUBMITTED` |
 | Approve or reject | ❌ 401 | ❌ 403 | ✅ assigned only | Own request → `403 SELF_APPROVAL_FORBIDDEN`; unrelated → `404`; decided → `409` |
-| Edit or delete a request or event | ❌ | ❌ | ❌ | No such endpoint in Sprint 1 *(SRS: no edit after submission)* |
+| Edit or delete a request or event | ❌ | ❌ | ❌ | No such endpoint in Sprint 1 (BR-15, D-06) |
 
 ## 7. Authentication and session
 
@@ -271,11 +274,11 @@ and one event.
 | Session token | 32 random bytes, base64url, sent only in the `af_session` cookie. The database stores only its SHA-256, so there is no signing secret to configure or leak. |
 | Cookie | `HttpOnly`, `SameSite=Strict`, `Path=/api`, `Max-Age=28800` (8 hours), and `Secure` when `NODE_ENV=production`. |
 | Expiry | 8 hours from login, checked on every request. An expired session is treated as none (`401`) and its row is deleted. A deactivated user's sessions are not honoured. |
-| Current user | `GET /api/auth/me` returns `{ id, name, email, role }` from the session, never the hash or the token. The SPA calls it on load to decide between Login and the app. |
+| Current user | `GET /api/auth/me` (and a successful login) returns `{ "user": { id, name, email, role } }` from the session, never the hash or the token. The SPA calls it on load to decide between Login and the app. |
 | Logout | `POST /api/auth/logout` deletes the session row and clears the cookie. The old cookie then answers `401`. |
 | Throttling | 5 failed logins per normalised email in a sliding 15-minute window → `429 TOO_MANY_ATTEMPTS` with `Retry-After`. Attempts are reserved before the password check, so a burst cannot slip past the limit. Unknown emails count the same as real ones. |
 | Cross-origin guard | A `POST` whose `Origin` header is present and not in `CLIENT_ORIGINS` answers `403 FORBIDDEN_ORIGIN` before the session lookup. This adds to `SameSite=Strict`. The comparison is an exact match of scheme, host, and port, with no trailing slash. `Origin: null` (sandboxed frames) is refused. A request **without** an `Origin` header is not checked: Supertest, `curl`, the smoke test, and other server-to-server calls send none, and browsers always send one on a `POST`. Browsers send it even for a same-origin `POST`, which is why `CLIENT_ORIGINS` must list every URL users open (§8). |
-| Not in Sprint 1 | Self-registration, password recovery, password change, and account administration *(SRS exclusions)*. Accounts come only from the seed. |
+| Not in Sprint 1 | Self-registration, password recovery, password change, and account administration (SRS §3.2 exclusions). Accounts come only from the seed. |
 
 **Known limitation (decision for the SRS).** The login throttle lives in each process's memory, as it did in
 TokTickIT. On Cloud Run, with up to 3 instances and scale-to-zero, each instance counts separately and a restart
@@ -299,7 +302,7 @@ The final list, with where each value comes from, lives in
 **Setting `CLIENT_ORIGINS` on Cloud Run.** A Cloud Run service can answer on more than one `*.run.app` URL;
 the service's Console page and `gcloud run services describe` list them. `CLIENT_ORIGINS` holds each of those
 URLs, comma-separated, exactly as the browser shows it (`https://` and host, no path, no trailing slash).
-- The service URL is known only after the service exists, so the first deploy sets the variable from the reported URL and later deploys keep it.
+- The server refuses to start in production without `CLIENT_ORIGINS` (F-05), so the value must exist **before** the first deploy. Set it to the service's deterministic URL, `https://<service>-<project-number>.<region>.run.app`, where the project number comes from `gcloud projects describe`. After the first deploy, add any other URL the service reports. `deployment.md` records the exact procedure.
 - If the value is wrong, every browser login fails with `403 FORBIDDEN_ORIGIN`, while `curl` and the smoke test still pass because they send no `Origin`.
 - So a release is accepted only after a real sign-in on the live URL (Lab 5 C-04), and `deployment.md` records the value.
 

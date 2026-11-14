@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-03 |
 | Sprint | 1 |
-| Status | Draft (Draft → Agreed → Implemented → Verified) |
+| Status | Agreed (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-04, FR-05, FR-06; BR-03, BR-04, BR-05, BR-06, BR-07, BR-08, BR-13 (submission entry), BR-15; NFR-02, NFR-07, NFR-11 |
 | GitHub Issue | #7 (contract), #10 (implementation) |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -19,7 +19,8 @@
 | Version | Date | Author | Change | Reason | Commit / PR |
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-14 | Menelaus122 | Skeleton created | Repository structure | #13 |
-| 0.2 | 2026-11-14 | Menelaus122 | First complete draft | Issue #7 (F-03 part) | this PR |
+| 0.2 | 2026-11-14 | Menelaus122 | First complete draft | Issue #7 (F-03 part) | #24 |
+| 0.3 | 2026-11-14 | Menelaus122 | Constraints are named, and AC-F03-09 uses a valid base row, a control insert, and one changed column per case, asserting the constraint name. The decision-fields `CHECK` is stricter. FKs point to `app_user`. AC-F03-05 lists the message per input. AC-F03-21 added (markup shown as text). AC-F03-20 relinked. Status: Agreed. | Review of PR #24 | this PR |
 
 ---
 
@@ -177,13 +178,15 @@ Migration **`add_requests`** (additive; hand-written SQL for the parts Prisma ca
 | `enum RequestStatus` | `SUBMITTED`, `APPROVED`, `REJECTED` |
 | `enum RequestEventType` | `SUBMITTED`, `APPROVED`, `REJECTED` |
 | `sequence request_number_seq` | Starts at 1 |
-| `request` (Prisma `ApprovalRequest`) | `id` serial PK; `request_number` varchar(10) not null unique, default `'REQ-' \|\| lpad(nextval('request_number_seq')::text, 6, '0')`; `requester_id`, `assigned_reviewer_id` int not null → the users table (F-05) `ON DELETE RESTRICT`; `title` varchar(120) not null; `description` varchar(2000) not null; `amount` decimal(12,2) not null; `status` RequestStatus not null default `SUBMITTED`; `decided_by_id` int null → the users table `ON DELETE RESTRICT`; `decision_reason` varchar(1000) null; `decided_at` timestamptz null; `created_at`, `updated_at` timestamptz not null |
-| `request` constraints | `CHECK (amount > 0 AND amount <= 1000000.00)`; `CHECK (requester_id <> assigned_reviewer_id)`; `CHECK ((status = 'SUBMITTED') = (decided_at IS NULL AND decided_by_id IS NULL))`; `CHECK (status <> 'REJECTED' OR (decision_reason IS NOT NULL AND length(btrim(decision_reason)) > 0))` |
+| `request` (Prisma `ApprovalRequest`) | `id` serial PK; `request_number` varchar(10) not null (constraint `request_number_unique`), default `'REQ-' \|\| lpad(nextval('request_number_seq')::text, 6, '0')`; `requester_id`, `assigned_reviewer_id` int not null → `app_user` `ON DELETE RESTRICT`; `title` varchar(120) not null; `description` varchar(2000) not null; `amount` decimal(12,2) not null; `status` RequestStatus not null default `SUBMITTED`; `decided_by_id` int null → `app_user` `ON DELETE RESTRICT`; `decision_reason` varchar(1000) null; `decided_at` timestamptz null; `created_at`, `updated_at` timestamptz not null |
+| `request` constraints (named) | `request_amount_range`: `CHECK (amount > 0 AND amount <= 1000000.00)`. `request_reviewer_not_requester`: `CHECK (requester_id <> assigned_reviewer_id)`. `request_decision_fields`: `CHECK ((status = 'SUBMITTED' AND decided_at IS NULL AND decided_by_id IS NULL AND decision_reason IS NULL) OR (status <> 'SUBMITTED' AND decided_at IS NOT NULL AND decided_by_id IS NOT NULL))`. `request_rejection_reason`: `CHECK (status <> 'REJECTED' OR (decision_reason IS NOT NULL AND length(btrim(decision_reason)) > 0))`. |
 | `request` indexes | `(requester_id, created_at)`, `(assigned_reviewer_id, status)` |
-| `request_event` (Prisma `RequestEvent`) | `id` serial PK; `request_id` → `request`, `actor_id` → the users table, both int not null `ON DELETE RESTRICT`; `type` RequestEventType not null; `from_status` RequestStatus null; `to_status` RequestStatus not null; `reason` varchar(1000) null; `created_at` timestamptz not null default now(); index `(request_id, created_at, id)` |
-| Trigger `request_event_append_only` | `BEFORE UPDATE OR DELETE ON request_event FOR EACH ROW` raises an exception |
+| `request_event` (Prisma `RequestEvent`) | `id` serial PK; `request_id` → `request`, `actor_id` → `app_user`, both int not null `ON DELETE RESTRICT`; `type` RequestEventType not null; `from_status` RequestStatus null; `to_status` RequestStatus not null; `reason` varchar(1000) null; `created_at` timestamptz not null default now(); index `(request_id, created_at, id)` |
+| Trigger `request_event_append_only` | `BEFORE UPDATE OR DELETE ON request_event FOR EACH ROW` raises the exception `request_event is append-only` |
 
 This feature tests the request-level constraints. F-04 tests the decision constraints and the append-only trigger.
+`updated_at` has no database default (Prisma's `@updatedAt` sets it), so raw-SQL tests build rows with a helper
+that supplies every `NOT NULL` column.
 
 ## 3. Acceptance criteria
 
@@ -193,11 +196,11 @@ This feature tests the request-level constraints. F-04 tests the decision constr
 | AC-F03-02 | Reviewer Mint signed in | Mint submits a valid request assigned to reviewer Korn | `201`, requester Mint, reviewer Korn | normal | FR-04, SRS D-02 |
 | AC-F03-03 | Ploy signed in | Ploy submits a valid body that also contains `requesterId` = Nattapong, `status: "APPROVED"`, `requestNumber: "REQ-999999"`, and `decidedById` = Mint | `201`; the stored request has requester Ploy, status `SUBMITTED`, a generated number other than `REQ-999999`, and no decider | negative | BR-03, BR-07 |
 | AC-F03-04 | Ploy signed in | Ploy submits two valid requests one after the other | Two different numbers; the second is greater than the first | boundary | BR-07 |
-| AC-F03-05 | Ploy signed in | Ploy submits amounts `"0.01"` and `"1000000.00"`, then each of `"0"`, `"-5"`, `"1000000.01"`, `"12.345"`, `"abc"`, `"1,000"`, `""`, a missing amount, and the JSON number `100` | The first two answer `201`. Each of the others answers `400` with `fields.amount` set to the matching §1.4 message, and the request count is unchanged after them. | boundary | BR-04 |
+| AC-F03-05 | Ploy signed in | Ploy submits amounts `"0.01"` and `"1000000.00"`, then each invalid input listed in *Then* | The first two answer `201`. Each invalid input answers `400` with exactly this `fields.amount`: `"0"` → "Enter an amount greater than 0."; `"1000000.01"` → "Enter an amount of at most 1,000,000.00 THB."; `"-5"`, `"12.345"`, `"abc"`, `"1,000"`, and the JSON number `100` → "Enter the amount as a number, for example 1250.50."; `""` and a missing amount → "Enter an amount.". The request count is unchanged after them. | boundary | BR-04 |
 | AC-F03-06 | Ploy signed in | Ploy submits a 120-character title and a 2000-character description; then a 121-character title; a 2001-character description; a title of spaces; a missing description; and `"  Laptop  "` as the title | 120 and 2000 are accepted. 121, 2001, blank, and missing each answer `400` on the right field, and nothing is stored. The last request is stored with the title `"Laptop"`. | boundary | BR-05 |
 | AC-F03-07 | Ploy signed in | `assignedReviewerId` is Nattapong (a requester), a reviewer set inactive in the test, `999999`, missing, and `"3"` (a string) | The first three answer `400` "Choose an active reviewer."; the last two answer `400` "Choose a reviewer."; no request is stored | negative | BR-06 |
 | AC-F03-08 | Reviewer Mint signed in | Mint submits a request with `assignedReviewerId` = Mint | `400`, `fields.assignedReviewerId` = "You cannot be the reviewer of your own request."; nothing is stored | negative | BR-06 |
-| AC-F03-09 | Direct SQL in a test transaction, bypassing the API | Insert `request` rows with amount `0`, amount `1000000.01`, amount `NULL`, requester equal to reviewer, and a duplicate `request_number` | Each insert fails with a constraint violation | negative | NFR-07, BR-04, BR-06, BR-07 |
+| AC-F03-09 | Direct SQL in a rolled-back test transaction, bypassing the API, with a helper that builds a valid `request` row (every `NOT NULL` column, including `updated_at`) | A control insert of the valid row, then the same row with one column changed per case: amount `0`; amount `1000000.01`; amount `NULL`; `assigned_reviewer_id` = `requester_id`; a duplicate `request_number` | The control succeeds. Each case fails, and the error names the expected constraint: `request_amount_range`, `request_amount_range`, not-null on `amount`, `request_reviewer_not_requester`, `request_number_unique` | negative | NFR-07, BR-04, BR-06, BR-07 |
 | AC-F03-10 | Ploy signed in, then Mint; one reviewer inactive | `GET /api/reviewers` for each | Each gets the active reviewers only, sorted by name, each with only `id` and `name`; Ploy's list has Korn and Mint (not the inactive one, not requesters); Mint's list does not contain Mint | normal | FR-04, BR-06 |
 | AC-F03-11 | Ploy has 2 requests, Nattapong 1, Mint has 1 assigned to them and none of their own; a new requester account has none | `GET /api/requests/mine` for each | Ploy gets exactly her 2, newest first; Nattapong his 1; Mint and the new account get `[]` | normal | FR-05, BR-08 |
 | AC-F03-12 | Ploy's request assigned to Mint | Ploy, then Mint, request its detail | Both get `200` with the full `RequestDetail`, including `history` with the one `SUBMITTED` entry | normal | FR-06, BR-08 |
@@ -208,7 +211,8 @@ This feature tests the request-level constraints. F-04 tests the decision constr
 | AC-F03-17 | The New Request screen | `GET /api/reviewers` answers `[]` | "No reviewers are available right now." is shown and **Submit request** is disabled | boundary | FR-04 |
 | AC-F03-18 | The My Requests screen | The API returns two requests, then `[]`, then `500` | Rows show number, title, amount `1,250.50`, a status badge with text, reviewer, and date, newest first. Then the empty message with a link to New Request. Then an error with **Try again**, which reloads. | normal | FR-05, NFR-11 |
 | AC-F03-19 | The Request Detail screen | The API returns a submitted request, then `404` | The fields, status badge, and history line "Submitted by …" appear. Then "This request is not available to you." with no request fields shown. | normal | FR-06 |
-| AC-F03-20 | The running stack with seeded data | Ploy signs in, submits a request, opens My Requests, and reloads the page | The new request is listed with status `SUBMITTED`, before and after the reload | normal | FR-04, FR-05, NFR-08 |
+| AC-F03-20 | The running stack with seeded data | Ploy signs in, submits a request, opens My Requests, and reloads the page | The new request is listed with status `SUBMITTED`, before and after the reload | normal | FR-04, FR-05 |
+| AC-F03-21 | Ploy signed in | Ploy submits the title `<script>alert(1)</script>` and the description `<img src=x onerror=alert(1)>`, then views My Requests and the detail | The API stores and returns both strings exactly as typed. The screens show them as literal text, and no `script` or `img` element is created from them. | negative | FR-05, FR-06 |
 
 ## 4. Software Test Specification (STS)
 
@@ -218,11 +222,11 @@ This feature tests the request-level constraints. F-04 tests the decision constr
 | TEST-F03-02 | AC-F03-02 | API-DB | Mint's agent | Submit a request for Korn | `201`; `requester.id` = Mint, `assignedReviewer.id` = Korn | `server/tests/sprint-1/requests.api.test.ts` |
 | TEST-F03-03 | AC-F03-03 | API-DB | Ploy's agent; ids from the seed | Submit with the four forged fields | The row read back: `requester_id` = Ploy, `status = SUBMITTED`, `request_number <> 'REQ-999999'`, `decided_by_id IS NULL` | `server/tests/sprint-1/requests.api.test.ts` |
 | TEST-F03-04 | AC-F03-04 | API-DB | Ploy's agent | Submit twice | Numbers differ; the numeric part of the second is larger | `server/tests/sprint-1/requests.api.test.ts` |
-| TEST-F03-05 | AC-F03-05 | API-DB | Ploy's agent | Table-driven over the 11 amount inputs; count requests before and after the invalid ones | `201` for the two valid; `400` with the stated `fields.amount` for each of the nine others; count unchanged across them | `server/tests/sprint-1/requests.api.test.ts` |
+| TEST-F03-05 | AC-F03-05 | API-DB | Ploy's agent | Table-driven over the 11 amount inputs, each with its expected message; count requests before and after the invalid ones | `201` for the two valid; `400` with exactly the listed `fields.amount` for each of the nine invalid; count unchanged across them | `server/tests/sprint-1/requests.api.test.ts` |
 | TEST-F03-06 | AC-F03-06 | API-DB | Ploy's agent | Table-driven over the title and description inputs | As stated, including the stored title `"Laptop"` | `server/tests/sprint-1/requests.api.test.ts` |
 | TEST-F03-07 | AC-F03-07 | API-DB | Ploy's agent; Korn set `is_active = false` in the test | Table-driven over the five reviewer inputs | Messages as stated; request count unchanged | `server/tests/sprint-1/requests.api.test.ts` |
 | TEST-F03-08 | AC-F03-08 | API-DB | Mint's agent | Submit with `assignedReviewerId` = Mint | `400` with the stated message; count unchanged | `server/tests/sprint-1/requests.api.test.ts` |
-| TEST-F03-09 | AC-F03-09 | DB integration | Raw SQL through Prisma `$executeRaw` in a transaction that is rolled back | Run the five inserts | Each rejects with a check, not-null, or unique violation | `server/tests/sprint-1/request-constraints.db.test.ts` |
+| TEST-F03-09 | AC-F03-09 | DB integration | Raw SQL through Prisma `$executeRaw` in a transaction that is rolled back | Insert the helper's valid row (control); then, for each case, the same row with one column changed | The control succeeds. Each case fails with the named constraint: `request_amount_range` (twice), a not-null violation on `amount`, `request_reviewer_not_requester`, `request_number_unique`. The test asserts the constraint name, not just "an error". | `server/tests/sprint-1/request-constraints.db.test.ts` |
 | TEST-F03-10 | AC-F03-10 | API-DB | Ploy's and Mint's agents; an extra inactive reviewer created in the test | `GET /api/reviewers` for each | Exact lists as stated; each item's keys are `["id","name"]` | `server/tests/sprint-1/requests.api.test.ts` |
 | TEST-F03-11 | AC-F03-11 | API-DB | Requests created in the test as stated; a fresh requester account created in the test | `GET /api/requests/mine` for each | Exact ids per caller, in order | `server/tests/sprint-1/requests.api.test.ts` |
 | TEST-F03-12 | AC-F03-12 | API-DB | Ploy's request for Mint | Detail as Ploy, then as Mint | `200` both; `history` has length 1 and type `SUBMITTED` | `server/tests/sprint-1/requests.api.test.ts` |
@@ -234,9 +238,10 @@ This feature tests the request-level constraints. F-04 tests the decision constr
 | TEST-F03-18 | AC-F03-18 | component | Mocked list responses in sequence | Render; click **Try again** after the `500` | As stated; **Try again** causes a second fetch | `client/tests/sprint-1/MyRequests.test.tsx` |
 | TEST-F03-19 | AC-F03-19 | component | Mocked detail responses | Render each | As stated; no title or amount text rendered for the `404` | `client/tests/sprint-1/RequestDetail.test.tsx` |
 | TEST-F03-20 | AC-F03-20 | e2e | Running stack, seeded | Sign in as Ploy; submit; open My Requests; reload | The row with the new number and `SUBMITTED` is visible before and after the reload | `client/e2e/sprint-1/requests.spec.ts` |
+| TEST-F03-21 | AC-F03-21 | API-DB + component | API: Ploy's agent submits the two strings. Component: the list and detail rendered with those strings in mocked responses. | Read back through the API; render both screens | The API returns identical strings. In the DOM, the text appears and `container.querySelector('script, img')` is `null` for the request content. | `server/tests/sprint-1/requests.api.test.ts`, `client/tests/sprint-1/RequestDetail.test.tsx` |
 
-**Coverage check:** AC-F03-01 to AC-F03-20 each map to exactly one TEST, and every test is automated.
-- 14 run on the server against a real database. They carry the rule and ownership evidence (BR-03 to BR-08, BR-13, BR-15, NFR-02, NFR-07).
+**Coverage check:** AC-F03-01 to AC-F03-21 each map to exactly one TEST, and every test is automated.
+- 15 run on the server against a real database (TEST-F03-21 also has a component part). They carry the rule and ownership evidence (BR-03 to BR-08, BR-13, BR-15, NFR-02, NFR-07).
 - 5 are component tests and 1 is an end-to-end test.
 
 ## 5. Definition of Done (feature)
@@ -256,4 +261,4 @@ The [Product Definition of Done](README.md#product-definition-of-done) applies, 
 | Green commit(s) | |
 | PR (author → reviewer) | |
 | Test run (command, commit, pass / fail / skip) | |
-| Known limitations | Lists are not paginated in Sprint 1 (SRS A-04; F-08 in Sprint 3). Request numbers can have gaps after failed inserts. |
+| Known limitations | Lists are not paginated in Sprint 1 (SRS A-04; F-08 in Sprint 3). Request numbers can have gaps after failed inserts. Text is stored exactly as typed and only ever rendered as text (AC-F03-21). |

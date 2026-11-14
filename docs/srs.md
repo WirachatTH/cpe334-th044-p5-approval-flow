@@ -10,6 +10,7 @@
 |---|---|---|---|---|
 | 0.1 | 2026-11-14 | Menelaus122 | Skeleton created | Repository structure (#2) |
 | 0.2 | 2026-11-14 | Menelaus122 | First complete version | Issue #3 |
+| 0.3 | 2026-11-14 | Menelaus122 | FR-01: "one generic message" applies to wrong credentials only. BR-09: "neither its requester nor its assigned reviewer", with BR-10 checked first. BR-17 and Q-06: the threshold and status name added as provisional values. D-04: rationale reworded. | Reviews of PR #22 and PR #23 |
 
 ---
 
@@ -65,7 +66,7 @@ Priority uses MoSCoW: **M**ust, **S**hould, **C**ould.
 
 | ID | Requirement (observable behaviour) | Actor | Priority | Planned sprint |
 |---|---|---|---|---|
-| FR-01 | A user signs in with email and password. On success the app shows the user's name and role and opens the role's home screen (Review Inbox for a reviewer, My Requests for a requester). On failure it shows one generic message and stays on Login. | Requester, Reviewer | M | 1 |
+| FR-01 | A user signs in with email and password. On success the app shows the user's name and role and opens the role's home screen (Review Inbox for a reviewer, My Requests for a requester). For wrong credentials it shows one generic message that does not reveal whether the email exists, and stays on Login. Throttling, an inactive account, and server errors have their own messages. | Requester, Reviewer | M | 1 |
 | FR-02 | A signed-in user signs out. The session ends on the server, the app returns to Login, and protected screens and endpoints then require a new sign-in. | Requester, Reviewer | M | 1 |
 | FR-03 | A signed-in user who reloads or reopens the app within the session lifetime stays signed in, and the app shows who they are. | Requester, Reviewer | M | 1 |
 | FR-04 | A user submits a request with a title, description, amount in THB, and one reviewer chosen from the list of active reviewers (excluding themselves). The system gives it a request number and the status `SUBMITTED`, and shows a confirmation with the number. | Requester, Reviewer | M | 1 |
@@ -96,7 +97,7 @@ Priority uses MoSCoW: **M**ust, **S**hould, **C**ould.
 | BR-06 | The assigned reviewer must be an existing, active user with the `REVIEWER` role, and must not be the requester. Otherwise the request is refused and nothing is stored. | FR-04 | 1 |
 | BR-07 | A new request starts in `SUBMITTED`. The system generates a unique request number `REQ-` plus six digits, which never changes. | FR-04, FR-05 | 1 |
 | BR-08 | A requester can see only their own requests. A reviewer can see their own requests and the requests assigned to them. Any other request is answered as "not found", with no data. | FR-05, FR-06, FR-07 | 1 |
-| BR-09 | Only the reviewer assigned to a request may approve or reject it. A `REQUESTER` calling a review operation is refused with `403`, and a reviewer who is not assigned gets "not found". | FR-07, FR-08, FR-09 | 1 |
+| BR-09 | Only the reviewer assigned to a request may approve or reject it. A `REQUESTER` calling a review operation is refused with `403`. A user who is **neither its requester nor its assigned reviewer** gets "not found" (`404`). When the caller is the request's requester, the self-approval refusal of BR-10 (`403`) applies first. | FR-07, FR-08, FR-09 | 1 |
 | BR-10 | **No self-approval:** a user can never approve or reject a request they submitted. The attempt is refused with `403` and changes nothing. | FR-08, FR-09 | 1 |
 | BR-11 | Only a `SUBMITTED` request can be decided. In Sprint 1 the only transitions are `SUBMITTED → APPROVED` and `SUBMITTED → REJECTED`. Any other attempt, such as deciding an already decided request, is refused with `409` and changes nothing. | FR-08, FR-09 | 1 |
 | BR-12 | A rejection needs a reason that is not blank, at most 1000 characters. An approval reason is optional, also at most 1000 characters. | FR-08, FR-09 | 1 |
@@ -104,7 +105,7 @@ Priority uses MoSCoW: **M**ust, **S**hould, **C**ould.
 | BR-14 | When two decisions on the same request arrive at the same time, at most one succeeds. The other is refused as an invalid transition (`409`) and adds no history entry. | FR-08, FR-09 | 1 |
 | BR-15 | In Sprint 1 nobody can edit or delete a request after submission. Changes go through return and resubmission (BR-16) from Sprint 2. | FR-04, FR-14 | 1 |
 | BR-16 | Only the assigned reviewer can return a request, only while it is `SUBMITTED`, and only with a comment that is not blank. Only its requester can edit and resubmit a `RETURNED` request; resubmission keeps the number and the reviewer. | FR-13, FR-14 | 2 |
-| BR-17 | A request above the multi-stage threshold needs a second approval from an active reviewer who is neither the requester nor the first approver. Until then its status shows that it is waiting for the second approval. | FR-15 | 2 |
+| BR-17 | A request above the multi-stage threshold (**provisional: 100,000.00 THB**) needs a second approval from an active reviewer who is neither the requester nor the first approver. After the first approval its status is **provisionally `AWAITING_SECOND_APPROVAL`**, and only the second approval makes it `APPROVED`. The F-07 contract confirms or changes both values (Q-06). | FR-15 | 2 |
 | BR-18 | Lists, filters, summaries, and reports include only the requests the viewer may see under BR-08. | FR-16, FR-17, FR-18 | 3 |
 
 ## 6. Non-functional requirements (NFR)
@@ -147,7 +148,7 @@ Priority uses MoSCoW: **M**ust, **S**hould, **C**ould.
 | D-01 | **Context:** departmental purchase and funding requests | Travel approval; leave requests; reimbursement claims | It has a clear amount to validate and a natural need for an accountable decision, and it fits the theme brief. | 2026-11-14 |
 | D-02 | **Roles:** `REQUESTER` and `REVIEWER`, one role per account. A `REVIEWER` may also submit requests. | Separate submit-only and approve-only people; several roles per account | Unit heads also need to buy things. Letting reviewers submit makes "no self-approval" a real rule that can be tested and demonstrated, while keeping one role per account. | 2026-11-14 |
 | D-03 | **Reviewer assignment:** the requester chooses one active reviewer (not themselves) when submitting, and only that reviewer may decide | Automatic assignment by unit or round-robin; a shared queue that any reviewer may take | It is explicit and simple, and it gives "unrelated reviewer" a clear meaning that can be tested. A shared queue would remove the ownership rule the theme asks for. | 2026-11-14 |
-| D-04 | **No self-approval** is enforced twice: the assignment rule (and a database constraint) stops a user being assigned their own request, and the decision operation refuses a decision on one's own request with `403` | Rely on the assignment rule alone | Defence in depth: the second check still holds if data is ever inconsistent, and it is tested on its own (BR-10). | 2026-11-14 |
+| D-04 | **No self-approval** is enforced twice: the assignment rule (and a database constraint) stops a user being assigned their own request, and the decision operation refuses a decision on one's own request with `403` | Rely on the assignment rule alone | The two checks cover different cases. The assignment rule (and its `CHECK`) means a requester is never also the assigned reviewer. The `403` covers the normal self-approval attempt: a reviewer trying to decide a request they submitted, which is assigned to someone else. It is clearer than a `404`, because the caller already knows the request (it is theirs), and it is tested on its own (BR-10). | 2026-11-14 |
 | D-05 | **Sprint 1 status model:** `SUBMITTED → APPROVED` or `SUBMITTED → REJECTED`; every other transition is invalid (`409`) | Include `DRAFT` and `RETURNED` in Sprint 1 | It is the smallest slice with a meaningful transition and rules. Return and resubmission come in Sprint 2. | 2026-11-14 |
 | D-06 | **No editing after submission** in Sprint 1 | Allow editing until the reviewer opens the request | A reviewer must never decide on content that changes under them. Sprint 2's return and resubmission gives a controlled way to change a request. | 2026-11-14 |
 | D-07 | **Decisions are recorded:** a rejection needs a reason, an approval reason is optional, and every status change appends a history entry that cannot be changed | Optional reasons; status kept only on the request | Accountability is the stakeholder's main need: who decided what, when, and why. | 2026-11-14 |
@@ -165,6 +166,6 @@ Priority uses MoSCoW: **M**ust, **S**hould, **C**ould.
 | Q-03 | Is multi-stage approval needed in Sprint 1? | No. It comes in Sprint 2 (FR-15, D-05). | 2026-11-14 / team |
 | Q-04 | May reviewers submit their own requests? | Yes, and another reviewer must decide them (D-02, BR-10). | 2026-11-14 / team |
 | Q-05 | What happens to waiting requests if their reviewer is deactivated? | **Open.** Sprint 1 cannot deactivate accounts (no administration). To be decided with F-06 in Sprint 2, for example letting the requester reassign. Owner: Menelaus122. | — |
-| Q-06 | What is the multi-stage threshold, and who may give the second approval? | **Open.** Proposed: above 100,000.00 THB, by any active reviewer other than the requester and the first approver (BR-17). To be fixed in the F-07 contract in Sprint 2. Owner: WirachatTH. | — |
+| Q-06 | What is the multi-stage threshold, and who may give the second approval? | **Open, with provisional values in BR-17:** above 100,000.00 THB, by any active reviewer other than the requester and the first approver, with the interim status `AWAITING_SECOND_APPROVAL`. To be confirmed in the F-07 contract in Sprint 2. Owner: WirachatTH. | — |
 | Q-07 | Do summaries need an export (for example CSV)? | **Open.** To be decided in the F-09 contract in Sprint 3. Owner: team. | — |
 | Q-08 | Should the login throttle be shared between Cloud Run instances? | Not in Sprint 1 (D-10). Revisit in F-10 (Sprint 3). | 2026-11-14 / team |

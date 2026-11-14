@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-01 |
 | Sprint | 1 |
-| Status | Draft (Draft → Agreed → Implemented → Verified) |
+| Status | Agreed (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-01, FR-02, FR-03; BR-02; NFR-01, NFR-03, NFR-04, NFR-05, NFR-06 |
 | GitHub Issue | #7 (contract), #9 (implementation) |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -19,7 +19,8 @@
 | Version | Date | Author | Change | Reason | Commit / PR |
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-14 | Menelaus122 | Skeleton created | Repository structure | #13 |
-| 0.2 | 2026-11-14 | Menelaus122 | First complete draft | Issue #7 (F-01 part) | this PR |
+| 0.2 | 2026-11-14 | Menelaus122 | First complete draft | Issue #7 (F-01 part) | #23 |
+| 0.3 | 2026-11-14 | Menelaus122 | Sessions are looked up only for `roles` and `optional` routes (F-02 v0.3). AC-F01-05 now sends six invalid bodies for one email. AC-F01-08 pins the exact 15:00 boundary. AC-F01-20 (burst) and AC-F01-21 (independent sessions) added. `roles` instead of `any`. AC-F01-06 relinked. Non-string fields covered in §1.4. Status: Agreed. | Review of PR #23 | this PR |
 
 ---
 
@@ -37,7 +38,7 @@ It adapts TokTickIT's `password.ts`, `session.ts`, `loginThrottle.ts`, and auth 
 ### 1.2 Workflow
 
 **Sign in** (`POST /api/auth/login`):
-1. F-02 runs first: the origin guard, and the route policy (`public`).
+1. F-02 runs first: the origin guard, and the route policy (`public`). No session is looked up for this route.
 2. Read and validate the body (§1.4). A validation error answers `400` and is **not** counted by the throttle.
 3. Normalise the email (trim, lowercase) and **reserve** an attempt with the throttle. If the email already has 5 failures in the last 15 minutes, answer `429 TOO_MANY_ATTEMPTS` with `Retry-After`, without checking the password.
 4. Find the user by email and verify the password with `verifyPasswordForLogin`. For an unknown email, this still runs one scrypt against a dummy hash, so timing does not reveal which emails exist.
@@ -52,7 +53,7 @@ It adapts TokTickIT's `password.ts`, `session.ts`, `loginThrottle.ts`, and auth 
 
 **Current user** (`GET /api/auth/me`): F-02 has already attached the session's user. The handler answers `200 { user }`.
 
-**Session lookup** (the `attachSession` middleware, used by F-02): hash the cookie token and find the session.
+**Session lookup** (the `attachSession` middleware, which F-02 runs only for `roles` and `optional` routes): hash the cookie token and find the session.
 - No row → no session.
 - Expired row → delete it, no session.
 - Inactive user → no session.
@@ -80,8 +81,8 @@ It adapts TokTickIT's `password.ts`, `session.ts`, `loginThrottle.ts`, and auth 
 | Field / input | Rule | Error returned |
 |---|---|---|
 | Body | A JSON object | `400 VALIDATION_ERROR` "Some fields need attention." with no `fields` |
-| `email` | A string; after trimming, 1–254 characters | `400 VALIDATION_ERROR`, `fields.email`: "Enter your email address." (missing or blank) or "Email address is too long." |
-| `password` | A string of 1–128 characters; not trimmed | `400 VALIDATION_ERROR`, `fields.password`: "Enter your password." (missing or empty) or "Password is too long." |
+| `email` | A string; after trimming, 1–254 characters | `400 VALIDATION_ERROR`, `fields.email`: "Enter your email address." (missing, blank, or not a string) or "Email address is too long." |
+| `password` | A string of 1–128 characters; not trimmed | `400 VALIDATION_ERROR`, `fields.password`: "Enter your password." (missing, empty, or not a string) or "Password is too long." |
 
 The email format is not otherwise checked: an address that is not on file simply fails as `INVALID_CREDENTIALS`.
 
@@ -107,7 +108,7 @@ The email format is not otherwise checked: an address that is not on file simply
 ### 1.7 Dependencies
 
 - **F-05:** the `User` and `Session` tables, the seeded accounts, `password.ts`, and `createApp({ prisma, config })`.
-- **F-02:** the origin guard, `attachSession` placement, and the route policy (`public` login, `optional` logout, `any` for `/me`).
+- **F-02:** the origin guard, `attachSession` placement, and the route policy (`public` login, `optional` logout, `roles: REQUESTER, REVIEWER` for `/me`). F-02 runs `attachSession` only for `roles` and `optional` routes.
 - **Testability:** `LoginThrottle.beginAttempt(email, now)` and `endAttempt(email, outcome, now)` take the time as an argument, so the window is tested without waiting.
 
 ## 2. Layer specifications
@@ -159,10 +160,10 @@ created on sign-in, deleted on sign-out, and deleted when found expired.
 | AC-F01-02 | A seeded requester | It signs in with its email in another case and with surrounding spaces (`"  PLOY.Requester@Example.COM "`) | `200`, and the same user as AC-F01-01 | boundary | FR-01 |
 | AC-F01-03 | A seeded account | It signs in with a wrong password | `401 INVALID_CREDENTIALS`, message "Email or password is incorrect."; no `Set-Cookie`; the session count is unchanged | negative | FR-01 |
 | AC-F01-04 | No account with this email | It signs in | Exactly the same status, code, and message as AC-F01-03; no session is created | negative | FR-01, NFR-06 |
-| AC-F01-05 | Any client | It sends each invalid body: missing email, email of spaces, missing password, empty password, a 255-character email, a 129-character password, a JSON array | `400 VALIDATION_ERROR`. The `fields` key names the bad field (none for the array). After seven such requests for one email, a correct sign-in for it still succeeds, because validation errors are not counted. | negative | FR-01, NFR-05 |
-| AC-F01-06 | An account set inactive in the database | It signs in with the correct password, then with a wrong one | First `403 ACCOUNT_INACTIVE`, then `401 INVALID_CREDENTIALS`; no session either time | negative | BR-02 |
+| AC-F01-05 | Seeded requester Ploy | (a) Six bodies with Ploy's email and an invalid password: missing, `""`, 129 characters, `null`, the number `123`, and `[]`; (b) four bodies without a usable email: email missing, email of spaces, a 255-character email, and a JSON array as the whole body; then a correct sign-in for Ploy | Each of the ten answers `400 VALIDATION_ERROR`; `fields` names the bad field (none for the array body). The correct sign-in after them answers `200`: six refusals for one email is more than the 5-failure limit, so validation errors are proven not to count. | negative | FR-01, NFR-05 |
+| AC-F01-06 | An account set inactive in the database | It signs in with the correct password, then with a wrong one | First `403 ACCOUNT_INACTIVE`, then `401 INVALID_CREDENTIALS`; no session either time | negative | FR-01, NFR-04 |
 | AC-F01-07 | A seeded account | 5 wrong passwords, then the correct password, then a different seeded account signs in | The 6th request answers `429 TOO_MANY_ATTEMPTS` with an integer `Retry-After` from 1 to 900 and creates no session; the other account signs in with `200` | negative | NFR-05 |
-| AC-F01-08 | The throttle with a controlled clock | (a) 5 failures, then the clock moves 15 minutes past the first; (b) 4 failures, then a success, then 5 more failures; (c) failures for an unknown email | (a) the next attempt is allowed. (b) The 5th of the new failures is allowed and the 6th is refused, because the success cleared the count. (c) An unknown email is refused after 5 failures, like a known one. | boundary | NFR-05 |
+| AC-F01-08 | The throttle with a controlled clock | (a) 5 failures, the first at t0, then attempts at t0 + 14:59.999 and at exactly t0 + 15:00.000; (b) 4 failures, then a success, then 5 more failures; (c) failures for an unknown email | (a) The attempt at 14:59.999 is refused, and the one at exactly 15:00.000 is allowed, because the oldest failure leaves the window at 15 minutes. (b) The 5th of the new failures is allowed and the 6th is refused, because the success cleared the count. (c) An unknown email is refused after 5 failures, like a known one. | boundary | NFR-05 |
 | AC-F01-09 | A signed-in account | `GET /api/auth/me` with its cookie, without a cookie, and with a made-up token | `200 { user }` equal to the sign-in response; `401 UNAUTHENTICATED`; `401 UNAUTHENTICATED` | normal / negative | FR-03, NFR-01 |
 | AC-F01-10 | A session whose `expires_at` is 1 second in the past | `GET /api/auth/me` with its cookie | `401 UNAUTHENTICATED`, and the session row has been deleted | boundary | NFR-04 |
 | AC-F01-11 | A signed-in account that is then set inactive in the database | `GET /api/auth/me` with its cookie | `401 UNAUTHENTICATED` | negative | NFR-04 |
@@ -174,6 +175,8 @@ created on sign-in, deleted on sign-out, and deleted when found expired.
 | AC-F01-17 | A signed-in user on My Requests | The page is reloaded | The user is still signed in and on My Requests | normal | FR-03 |
 | AC-F01-18 | A signed-in user | They click **Log out**, then open `/requests` directly | Login is shown both times, and no request data appears | normal | FR-02 |
 | AC-F01-19 | A signed-in user | A protected API call answers `401` | The app shows Login with "Your session has ended. Please log in again." | negative | FR-03, NFR-04 |
+| AC-F01-20 | The throttle reset for Ploy's email | 20 wrong-password sign-ins for Ploy arrive at the same time | Exactly 5 answer `401 INVALID_CREDENTIALS` and 15 answer `429`, because attempts are reserved before the password check; no session is created | boundary | NFR-05 |
+| AC-F01-21 | Ploy signs in from two browsers (agents A and B) | A signs out | There were two sessions; afterwards A's cookie gets `401` and B's cookie still gets `200` from `/api/auth/me` | normal | FR-02, NFR-04 |
 
 ## 4. Software Test Specification (STS)
 
@@ -183,7 +186,7 @@ created on sign-in, deleted on sign-out, and deleted when found expired.
 | TEST-F01-02 | AC-F01-02 | API-DB | As above | Sign in with `"  PLOY.Requester@Example.COM "` | `200`, `user.id` equals the requester's id | `server/tests/sprint-1/auth.api.test.ts` |
 | TEST-F01-03 | AC-F01-03 | API-DB | As above | Wrong password | `401`, code and message as stated; no `set-cookie` header; session count unchanged | `server/tests/sprint-1/auth.api.test.ts` |
 | TEST-F01-04 | AC-F01-04 | API-DB | As above | Sign in as `nobody@example.com` | Status, code, and message deep-equal TEST-F01-03's; session count unchanged | `server/tests/sprint-1/auth.api.test.ts` |
-| TEST-F01-05 | AC-F01-05 | API-DB | As above; throttle reset | Send the seven invalid bodies (table-driven), then a correct sign-in for the same email | Each `400 VALIDATION_ERROR` with the stated `fields`; the final sign-in `200` | `server/tests/sprint-1/auth.api.test.ts` |
+| TEST-F01-05 | AC-F01-05 | API-DB | As above; throttle reset | Send the ten invalid bodies (table-driven; six carry Ploy's email), then a correct sign-in for Ploy | Each `400 VALIDATION_ERROR` with the stated `fields`; the final sign-in `200` | `server/tests/sprint-1/auth.api.test.ts` |
 | TEST-F01-06 | AC-F01-06 | API-DB | A seeded requester updated to `is_active = false` in the test | Correct password, then wrong password | `403 ACCOUNT_INACTIVE`, then `401 INVALID_CREDENTIALS`; session count unchanged | `server/tests/sprint-1/auth.api.test.ts` |
 | TEST-F01-07 | AC-F01-07 | API-DB | Throttle reset | 5 wrong, 1 correct for the requester; then the reviewer signs in | 6th: `429`, `retry-after` parses to an integer in 1–900, no session; reviewer `200` | `server/tests/sprint-1/auth.api.test.ts` |
 | TEST-F01-08 | AC-F01-08 | unit | A new `LoginThrottle`; explicit `now` values | Run scenarios (a), (b), (c) through `beginAttempt` / `endAttempt` | `allowed` values as stated in each scenario | `server/tests/sprint-1/login-throttle.test.ts` |
@@ -198,9 +201,11 @@ created on sign-in, deleted on sign-out, and deleted when found expired.
 | TEST-F01-17 | AC-F01-17 | e2e | Running stack with seeded data | Sign in as the requester, reload `/requests` | Still on `/requests`, and the header shows the requester | `client/e2e/sprint-1/auth.spec.ts` |
 | TEST-F01-18 | AC-F01-18 | e2e | As above | Log out; then `page.goto('/requests')` | Login is visible both times; no request row is rendered | `client/e2e/sprint-1/auth.spec.ts` |
 | TEST-F01-19 | AC-F01-19 | component | Signed-in context; mocked protected call returns `401` | Trigger the call | Location is `/login` and the notice is shown | `client/tests/sprint-1/AuthFlow.test.tsx` |
+| TEST-F01-20 | AC-F01-20 | API-DB (concurrency) | Throttle reset; session count recorded | Send 20 wrong-password sign-ins for Ploy with `Promise.all` | Exactly 5 statuses are `401` and 15 are `429`; session count unchanged | `server/tests/sprint-1/auth.api.test.ts` |
+| TEST-F01-21 | AC-F01-21 | API-DB | Two separate agents, A and B | Both sign in as Ploy; A logs out; both call `/me` | Two session rows after the sign-ins; then A `401` and B `200`; one row left | `server/tests/sprint-1/auth.api.test.ts` |
 
-**Coverage check:** AC-F01-01 to AC-F01-19 each map to exactly one TEST, and every test is automated.
-- Thirteen are API-DB, API, or unit tests on the server, which carry the security evidence (NFR-01, 03, 04, 05, 06).
+**Coverage check:** AC-F01-01 to AC-F01-21 each map to exactly one TEST, and every test is automated.
+- Fifteen are API-DB, API, or unit tests on the server, which carry the security evidence (NFR-01, 03, 04, 05, 06).
 - Four are component tests and two are e2e tests, which cover the UI behaviour.
 
 ## 5. Definition of Done (feature)
