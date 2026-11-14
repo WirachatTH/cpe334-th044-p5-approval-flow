@@ -98,9 +98,10 @@ describe("decision panel", () => {
     expect(await screen.findByText("Request approved.")).toBeInTheDocument();
     expect(posts(api)[0].body).toEqual({ decision: "APPROVE" });
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Approved");
-    const decision = within(screen.getByRole("group", { name: "Decision" }));
-    expect(decision.getByText("Mint Chaiyaporn")).toBeInTheDocument();
-    expect(screen.getByText("Approved by Mint Chaiyaporn · 14 Nov 2026 17:00")).toBeInTheDocument();
+    const line = "Approved by Mint Chaiyaporn · 14 Nov 2026 17:00";
+    expect(within(screen.getByRole("group", { name: "Decision" })).getByText(line)).toBeInTheDocument();
+    // The same line is also the newest history entry, so the history gained it.
+    expect(screen.getAllByText(line)).toHaveLength(2);
     expect(panel()).not.toBeInTheDocument();
   });
 
