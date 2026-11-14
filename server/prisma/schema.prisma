@@ -29,6 +29,11 @@ model User {
 
   sessions Session[]
 
+  requestsSubmitted ApprovalRequest[] @relation("RequestRequester")
+  requestsAssigned  ApprovalRequest[] @relation("RequestReviewer")
+  requestsDecided   ApprovalRequest[] @relation("RequestDecider")
+  requestEvents     RequestEvent[]
+
   // "user" is a reserved word in PostgreSQL.
   @@map("app_user")
 }
@@ -45,4 +50,65 @@ model Session {
   @@index([userId])
   @@index([expiresAt])
   @@map("session")
+}
+
+enum RequestStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum RequestEventType {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+// A purchase or funding request (SDS section 3, F-03 contract section 2.3). The model is named ApprovalRequest so
+// the type never clashes with the global Request type.
+//
+// SCAFFOLD STUB (#10, chore commit): the tables exist, but none of the rules do. The request number default, the
+// CHECK constraints, and the append-only trigger arrive with the F-03 implementation (migration add_request_rules),
+// after the failing tests that specify them.
+model ApprovalRequest {
+  id                 Int           @id @default(autoincrement())
+  requestNumber      String        @unique(map: "request_number_unique") @map("request_number") @db.VarChar(10)
+  requesterId        Int           @map("requester_id")
+  assignedReviewerId Int           @map("assigned_reviewer_id")
+  title              String        @db.VarChar(120)
+  description        String        @db.VarChar(2000)
+  amount             Decimal       @db.Decimal(12, 2)
+  status             RequestStatus @default(SUBMITTED)
+  decidedById        Int?          @map("decided_by_id")
+  decisionReason     String?       @map("decision_reason") @db.VarChar(1000)
+  decidedAt          DateTime?     @map("decided_at") @db.Timestamptz
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  requester        User           @relation("RequestRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  assignedReviewer User           @relation("RequestReviewer", fields: [assignedReviewerId], references: [id], onDelete: Restrict)
+  decidedBy        User?          @relation("RequestDecider", fields: [decidedById], references: [id], onDelete: Restrict)
+  events           RequestEvent[]
+
+  @@index([requesterId, createdAt])
+  @@index([assignedReviewerId, status])
+  @@map("request")
+}
+
+// The history of a request: one row per status change, never updated or deleted (BR-13).
+model RequestEvent {
+  id         Int              @id @default(autoincrement())
+  requestId  Int              @map("request_id")
+  actorId    Int              @map("actor_id")
+  type       RequestEventType
+  fromStatus RequestStatus?   @map("from_status")
+  toStatus   RequestStatus    @map("to_status")
+  reason     String?          @db.VarChar(1000)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  request ApprovalRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  actor   User            @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([requestId, createdAt, id])
+  @@map("request_event")
 }
