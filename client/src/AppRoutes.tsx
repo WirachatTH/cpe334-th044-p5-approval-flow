@@ -1,7 +1,33 @@
-// The routes and screens: Login, the app shell with role-based navigation, and the route guards (F-01 and F-02).
-//
-// SCAFFOLD STUB (#9, chore commit): renders nothing. The screens arrive with the F-01 and F-02 implementation, after
-// the failing tests that specify them.
+import { Navigate, Route, Routes } from "react-router-dom";
+import { Checking } from "./components/Checking.js";
+import { RequireAuth } from "./components/RequireAuth.js";
+import { RequireRole } from "./components/RequireRole.js";
+import { homeFor, useAuth } from "./context/AuthContext.js";
+import { Login } from "./screens/Login.js";
+import { NotAvailable } from "./screens/NotAvailable.js";
+import { Placeholder } from "./screens/Placeholder.js";
+
+// The routes (SDS §4.1). Guards are a convenience for people: the API refuses the same calls on its own.
+
+function Home() {
+  const { status, user } = useAuth();
+  if (status === "checking") return <Checking />;
+  return <Navigate to={status === "signedIn" && user ? homeFor(user.role) : "/login"} replace />;
+}
+
 export function AppRoutes() {
-  return null;
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/" element={<Home />} />
+      <Route element={<RequireAuth />}>
+        <Route path="/requests" element={<Placeholder title="My Requests" />} />
+        <Route path="/requests/new" element={<Placeholder title="New Request" />} />
+        <Route element={<RequireRole role="REVIEWER" />}>
+          <Route path="/reviews" element={<Placeholder title="Review Inbox" />} />
+        </Route>
+        <Route path="*" element={<NotAvailable />} />
+      </Route>
+    </Routes>
+  );
 }
