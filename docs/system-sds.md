@@ -295,7 +295,7 @@ The final list, with where each value comes from, lives in
 | `DATABASE_URL` | server, seed, migrations | PostgreSQL connection string; required in every environment | **Yes** | `.env` (not committed) | Secret Manager |
 | `DEMO_USER_PASSWORD` | seed | Password for the seeded demo accounts; required in every environment, no default | **Yes** | `.env` | Secret Manager |
 | `PORT` | server | HTTP port, 1–65535 (default 3000) | No | default | Set by Cloud Run |
-| `NODE_ENV` | server, seed | `development`, `test`, or `production` (default `development`); `production` turns on the cookie's `Secure` flag and requires `CLIENT_ORIGINS` | No | `.env`; the test runner sets `test` | Cloud Run env var `production` |
+| `NODE_ENV` | server | `development`, `test`, or `production` (default `development`); `production` turns on the cookie's `Secure` flag and requires `CLIENT_ORIGINS` | No | `.env`; the test runner sets `test` | Cloud Run env var `production` |
 | `CLIENT_ORIGINS` | server | Comma-separated allowed origins for the origin guard; required in production | No | default `http://localhost:5173` outside production | Cloud Run env var (see below) |
 | `VITE_API_URL` | client build | API base URL; empty means same origin | No | `client/.env` | Empty at image build |
 
