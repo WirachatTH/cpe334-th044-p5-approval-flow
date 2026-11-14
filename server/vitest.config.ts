@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    setupFiles: ["./tests/setup-env.ts"],
     // The API and DB tests share one real PostgreSQL database, so test files run one at a time to keep one
     // file's rows from affecting another file's counts.
     fileParallelism: false,
