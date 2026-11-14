@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-05 |
 | Sprint | 1 |
-| Status | Agreed (Draft → Agreed → Implemented → Verified) |
+| Status | Implemented (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-11, FR-12; NFR-03, NFR-06, NFR-08, NFR-09, NFR-10; Lab 5 R-01, R-02, R-04 |
 | GitHub Issue | #7 (contract), #8 (implementation) |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -221,9 +221,9 @@ The [Product Definition of Done](README.md#product-definition-of-done) applies, 
 
 | Item | Value |
 |---|---|
-| Contract commit(s) | |
-| Red commit(s) and failing test | |
-| Green commit(s) | |
-| PR (author → reviewer) | |
-| Test run (command, commit, pass / fail / skip) | |
-| Known limitations | Sessions created before a password rotation stay valid until they expire (§1.5). |
+| Contract commit(s) | `198c2ec` v0.2 (PR #19), `66cf6b3` v0.3 (PR #21), `ccffa2e` v0.4 (PR #26), `7fd0df9` v0.5 (this branch, before any test) |
+| Red commit(s) and failing test | `f129d42`: TEST-F05-01 to 12 and 14 to 20 against the scaffold stubs: **28 failed on assertions, 2 passed** (the PORT default and a valid production configuration, which the stubs already satisfied). `7564493` is a test-only fix made during implementation (child processes no longer inherit `server/.env`); against the stubs the result was unchanged. |
+| Green commit(s) | `1547648`: the same tests, **30 passed** |
+| PR (author → reviewer) | Menelaus122 → WirachatTH; branch `feat/8-project-foundation` into `staging` (the PR number is in Issue #8) |
+| Test run (command, commit, pass / fail / skip) | `cd server && npm test` at `1547648` (docs-only commits after it): 4 files, **30 passed, 0 failed, 0 skipped**, Node 24.14.0, PostgreSQL 16. Repeated with `server/.env` hidden and only `DATABASE_URL` in the environment (as in CI): 30 passed. TEST-F05-13 (manual): every variable the code reads (11, including the Docker Compose ones) appears in an `.env.example` file and in `docs/labs/lab-05/deployment.md`. |
+| Known limitations | Sessions created before a password rotation stay valid until they expire (§1.5). `loadConfig` rejects an empty `PORT` or `NODE_ENV` but treats an empty `DATABASE_URL`, `CLIENT_ORIGINS`, or `DEMO_USER_PASSWORD` as not set. A local `server/.env` is read by any process that imports `@prisma/client` (see `deployment.md` §2). |
