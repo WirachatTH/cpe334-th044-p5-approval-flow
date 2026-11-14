@@ -38,7 +38,7 @@
 |---|---|---|---|---|---|
 | `DATABASE_URL` | server, seed, `prisma migrate` | PostgreSQL connection string; required in every environment | **Yes** | `server/.env` (git-ignored) | Secret Manager |
 | `DEMO_USER_PASSWORD` | seed | Password of the four demo accounts; 10 to 128 characters with a letter and a digit; required, no default; never printed | **Yes** | `server/.env` (git-ignored) | Secret Manager |
-| `NODE_ENV` | server, seed | `development`, `test`, or `production` (default `development`); `production` turns on the cookie `Secure` flag (F-01) and requires `CLIENT_ORIGINS` | No | `server/.env`; the test runner sets `test` | Cloud Run environment variable (`production`) |
+| `NODE_ENV` | server | `development`, `test`, or `production` (default `development`); `production` turns on the cookie `Secure` flag (F-01) and requires `CLIENT_ORIGINS` | No | `server/.env`; the test runner sets `test` | Cloud Run environment variable (`production`) |
 | `PORT` | server | HTTP port, 1 to 65535 (default 3000) | No | `server/.env` or the default | Set by Cloud Run |
 | `CLIENT_ORIGINS` | server | Comma-separated browser origins allowed to `POST` (F-02); required in production, default `http://localhost:5173` otherwise | No | `server/.env` or the default | Cloud Run environment variable; set **before** the first deploy (SDS §8) |
 | `API_PROXY_TARGET` | client dev server (Vite) | Where `/api` is proxied during local development (default `http://localhost:3000`) | No | `client/.env` (optional) | Not used: the API container serves the built client |

@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { verifyPassword } from "../../src/password.js";
 import { createThrowawaySchema, migrate, seed, type ThrowawaySchema } from "./helpers/db.js";
-import type { RunResult } from "./helpers/run.js";
+import { SERVER_DIR, type RunResult } from "./helpers/run.js";
 
 // F-05 §1.2 step 2 and §2.3. Every test runs the real commands (`prisma migrate deploy`, then the seed as a
 // separate process) against a throwaway schema. The passwords are synthetic values made up for these tests.
@@ -143,10 +145,21 @@ describe("the demo-account seed", () => {
     expect(await empty.prisma.user.count()).toBe(0);
   });
 
-  it("TEST-F05-20 / AC-F05-20: without DATABASE_URL the seed exits 1 within 5 s", async () => {
-    const result = await seed({ DEMO_USER_PASSWORD: PASSWORD_A }, 5_000);
-    expect(result.timedOut, "the seed must exit by itself within 5 s").toBe(false);
+  it("TEST-F05-20 / AC-F05-20: without DATABASE_URL the seed exits 1 within 15 s", async () => {
+    const result = await seed({ DEMO_USER_PASSWORD: PASSWORD_A }, 15_000);
+    expect(result.timedOut, "the seed must exit by itself within 15 s").toBe(false);
     expect(result.code).toBe(1);
     expect(result.stderr).toContain("seed: DATABASE_URL is not set");
+  });
+
+  it("TEST-F05-21 / AC-F05-21: the placeholder password in server/.env.example is refused", async () => {
+    const example = readFileSync(path.join(SERVER_DIR, ".env.example"), "utf8");
+    const placeholder = /^DEMO_USER_PASSWORD=(.*)$/m.exec(example)?.[1]?.trim();
+    expect(placeholder, "server/.env.example has a DEMO_USER_PASSWORD line").toBeTruthy();
+
+    const result = await seed({ DATABASE_URL: empty.url, DEMO_USER_PASSWORD: placeholder }, 15_000);
+    expect(result.code, "an unedited copy of the example file must not seed accounts").toBe(1);
+    expect(result.stderr).toContain("does not meet the password rules");
+    expect(await empty.prisma.user.count()).toBe(0);
   });
 });

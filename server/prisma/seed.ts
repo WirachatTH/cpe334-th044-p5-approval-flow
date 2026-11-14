@@ -64,7 +64,7 @@ async function main(): Promise<void> {
         }
       }
       return { created, updated, unchanged };
-    });
+    }, { timeout: 30_000, maxWait: 10_000 }); // scrypt runs inside the transaction; Prisma's default is 5 s
     console.log(
       `seed: ${DEMO_ACCOUNTS.length} accounts (${counts.created} created, ${counts.updated} updated, ${counts.unchanged} unchanged)`,
     );

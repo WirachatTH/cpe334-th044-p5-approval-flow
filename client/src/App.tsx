@@ -1,9 +1,16 @@
-// SCAFFOLD (#8): the app shell, login, and request screens arrive with F-01 to F-04 (#9 to #11).
+import { BrowserRouter } from "react-router-dom";
+import { AppRoutes } from "./AppRoutes.js";
+import { AuthProvider } from "./context/AuthContext.js";
+
+// react-router v7 future flags, opted into now: no console warnings and no change in behaviour today.
+const ROUTER_FUTURE = { v7_startTransition: true, v7_relativeSplatPath: true } as const;
+
 export default function App() {
   return (
-    <main>
-      <h1>Approval Flow</h1>
-      <p>Departmental purchase and funding requests.</p>
-    </main>
+    <AuthProvider>
+      <BrowserRouter future={ROUTER_FUTURE}>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

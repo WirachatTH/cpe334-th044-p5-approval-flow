@@ -22,7 +22,8 @@
 | 0.2 | 2026-11-14 | Menelaus122 | First complete draft | Issue #7 (F-05 part) | #19 |
 | 0.3 | 2026-11-14 | Menelaus122 | The seed reads first and writes only what differs (no upsert), so `updated_at` stays unchanged on a rerun. AC-F05-14 to AC-F05-17 and their tests cover every §1.4 case. AC-F05-11 is verified at process level (exit code 1), and the loader's rejections are unit-tested. The app and config take injected dependencies (`createApp({ prisma })`, `loadConfig(env)`). | Review of PR #19, before any F-05 test commit | #21 |
 | 0.4 | 2026-11-14 | Menelaus122 | AC-F05-18 to AC-F05-20 added: the production loader cases, the reset of a changed account with the summary counts, and the seed without `DATABASE_URL`. TEST-F05-11 now checks for the missing `listening` line within the time limit. More invalid `PORT` values. "The only server-runtime file" wording. Table `app_user`. Requirement IDs replace the *(SRS)* markers. Status: Agreed. (Row 0.3's `createApp({ prisma })` means `createApp({ prisma, config })`.) | Review of PR #21 | #26 |
-| 0.5 | 2026-11-14 | Menelaus122 | AC-F05-15 and TEST-F05-15: the check that the message does not contain the value is skipped for the empty value `""`, because an empty string is contained in every message. Node 24 with Prisma 5 verified: `npm install`, `prisma generate`, `prisma migrate`, `tsc`, and `vite build` ran on Node 24.14.0 at the start of #8 (the test run is recorded in §6). | Review of PR #26 | this PR |
+| 0.5 | 2026-11-14 | Menelaus122 | AC-F05-15 and TEST-F05-15: the check that the message does not contain the value is skipped for the empty value `""`, because an empty string is contained in every message. Node 24 with Prisma 5 verified: `npm install`, `prisma generate`, `prisma migrate`, `tsc`, and `vite build` ran on Node 24.14.0 at the start of #8 (the test run is recorded in §6). | Review of PR #26 | #8 |
+| 0.6 | 2026-11-15 | Menelaus122 | `NODE_ENV` is read by the server only, not the seed (§1.4). TEST-F05-12 also checks the body `{ "status": "ok" }`. TEST-F05-20 allows 15 s, since the limit includes the tsx start-up. AC-F05-21 and TEST-F05-21 added: the placeholder `DEMO_USER_PASSWORD` in `server/.env.example` must fail the password rules, so an unedited copy cannot seed a public password. | Review of PR #27 | #9 |
 
 ---
 
@@ -73,7 +74,7 @@ In the cloud, steps 1 and 2 run in the Cloud Run job before each deploy, and ste
 | `DATABASE_URL` (server, seed, migrate) | Required in every environment | Server: `config: DATABASE_URL is not set`, then exit code 1. Seed: `seed: DATABASE_URL is not set` and exit code 1, before it connects or writes anything. |
 | `CLIENT_ORIGINS` (server) | Required when `NODE_ENV=production`; otherwise defaults to `http://localhost:5173`. Comma-separated, each entry trimmed. | `config: CLIENT_ORIGINS is required in production` |
 | `PORT` (server) | Optional; an integer 1–65535; default `3000` | `config: PORT must be a port number` |
-| `NODE_ENV` (server, seed) | `development`, `test`, or `production`; default `development` | `config: NODE_ENV must be development, test, or production` |
+| `NODE_ENV` (server) | `development`, `test`, or `production`; default `development` | `config: NODE_ENV must be development, test, or production` |
 
 `loadConfig(env)` collects **every** problem and throws one `ConfigError` whose message lists them, one per line.
 `index.ts` turns that error into stderr output and exit code 1 (§1.2 step 3). The messages name the variable and
@@ -172,6 +173,7 @@ isolation, and a second reviewer for unrelated-reviewer access.
 | AC-F05-18 | `NODE_ENV=production` with (a) only `CLIENT_ORIGINS` missing, (b) only `DATABASE_URL` missing, (c) every variable valid | `loadConfig(env)` runs | (a) It throws naming `CLIENT_ORIGINS` only; (b) it throws naming `DATABASE_URL` only; (c) it returns the production configuration without throwing | negative / normal | NFR-09, Lab 5 R-02 |
 | AC-F05-19 | The seed has run, and one demo account's name and role were then changed directly in the database | The seed runs again with the same `DEMO_USER_PASSWORD` | Exit 0; that account's name and role are restored by one `UPDATE`; its `password_hash` is unchanged; only its `updated_at` changes; the seed prints `seed: 4 accounts (0 created, 1 updated, 3 unchanged)` | boundary | FR-11 |
 | AC-F05-20 | `DATABASE_URL` is not set (`DEMO_USER_PASSWORD` is valid) | The seed runs | Exit 1 with `seed: DATABASE_URL is not set` on stderr, before any connection attempt | negative | NFR-09 |
+| AC-F05-21 | The `DEMO_USER_PASSWORD` placeholder written in `server/.env.example` | The seed runs with exactly that value | Exit 1 with the password-rules message and no user created: an unedited copy of the example file cannot seed a public password | negative | NFR-09 |
 
 ## 4. Software Test Specification (STS)
 
@@ -188,7 +190,7 @@ isolation, and a second reviewer for unrelated-reviewer access.
 | TEST-F05-09 | AC-F05-09 | API | App with a working database | `GET /api/ready` | `200`, body `{ "status": "ready", "db": "connected" }` | `server/tests/sprint-1/health.api.test.ts` |
 | TEST-F05-10 | AC-F05-10 | API | App created with `createApp({ prisma: stub, config })`, where the stub's `$queryRaw` rejects with a connection error | `GET /api/ready` | `503`; the body is exactly `{ "status": "not_ready" }`, with no text from the stub's error | `server/tests/sprint-1/health.api.test.ts` |
 | TEST-F05-11 | AC-F05-11 | integration (process) | Spawn the built server (`node dist/index.js`) with `NODE_ENV=production`, no `DATABASE_URL`, no `CLIENT_ORIGINS`, `PORT` set to a free port | Wait for the process to exit (10 s limit) | The process exits on its own within 10 s with exit code 1 (the test fails if it is still running); stderr contains `DATABASE_URL` and `CLIENT_ORIGINS`; stdout contains no `listening` line | `server/tests/sprint-1/config.process.test.ts` |
-| TEST-F05-12 | AC-F05-12 | integration (process) | `PORT=4123` and a valid configuration | Spawn the built server; request `/api/health` on that port | `200` | `server/tests/sprint-1/config.process.test.ts` |
+| TEST-F05-12 | AC-F05-12 | integration (process) | `PORT=4123` and a valid configuration | Spawn the built server; request `/api/health` on that port | `200`, body `{ "status": "ok" }` | `server/tests/sprint-1/config.process.test.ts` |
 | TEST-F05-13 | AC-F05-13 | manual (static check) | The release commit | `git grep -nE "process\.env\.|import\.meta\.env\."` and compare with `.env.example` and `deployment.md` | Every variable found is documented in both | Recorded in the #8 PR and in Part F |
 | TEST-F05-14 | AC-F05-14 | unit | `env` = `{ NODE_ENV: "development" }`, then `{ NODE_ENV: "test" }` | `loadConfig(env)` | Throws `ConfigError`; message contains `config: DATABASE_URL is not set` | `server/tests/sprint-1/config.test.ts` |
 | TEST-F05-15 | AC-F05-15 | unit | `env` with a valid `DATABASE_URL` and `PORT` = `"abc"`, `"0"`, `"65536"`, `"3000abc"`, `"80.5"`, `"-1"`, `""`, unset, `"4123"` | `loadConfig(env)` for each | The seven invalid values throw `config: PORT must be a port number`, and the message contains none of them, except that the check is skipped for `""`; unset → `port === 3000`; `"4123"` → `port === 4123` | `server/tests/sprint-1/config.test.ts` |
@@ -196,11 +198,12 @@ isolation, and a second reviewer for unrelated-reviewer access.
 | TEST-F05-17 | AC-F05-17 | unit | `env` with `NODE_ENV: "development"`, a valid `DATABASE_URL`, and `CLIENT_ORIGINS` unset, then `" https://a.example , https://b.example "` | `loadConfig(env)` for each | `clientOrigins` equals `["http://localhost:5173"]`, then `["https://a.example", "https://b.example"]` | `server/tests/sprint-1/config.test.ts` |
 | TEST-F05-18 | AC-F05-18 | unit | `NODE_ENV: "production"` envs: (a) valid `DATABASE_URL`, no `CLIENT_ORIGINS`; (b) `CLIENT_ORIGINS`, no `DATABASE_URL`; (c) all valid, with `PORT: "8080"` | `loadConfig(env)` for each | (a) throws, and the message names `CLIENT_ORIGINS` and not `DATABASE_URL`; (b) names `DATABASE_URL` and not `CLIENT_ORIGINS`; (c) returns `{ nodeEnv: "production", port: 8080, clientOrigins: ["https://a.example"] }` | `server/tests/sprint-1/config.test.ts` |
 | TEST-F05-19 | AC-F05-19 | integration (DB) | Seeded once; then Ploy's row updated in the test to `name = 'Changed'`, `role = 'REVIEWER'`; every row's `password_hash` and `updated_at` recorded | Run the seed again with the same password | Exit 0; Ploy's `name` and `role` are back to the §2.3 values; her `password_hash` is unchanged and her `updated_at` is newer; the other three `updated_at` values are unchanged; stdout contains `(0 created, 1 updated, 3 unchanged)` | `server/tests/sprint-1/seed.test.ts` |
-| TEST-F05-20 | AC-F05-20 | integration (process) | `DATABASE_URL` removed from the child's environment; a valid `DEMO_USER_PASSWORD` | Spawn the seed command | It exits within 5 s with code 1; stderr contains `seed: DATABASE_URL is not set` | `server/tests/sprint-1/seed.test.ts` |
+| TEST-F05-20 | AC-F05-20 | integration (process) | `DATABASE_URL` removed from the child's environment; a valid `DEMO_USER_PASSWORD` | Spawn the seed command | It exits within 15 s with code 1; stderr contains `seed: DATABASE_URL is not set` | `server/tests/sprint-1/seed.test.ts` |
+| TEST-F05-21 | AC-F05-21 | integration (process) | The `DEMO_USER_PASSWORD=` value read from `server/.env.example`; the empty migrated schema | Spawn the seed with that value | Exit 1; stderr contains `does not meet the password rules`; user count 0 | `server/tests/sprint-1/seed.test.ts` |
 
 **Coverage check:**
-- AC-F05-01 to AC-F05-20 each map to exactly one TEST, and every rule in §1.4 has an AC:
-  - `DEMO_USER_PASSWORD`: 04, 05
+- AC-F05-01 to AC-F05-21 each map to exactly one TEST, and every rule in §1.4 has an AC:
+  - `DEMO_USER_PASSWORD`: 04, 05, 21
   - `DATABASE_URL`: 11, 14, 18 (server); 20 (seed)
   - `CLIENT_ORIGINS`: 11, 17, 18
   - `PORT`: 12, 15
