@@ -16,7 +16,7 @@ test("TEST-F03-20 / AC-F03-20: a submitted request is listed as SUBMITTED, befor
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/requests$/);
 
-  await page.getByRole("link", { name: "New Request" }).click();
+  await page.getByRole("navigation").getByRole("link", { name: "New Request" }).click();
   await expect(page.getByRole("heading", { name: "New Request" })).toBeVisible();
   await expect(page.getByLabel("Title"), "the New Request form is shown").toBeVisible();
   await page.getByLabel("Title").fill(title);
@@ -28,7 +28,7 @@ test("TEST-F03-20 / AC-F03-20: a submitted request is listed as SUBMITTED, befor
   await expect(page).toHaveURL(/\/requests\/\d+$/);
   await expect(page.getByText(/^Request REQ-\d{6} submitted\.$/)).toBeVisible();
 
-  await page.getByRole("link", { name: "My Requests" }).click();
+  await page.getByRole("navigation").getByRole("link", { name: "My Requests" }).click();
   const row = page.getByRole("row").filter({ hasText: title });
   await expect(row).toBeVisible();
   await expect(row.getByText("Submitted", { exact: true })).toBeVisible();
