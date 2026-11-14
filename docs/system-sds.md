@@ -218,7 +218,7 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 | `POST /api/auth/login` | public; throttled | F-01 |
 | `POST /api/auth/logout` | with or without a session | F-01 |
 | `GET /api/auth/me` | `REQUESTER`, `REVIEWER` | F-01 |
-| `GET /api/reviewers` | any signed-in user | F-03 |
+| `GET /api/reviewers` | `REQUESTER`, `REVIEWER` | F-03 |
 | `POST /api/requests` | `REQUESTER`, `REVIEWER` | F-03 |
 | `GET /api/requests/mine` | `REQUESTER`, `REVIEWER` | F-03 |
 | `GET /api/requests/:id` | `REQUESTER`, `REVIEWER`; record scope | F-03 |
