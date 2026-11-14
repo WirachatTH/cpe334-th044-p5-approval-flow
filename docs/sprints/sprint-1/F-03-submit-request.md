@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-03 |
 | Sprint | 1 |
-| Status | Agreed (Draft → Agreed → Implemented → Verified) |
+| Status | Implemented (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-04, FR-05, FR-06; BR-03, BR-04, BR-05, BR-06, BR-07, BR-08, BR-13 (submission entry), BR-15; NFR-02, NFR-07, NFR-11 |
 | GitHub Issue | #7 (contract), #10 (implementation) |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -257,9 +257,9 @@ The [Product Definition of Done](README.md#product-definition-of-done) applies, 
 
 | Item | Value |
 |---|---|
-| Contract commit(s) | |
-| Red commit(s) and failing test | |
-| Green commit(s) | |
-| PR (author → reviewer) | |
-| Test run (command, commit, pass / fail / skip) | |
+| Contract commit(s) | `56053da` v0.2 (PR #24), `8dabe76` v0.3 (PR #26), `a3ce9fe` v0.4 (this branch, before any test: the data change is two migrations) |
+| Red commit(s) and failing test | `93251c6`, after the table stubs `a739b4a` (migration `add_requests`): TEST-F03-01 to 21 against tables that exist but have no rules. Of 36 test cases, **33 failed on assertions** (server 19, client 13, e2e 1) and **3 passed**: the control row of TEST-F03-09, and its NOT NULL and unique cases, which the Prisma schema already enforces. The three `CHECK` cases and every API case failed. `c90f9e7` is a test-only fix made during implementation: the e2e locator for the New Request link matched two links on an empty My Requests page, so it is scoped to the menu. |
+| Green commit(s) | `fabe92d`: the same tests, **36 passed** (migration `add_request_rules`, four route handlers, three screens) |
+| PR (author → reviewer) | Menelaus122 → WirachatTH; branch `feat/10-submit-request` (the PR number is in Issue #10) |
+| Test run (command, commit, pass / fail / skip) | At `fabe92d`: `cd server && npm test`: 11 files, **95 passed, 0 failed, 0 skipped** (121 s; 22 are F-03, 73 are from F-01, F-02, and F-05). `cd client && npm test`: 6 files, **23 passed**. `cd client && npm run e2e` against an API built from this commit on port 3100: **3 passed** (Chromium). Type-check and build: exit 0 on both sides. After the server run there were 0 leftover throwaway schemas. Node 24.14.0, PostgreSQL 16. |
 | Known limitations | Lists are not paginated in Sprint 1 (SRS A-04; F-08 in Sprint 3). Request numbers can have gaps after failed inserts. Text is stored exactly as typed and only ever rendered as text (AC-F03-21). |
