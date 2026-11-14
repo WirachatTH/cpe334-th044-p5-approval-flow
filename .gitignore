@@ -1,3 +1,38 @@
+# ===================================================================
+# Project-specific (CPE 334 TH-044_P5). The repo is PUBLIC.
+# ===================================================================
+
+# Private working files: plan, evidence log, course handouts. Never commit.
+private/
+
+# Scratch / runtime folders that must never reach Git or the image
+tmp/
+uploads/
+
+# Environment files: commit ONLY .env.example with placeholder values
+# (the generic rules in the "dotenv" section below also cover these)
+.env
+.env.*
+!.env.example
+
+# Build output and dependencies (also covered by the generic rules below)
+node_modules/
+dist/
+
+# Playwright outputs
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Service-account keys must never be committed (we use Workload Identity Federation)
+*-sa-key.json
+*service-account*.json
+
+# ===================================================================
+# Generic Node.js template
+# ===================================================================
+
 # Logs
 logs
 *.log
