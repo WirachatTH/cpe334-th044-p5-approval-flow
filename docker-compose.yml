@@ -1,5 +1,7 @@
-# Local development database. The application containers come with Lab 5 (Dockerfile).
-# Values come from ./.env (git-ignored); copy .env.example and choose your own password.
+# Local containers. `docker compose up -d db` starts only the development database. The profile `app` adds the
+# production image (API and UI in one container) and a one-shot job that migrates and seeds, so one command runs
+# the whole application:  docker compose --profile app up --build
+# Values come from ./.env (git-ignored); copy .env.example and choose your own passwords.
 name: approval-flow
 
 services:
@@ -20,6 +22,38 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+
+  # Applies the migrations and seeds the four demo accounts, then exits. Uses the same image as the application.
+  migrate:
+    profiles: ["app"]
+    build: .
+    image: approval-flow:local
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-approval_flow}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-approval_flow}?schema=public
+      # No default: the seed refuses an unset or unsafe password, so set DEMO_USER_PASSWORD in .env first.
+      DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:-}
+    command: ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed"]
+    restart: "no"
+
+  app:
+    profiles: ["app"]
+    build: .
+    image: approval-flow:local
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-approval_flow}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-approval_flow}?schema=public
+      # The browser origin that is allowed to send POST requests: the address you open in the browser.
+      CLIENT_ORIGINS: ${CLIENT_ORIGINS:-http://localhost:3000}
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    restart: unless-stopped
 
 volumes:
   pgdata:

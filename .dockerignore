@@ -1,0 +1,22 @@
+# Keep secrets, private files, dependencies, and build output out of the image build context.
+**/node_modules
+**/dist
+**/build
+**/.env
+**/.env.*
+!**/.env.example
+*.log
+.git
+.gitignore
+.github
+private
+docs
+test-results
+playwright-report
+**/test-results
+**/playwright-report
+server/uploads
+*.db
+*.sqlite
+gha-creds-*.json
+*-sa-key.json

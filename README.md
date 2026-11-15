@@ -82,6 +82,18 @@ The seed creates four synthetic accounts. All use the password you set as `DEMO_
 Two of each role make the access rules demonstrable: a second requester for ownership, and a second reviewer for an
 unrelated reviewer. Share the password with other people privately, never in the repository.
 
+## Run the whole application in containers
+
+One image holds the API and the built UI (the root `Dockerfile`). To run it with its database:
+
+1. In `.env`, replace the placeholders `POSTGRES_PASSWORD` and `DEMO_USER_PASSWORD` with your own values.
+   If port 3000 is taken, set `APP_PORT` and make `CLIENT_ORIGINS` the address you will open, for example
+   `http://localhost:3200`. It must match exactly, or every sign-in answers 403.
+2. Run `docker compose --profile app up --build`. It starts the database, applies the migrations and seeds the demo
+   accounts in a one-shot job, and then starts the application.
+3. Open `http://localhost:<APP_PORT>` and sign in with a demo account.
+
+`docker compose --profile app rm -sf app migrate` stops the application and keeps the database.
 ## Tests and build
 
 | What | Command | Needs |
