@@ -26,6 +26,7 @@
 | 0.6 | 2026-11-15 | Menelaus122 | `NODE_ENV` is read by the server only, not the seed (§1.4). TEST-F05-12 also checks the body `{ "status": "ok" }`. TEST-F05-20 allows 15 s, since the limit includes the tsx start-up. AC-F05-21 and TEST-F05-21 added: the placeholder `DEMO_USER_PASSWORD` in `server/.env.example` must fail the password rules, so an unedited copy cannot seed a public password. | Review of PR #27 | #9 |
 | 0.7 | 2026-11-15 | Menelaus122 | The server can serve the built UI: new optional setting `CLIENT_DIST_DIR` (§1.4, §2.2) and AC-F05-22 to AC-F05-27 with TEST-F05-22 to TEST-F05-27. No change to AC-F05-01 to AC-F05-21. | Lab 5 needs one container image for the API and the UI (Issue #33) | #33 |
 | 0.8 | 2026-11-15 | Menelaus122 | STS notes and completion evidence for v0.7, no change to any AC or behaviour: TEST-F05-26 passes when first written (a control); TEST-F05-24 and TEST-F05-25 start with a check that the UI is served, so they are red. Section 6 gets the v0.7 row. | Found while writing the red tests for #33 | #33 |
+| 0.9 | 2026-11-15 | Menelaus122 | AC-F05-28 and TEST-F05-28: with the UI served, a path with a file extension that names no file answers the JSON `404`, not `index.html` (§2.2). | Review of PR #37: a stale cached page would try to run HTML as a script | #33 |
 
 ---
 
@@ -133,6 +134,7 @@ string, hostname, or error message.
 | Request | Answer |
 |---|---|
 | A path outside `/api` that names a file in the directory (for example `/assets/app.js`, `/index.html`) | `200` with that file |
+| A path outside `/api` whose last segment has a file extension and that names no file in the directory (for example `/assets/missing.js`, `/favicon.ico`) | Unchanged: the JSON `404 NOT_FOUND`. A stale page that asks for a script or a style sheet that a newer release removed must get an error, not HTML (v0.9) |
 | Any other path outside `/api` (for example `/`, `/requests/12`: a deep link of the single-page app) | `200` with `index.html` and `Cache-Control: no-cache`, so a new release is picked up |
 | Any path under `/api`, and any method other than `GET` or `HEAD` | Unchanged: the API routes, their policies, and the JSON `404 NOT_FOUND` |
 
@@ -195,6 +197,7 @@ isolation, and a second reviewer for unrelated-reviewer access.
 | AC-F05-25 | The same app, and a file `outside.txt` with a known marker next to the directory (not inside it) | `GET /../outside.txt`, `GET /%2e%2e/outside.txt`, `GET /..%2foutside.txt`, and `GET /assets/..%2f..%2foutside.txt` | No response body contains the marker of `outside.txt` | negative | NFR-06, Lab 5 R-01 |
 | AC-F05-26 | An app with no `clientDistDir` (the default) | `GET /` and `GET /requests/12` | Each answers the JSON `404 NOT_FOUND`, as before | boundary | Lab 5 R-02 |
 | AC-F05-27 | `clientDistDir` set to an existing directory that has no `index.html` | `createApp` runs | It throws a `ConfigError` whose message is `config: CLIENT_DIST_DIR has no index.html` and does not contain the directory path | negative | NFR-09, Lab 5 R-02 |
+| AC-F05-28 | The same app as AC-F05-23 | `GET /assets/missing.js`, `GET /missing.css`, `GET /favicon.ico`, `HEAD /assets/missing.js` (a last segment with a file extension, naming no file), then `GET /requests/12` and `GET /assets/app.js` | The first four answer `404` with the JSON `NOT_FOUND` and never the page; the deep link still answers the page; the existing file is still served | negative | Lab 5 R-01 |
 
 ## 4. Software Test Specification (STS)
 
@@ -227,15 +230,16 @@ isolation, and a second reviewer for unrelated-reviewer access.
 | TEST-F05-25 | AC-F05-25 | API | The same directory, with `outside.txt` created next to it | Call the four paths | Each body lacks the marker. The test first checks that `GET /index.html` serves the page, so it is red before the feature exists. | `server/tests/sprint-1/static-ui.api.test.ts` |
 | TEST-F05-26 | AC-F05-26 | API | An app without `clientDistDir` | `GET /` and `GET /requests/12` | JSON `404` for both. **This test passes when it is first written**, because nothing is served without the setting; it is a control and guards the green step, not red evidence. | `server/tests/sprint-1/static-ui.api.test.ts` |
 | TEST-F05-27 | AC-F05-27 | unit | An empty temporary directory | `createApp` with it | Throws `ConfigError` with the stated message, without the path | `server/tests/sprint-1/static-ui.api.test.ts` |
+| TEST-F05-28 | AC-F05-28 | API | The same temporary directory and the same throwing stub | Call the six requests | As stated | `server/tests/sprint-1/static-ui.api.test.ts` |
 
 **Coverage check:**
-- AC-F05-01 to AC-F05-27 each map to exactly one TEST, and every rule in §1.4 has an AC:
+- AC-F05-01 to AC-F05-28 each map to exactly one TEST, and every rule in §1.4 has an AC:
   - `DEMO_USER_PASSWORD`: 04, 05, 21
   - `DATABASE_URL`: 11, 14, 18 (server); 20 (seed)
   - `CLIENT_ORIGINS`: 11, 17, 18
   - `PORT`: 12, 15
   - `NODE_ENV`: 16
-  - `CLIENT_DIST_DIR`: 22, 27 (the setting); 23 to 26 (what it does)
+  - `CLIENT_DIST_DIR`: 22, 27 (the setting); 23 to 26 and 28 (what it does)
 - TEST-F05-13 is manual because it checks documentation against code. Every other test is automated.
 - The process-level tests (11, 12) prove the wiring from `ConfigError` to exit code 1. The unit tests (14 to 17) cover each rule without starting a process.
 
