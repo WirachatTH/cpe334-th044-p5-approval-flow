@@ -2,8 +2,9 @@
 
 > Required by Lab 5 section 4.3. Covers the stack and changes from the reference, every environment variable,
 > the build/test/run/migrate/seed commands, GCP resource names, and the release procedure.
-> Status: sections 1 to 3 are written (#8). Sections 4 to 7 are filled in during the Lab 5 Issues (label `lab5`):
-> nothing has been deployed yet, so no GCP name below is real until then.
+> Status: sections 1 to 3 are written (#8, #33). Sections 4 to 7 are written for the deploy pipeline (#35): the
+> resource names are the ones `deploy/deploy.sh` creates, but nothing has been deployed yet, so the project, the URL, and
+> the budget are filled in when the GCP project exists (Issue #1).
 > **Never write a real secret value in this file**: names and sources only.
 
 ## Version history
@@ -12,6 +13,8 @@
 |---|---|---|---|---|
 | 0.1 | 2026-11-14 | Menelaus122 | Skeleton created | Repository structure (#2) |
 | 0.2 | 2026-11-15 | Menelaus122 | Stack, every environment variable the code reads, and the local commands | Issue #8 (F-05, TEST-F05-13) |
+| 0.3 | 2026-11-15 | Menelaus122 | The image, `CLIENT_DIST_DIR`, the compose profile, and the C-03 procedure | Issue #33 |
+| 0.4 | 2026-11-15 | Menelaus122 | GCP resource names, the first-time setup runbook, the CI/CD table, the release, rollback, and cost sections | Issue #35 |
 
 ---
 
@@ -75,49 +78,77 @@ files (the Lab 5 `.dockerignore` excludes them), so in the cloud only the real e
 
 ## 4. GCP project and resources
 
-> Resource **names** only. Never record secret values here.
+> Resource **names** only. Never record secret values here. The names below are the ones `deploy/deploy.sh` creates;
+> the project values are written by the team member who owns the GCP project (Issue #1) once it exists.
 
 | Item | Name / value |
 |---|---|
-| Project ID | |
-| Region | |
-| Artifact Registry repository | |
-| Cloud Run service | |
-| Cloud Run migration job | |
-| Cloud SQL instance / database / user | |
-| Secret Manager secrets (names) | |
-| Runtime service account | |
-| Deployer service account | |
-| Workload Identity pool / provider | |
-| Budget alert | |
+| Project ID | _not created yet: written here when Issue #1 is done_ |
+| Region | `asia-southeast1` |
+| Artifact Registry repository | `approval-flow` (Docker); one image per commit: `approval-flow/approval-flow:<full commit SHA>` |
+| Cloud Run service | `approval-flow` (public, port 3000, 512 Mi, 1 CPU, **min 0, max 3 instances**) |
+| Cloud Run migration job | `approval-flow-migrate` (runs `npx prisma migrate deploy && npx prisma db seed` from the same image) |
+| Cloud SQL instance / database / user | `approval-flow-pg` (PostgreSQL 16, `db-f1-micro`, `--edition=enterprise`, 10 GB SSD, storage auto-increase off) / `approval_flow` / `approval_flow` |
+| Secret Manager secrets (names) | `approval-flow-database-url`, `approval-flow-demo-password`; in GitHub (optional smoke sign-in): variable `SMOKE_EMAIL`, secret `SMOKE_PASSWORD` |
+| Runtime service account | `approval-flow-runner`: `roles/cloudsql.client` on the project; `roles/secretmanager.secretAccessor` on each of the two secrets only |
+| Deployer service account | `approval-flow-deployer` (created in the Console, no key): `roles/run.developer` on the project; `roles/artifactregistry.writer` on the repository only; `roles/iam.serviceAccountUser` on `approval-flow-runner` only; it never reads Secret Manager |
+| Workload Identity pool / provider | `github-actions` / `github-main`; `roles/iam.workloadIdentityUser` on the deployer account, granted to the principal set for this repository only |
+| GitHub environment | `demo`, deployable from `main` only, with the variables `GCP_PROJECT_ID`, `GCP_REGION`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT` |
+| Public URL | _not deployed yet_. Its form is `https://approval-flow-<project number>.asia-southeast1.run.app` |
+| Budget alert | _alerts-only budget, created before any other resource (Issue #1)_ |
+
+### 4.1 First-time setup runbook
+
+Everything that touches billing, IAM, Cloud SQL, Secret Manager, or Cloud Run settings is **read and run by a team
+member** (AGENTS.md section 7). Run it from the repository root, in Cloud Shell or on a computer with `gcloud`.
+
+1. **Issue #1 first.** Free Trial, the project, the teammate as Editor, an alerts-only budget, and the billing check.
+2. `gcloud auth login`, then `gcloud config set project <PROJECT_ID>`.
+3. **Read what will happen:** `DRY_RUN=1 ./deploy/deploy.sh`. It prints every command and runs none of them.
+4. **Run it:** `./deploy/deploy.sh`. It takes about 10 to 15 minutes (the Cloud SQL instance is the slow part). It is safe to run again: nothing that exists is replaced, and credentials are never regenerated. It stops before deploying the service if the migration job fails.
+5. **Check the result** in the Console (never open "View secret value" in a screenshot): the enabled APIs, the runtime account's roles, the Cloud SQL instance and database, the secret names, the service's plain environment values (`NODE_ENV`, `TZ`, `CLIENT_ORIGINS`) and its `DATABASE_URL` coming from Secret Manager, and instances 0 to 3.
+6. **Open the service URL** from the script's last lines. `/api/ready` must show `"db":"connected"` and `/` must show the Login screen. To sign in, read the demo password on your own computer with `gcloud secrets versions access latest --secret approval-flow-demo-password`; do not paste it anywhere.
+7. **Connect GitHub to GCP without a key** (Student Guide Episode 6). The values for this repository (they are public):
+   - `REPO_ID` = `1455168739`, `OWNER_ID` = `126385856`, and the repository uses immutable subjects (`gh api repos/WirachatTH/cpe334-th044-p5-approval-flow/actions/oidc/customization/sub` shows `use_immutable_subject: true`).
+   - The provider's condition:
+     `assertion.repository_id == '1455168739' && assertion.repository_owner_id == '126385856' && assertion.ref == 'refs/heads/main' && assertion.workflow_ref == 'WirachatTH/cpe334-th044-p5-approval-flow/.github/workflows/deploy.yml@refs/heads/main' && assertion.sub == 'repo:WirachatTH@126385856/cpe334-th044-p5-approval-flow@1455168739:environment:demo'`
+   - Create the deployer account `approval-flow-deployer` with the roles in section 4, the pool `github-actions` and the provider `github-main`, then the GitHub environment `demo` with the four variables. The deployer account must have **no keys**.
+8. **Protect `staging` and `main`** with rulesets (Student Guide 6.5): require a pull request with 1 approval, require the status check `test-and-docker` and an up-to-date branch, empty bypass list. Then prove the gate with a normal (not draft) PR from a temporary branch that has one failing test, and close it without merging (C-02).
+9. **First pipeline run:** the release PR from `staging` into `main` triggers `.github/workflows/deploy.yml`.
 
 ## 5. CI/CD pipeline
 
 | Workflow | Trigger | Jobs | Required check name |
 |---|---|---|---|
-| `.github/workflows/ci-docker.yml` | PR into `staging` / `main` | | |
-| `.github/workflows/deploy.yml` | Push to `main`; manual rollback | | — |
+| `.github/workflows/ci-docker.yml` ("CI & Docker Build") | Pull request into `staging` or `main`; manual; `workflow_call` from `deploy.yml` | `test-and-docker`: deployment-script checks (offline), server (type-check, build, migrate, seed, tests, against PostgreSQL 16), client (type-check, tests, build), production image build, and a start of the image that must answer `/api/ready`, `/`, a deep link, and the JSON `404` | `test-and-docker` |
+| `.github/workflows/deploy.yml` ("Deploy demo") | Push to `main`; manual run with `image_tag` for a rollback | `test` (reuses the CI workflow), then `deploy`: validate settings, keyless Google login (Workload Identity Federation), build and push the image tagged with the full commit SHA, `deploy/release.sh` (resolve the digest, run the migration job to completion, update the service to the digest), the smoke test (`deploy/smoke_test.py`), and a summary of the tag, digest, and URL | none (it is not a pull-request check) |
 
 ## 6. Release procedure
 
 1. Create or choose a GitHub Issue (label `lab5` for Lab 5 work).
 2. Branch from the latest `staging`: `type/<issue#>-short-name`.
 3. Open a PR into `staging`. CI must pass, and the teammate reviews with a specific comment and merges with a merge commit.
-4. Open a release PR `staging` → `main`. CI must pass (required check), and the teammate reviews and merges.
-5. The merge into `main` triggers the deploy workflow: _TBD (build → push image tagged with the full SHA → migrate → deploy by digest → smoke test)_.
-6. Tag the accepted release: _TBD (e.g. `git tag v1.0.0-sprint1 <sha>` and push the tag)_.
+4. Open a release PR `staging` → `main`. CI must pass (required check), and the teammate reviews and merges with a merge commit.
+5. The merge into `main` triggers `deploy.yml`: CI again, then the image `approval-flow:<full commit SHA>` is built and pushed, the migration job runs to completion, the service is updated to that image's **digest**, and the smoke test runs against the public URL. A failed migration stops the release before the service changes.
+6. Tag the accepted release on the merge commit, for example `git tag v1.0.0-sprint1 <merge commit SHA>` and `git push origin v1.0.0-sprint1`.
 
 ### 6.1 How to find the commit that is running
 
-_TBD (e.g. the Cloud Run revision's image tag = full commit SHA)._
+- The run summary of the deploy workflow (Actions → Deploy demo → the run) lists **Commit image tag** (the full SHA), the **Digest**, and the URL.
+- From GCP: `gcloud run services describe approval-flow --region asia-southeast1 --format='value(spec.template.spec.containers[0].image)'` prints the image by digest (`...@sha256:...`). The tag of that digest is the commit: `gcloud artifacts docker images list asia-southeast1-docker.pkg.dev/<PROJECT_ID>/approval-flow/approval-flow --include-tags --filter='version=sha256:<digest>' --format='value(tags)'`. _These commands are written from the guide and are checked against the first real deployment._
+- In the Console, Cloud Run → `approval-flow` → Revisions shows the serving revision and its container image.
 
 ### 6.2 Rollback and roll forward
 
-_TBD._
+1. Open the last good run of the deploy workflow and copy its **Commit image tag**.
+2. Actions → Deploy demo → Run workflow on `main`, and enter that full 40-character SHA in `image_tag`. The tests, the build, and the migration are skipped; the image is checked, the service is updated, and the smoke test runs.
+3. To go forward again, run it again with the SHA of the newer release (an empty `image_tag` would test and rebuild the current `main` instead).
+
+A rollback changes only the application image, never the database. It is safe only while the schema is compatible with the older image, which is why migrations are additive (AGENTS.md section 5). Sprint 1 has no destructive migration.
 
 ## 7. Cost control
 
-- Alerts-only budget created before any resource: _TBD_
-- Cloud Run min instances 0, max ≤ 3
-- Smallest Cloud SQL tier, storage auto-increase off
-- Pause when idle (Student Guide Episode 9). **No teardown before grading ends.**
+- Alerts-only budget, created before any resource: _written when Issue #1 is done_
+- Cloud Run: minimum 0 instances, maximum 3 (set in `deploy/deploy.sh`)
+- Cloud SQL: `db-f1-micro`, 10 GB SSD, storage auto-increase off (set in `deploy/deploy.sh`)
+- Pause the database when idle (Student Guide Episode 9): `gcloud sql instances patch approval-flow-pg --activation-policy=NEVER`, and `ALWAYS` to resume. **No teardown before grading ends:** `deploy/teardown.sh` is never run until the instructor says grading is over.
