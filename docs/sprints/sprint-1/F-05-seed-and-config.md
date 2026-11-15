@@ -10,7 +10,7 @@
 | Sprint | 1 |
 | Status | Implemented (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-11, FR-12; NFR-03, NFR-06, NFR-08, NFR-09, NFR-10; Lab 5 R-01, R-02, R-04 |
-| GitHub Issue | #7 (contract), #8 (implementation) |
+| GitHub Issue | #7 (contract), #8 (implementation), #33 (serving the UI, v0.7) |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
 | Depends on | System-level SDS §3.4, §7, §8, §9 (#4). F-01, F-03, and F-04 depend on this feature. |
 
@@ -24,6 +24,7 @@
 | 0.4 | 2026-11-14 | Menelaus122 | AC-F05-18 to AC-F05-20 added: the production loader cases, the reset of a changed account with the summary counts, and the seed without `DATABASE_URL`. TEST-F05-11 now checks for the missing `listening` line within the time limit. More invalid `PORT` values. "The only server-runtime file" wording. Table `app_user`. Requirement IDs replace the *(SRS)* markers. Status: Agreed. (Row 0.3's `createApp({ prisma })` means `createApp({ prisma, config })`.) | Review of PR #21 | #26 |
 | 0.5 | 2026-11-14 | Menelaus122 | AC-F05-15 and TEST-F05-15: the check that the message does not contain the value is skipped for the empty value `""`, because an empty string is contained in every message. Node 24 with Prisma 5 verified: `npm install`, `prisma generate`, `prisma migrate`, `tsc`, and `vite build` ran on Node 24.14.0 at the start of #8 (the test run is recorded in §6). | Review of PR #26 | #8 |
 | 0.6 | 2026-11-15 | Menelaus122 | `NODE_ENV` is read by the server only, not the seed (§1.4). TEST-F05-12 also checks the body `{ "status": "ok" }`. TEST-F05-20 allows 15 s, since the limit includes the tsx start-up. AC-F05-21 and TEST-F05-21 added: the placeholder `DEMO_USER_PASSWORD` in `server/.env.example` must fail the password rules, so an unedited copy cannot seed a public password. | Review of PR #27 | #9 |
+| 0.7 | 2026-11-15 | Menelaus122 | The server can serve the built UI: new optional setting `CLIENT_DIST_DIR` (§1.4, §2.2) and AC-F05-22 to AC-F05-27 with TEST-F05-22 to TEST-F05-27. No change to AC-F05-01 to AC-F05-21. | Lab 5 needs one container image for the API and the UI (Issue #33) | #33 |
 
 ---
 
@@ -36,6 +37,7 @@ F-05 makes the application reproducible and safe to run anywhere: on a laptop, i
 - **No secrets in code or image.** Every setting comes from environment variables, and no secret is in the code, the image, or the logs.
 - **Health checks.** Two endpoints tell a person, the smoke test, and Cloud Run whether the service is alive and whether it can reach its database.
 - **Accounts for testing.** The seeded accounts are what the team and the Lab 6 partner team use, because Sprint 1 has no self-registration.
+- **One container for the whole application.** When `CLIENT_DIST_DIR` names the built UI, the same server serves the UI and the API on one port, so one image can run on Cloud Run (v0.7).
 
 ### 1.2 Workflow
 
@@ -75,6 +77,7 @@ In the cloud, steps 1 and 2 run in the Cloud Run job before each deploy, and ste
 | `CLIENT_ORIGINS` (server) | Required when `NODE_ENV=production`; otherwise defaults to `http://localhost:5173`. Comma-separated, each entry trimmed. | `config: CLIENT_ORIGINS is required in production` |
 | `PORT` (server) | Optional; an integer 1–65535; default `3000` | `config: PORT must be a port number` |
 | `NODE_ENV` (server) | `development`, `test`, or `production`; default `development` | `config: NODE_ENV must be development, test, or production` |
+| `CLIENT_DIST_DIR` (server) | Optional; the directory of the built UI. Unset or blank means the UI is not served (development and tests). Surrounding spaces are trimmed. When it is set, `createApp` requires `index.html` in it. | `config: CLIENT_DIST_DIR has no index.html` (a `ConfigError`, so `index.ts` prints it and exits with code 1 before listening) |
 
 `loadConfig(env)` collects **every** problem and throws one `ConfigError` whose message lists them, one per line.
 `index.ts` turns that error into stderr output and exit code 1 (§1.2 step 3). The messages name the variable and
@@ -82,6 +85,7 @@ never contain its value.
 
 ### 1.5 Failure and boundary cases
 
+- **`CLIENT_DIST_DIR` points at a directory without `index.html`:** the server refuses to start with the message above, instead of answering every page with an error later.
 - **Database unreachable at runtime:** `/api/health` still returns `200`, and `/api/ready` returns `503 { "status": "not_ready" }` with no error detail.
 - **Seed against an empty database that has not been migrated:** the seed fails with Prisma's error and exits with code 1. The documented order is migrate, then seed.
 - **Seed interrupted part-way:** all writes are in one transaction, so either all four accounts are in place or none of this run's changes are.
@@ -122,6 +126,16 @@ No change. F-05 adds no screen. The Login screen (F-01) must never show a defaul
 
 Both responses carry `Cache-Control: no-store`. Neither endpoint reads a session, and neither returns a version
 string, hostname, or error message.
+
+**Serving the UI (v0.7).** Only when `CLIENT_DIST_DIR` is set. These rules come before the F-02 guards, so the UI is public, and they apply to `GET` and `HEAD` only:
+
+| Request | Answer |
+|---|---|
+| A path outside `/api` that names a file in the directory (for example `/assets/app.js`, `/index.html`) | `200` with that file |
+| Any other path outside `/api` (for example `/`, `/requests/12`: a deep link of the single-page app) | `200` with `index.html` and `Cache-Control: no-cache`, so a new release is picked up |
+| Any path under `/api`, and any method other than `GET` or `HEAD` | Unchanged: the API routes, their policies, and the JSON `404 NOT_FOUND` |
+
+No file outside the directory is ever served, whatever the path.
 
 ### 2.3 Data
 
@@ -174,6 +188,12 @@ isolation, and a second reviewer for unrelated-reviewer access.
 | AC-F05-19 | The seed has run, and one demo account's name and role were then changed directly in the database | The seed runs again with the same `DEMO_USER_PASSWORD` | Exit 0; that account's name and role are restored by one `UPDATE`; its `password_hash` is unchanged; only its `updated_at` changes; the seed prints `seed: 4 accounts (0 created, 1 updated, 3 unchanged)` | boundary | FR-11 |
 | AC-F05-20 | `DATABASE_URL` is not set (`DEMO_USER_PASSWORD` is valid) | The seed runs | Exit 1 with `seed: DATABASE_URL is not set` on stderr, before any connection attempt | negative | NFR-09 |
 | AC-F05-21 | The `DEMO_USER_PASSWORD` placeholder written in `server/.env.example` | The seed runs with exactly that value | Exit 1 with the password-rules message and no user created: an unedited copy of the example file cannot seed a public password | negative | NFR-09 |
+| AC-F05-22 | `loadConfig(env)` with a valid `DATABASE_URL` and (a) no `CLIENT_DIST_DIR`, (b) `CLIENT_DIST_DIR=""`, (c) `CLIENT_DIST_DIR="  /app/client/dist  "` | It runs | (a) and (b) `clientDistDir` is `null`; (c) it is `"/app/client/dist"` | boundary | NFR-09, Lab 5 R-01 |
+| AC-F05-23 | An app with `clientDistDir` set to a directory that holds `index.html` (with a known marker text) and `assets/app.js` | `GET /`, `GET /requests/12`, `GET /index.html`, `HEAD /`, and `GET /assets/app.js` are called with no session | Each answers `200`, with no cookie. The first four give the `index.html` marker, and `/` and `/requests/12` carry `Cache-Control: no-cache`. The last gives the script's exact content with a JavaScript content type. | normal | Lab 5 R-01, R-03 |
+| AC-F05-24 | The same app | `GET /api/health`, `GET /api/nope`, `GET /api/requests/mine` (no session), `POST /requests`, and `POST /api/auth/logout` (no session) are called | `/api/health` is the JSON `ok`; `/api/nope` is the JSON `404 NOT_FOUND` and not HTML; the third is `401 UNAUTHENTICATED`; `POST /requests` is the JSON `404 NOT_FOUND`; the logout is `204`. None of them contains the `index.html` marker. | negative | NFR-01, NFR-06 |
+| AC-F05-25 | The same app, and a file `outside.txt` with a known marker next to the directory (not inside it) | `GET /../outside.txt`, `GET /%2e%2e/outside.txt`, `GET /..%2foutside.txt`, and `GET /assets/..%2f..%2foutside.txt` | No response body contains the marker of `outside.txt` | negative | NFR-06, Lab 5 R-01 |
+| AC-F05-26 | An app with no `clientDistDir` (the default) | `GET /` and `GET /requests/12` | Each answers the JSON `404 NOT_FOUND`, as before | boundary | Lab 5 R-02 |
+| AC-F05-27 | `clientDistDir` set to an existing directory that has no `index.html` | `createApp` runs | It throws a `ConfigError` whose message is `config: CLIENT_DIST_DIR has no index.html` and does not contain the directory path | negative | NFR-09, Lab 5 R-02 |
 
 ## 4. Software Test Specification (STS)
 
@@ -200,14 +220,21 @@ isolation, and a second reviewer for unrelated-reviewer access.
 | TEST-F05-19 | AC-F05-19 | integration (DB) | Seeded once; then Ploy's row updated in the test to `name = 'Changed'`, `role = 'REVIEWER'`; every row's `password_hash` and `updated_at` recorded | Run the seed again with the same password | Exit 0; Ploy's `name` and `role` are back to the §2.3 values; her `password_hash` is unchanged and her `updated_at` is newer; the other three `updated_at` values are unchanged; stdout contains `(0 created, 1 updated, 3 unchanged)` | `server/tests/sprint-1/seed.test.ts` |
 | TEST-F05-20 | AC-F05-20 | integration (process) | `DATABASE_URL` removed from the child's environment; a valid `DEMO_USER_PASSWORD` | Spawn the seed command | It exits within 15 s with code 1; stderr contains `seed: DATABASE_URL is not set` | `server/tests/sprint-1/seed.test.ts` |
 | TEST-F05-21 | AC-F05-21 | integration (process) | The `DEMO_USER_PASSWORD=` value read from `server/.env.example`; the empty migrated schema | Spawn the seed with that value | Exit 1; stderr contains `does not meet the password rules`; user count 0 | `server/tests/sprint-1/seed.test.ts` |
+| TEST-F05-22 | AC-F05-22 | unit | The three environments | `loadConfig(env)` for each | As stated | `server/tests/sprint-1/config.test.ts` |
+| TEST-F05-23 | AC-F05-23 | API | A temporary directory with `index.html`, `assets/app.js`; a Prisma stub that throws if it is used | Call the five requests with supertest | As stated; the stub is never used | `server/tests/sprint-1/static-ui.api.test.ts` |
+| TEST-F05-24 | AC-F05-24 | API | The same app and the same throwing stub | Call the five requests | As stated; the stub is never used | `server/tests/sprint-1/static-ui.api.test.ts` |
+| TEST-F05-25 | AC-F05-25 | API | The same directory, with `outside.txt` created next to it | Call the four paths | Each body lacks the marker | `server/tests/sprint-1/static-ui.api.test.ts` |
+| TEST-F05-26 | AC-F05-26 | API | An app without `clientDistDir` | `GET /` and `GET /requests/12` | JSON `404` for both | `server/tests/sprint-1/static-ui.api.test.ts` |
+| TEST-F05-27 | AC-F05-27 | unit | An empty temporary directory | `createApp` with it | Throws `ConfigError` with the stated message, without the path | `server/tests/sprint-1/static-ui.api.test.ts` |
 
 **Coverage check:**
-- AC-F05-01 to AC-F05-21 each map to exactly one TEST, and every rule in §1.4 has an AC:
+- AC-F05-01 to AC-F05-27 each map to exactly one TEST, and every rule in §1.4 has an AC:
   - `DEMO_USER_PASSWORD`: 04, 05, 21
   - `DATABASE_URL`: 11, 14, 18 (server); 20 (seed)
   - `CLIENT_ORIGINS`: 11, 17, 18
   - `PORT`: 12, 15
   - `NODE_ENV`: 16
+  - `CLIENT_DIST_DIR`: 22, 27 (the setting); 23 to 26 (what it does)
 - TEST-F05-13 is manual because it checks documentation against code. Every other test is automated.
 - The process-level tests (11, 12) prove the wiring from `ConfigError` to exit code 1. The unit tests (14 to 17) cover each rule without starting a process.
 
