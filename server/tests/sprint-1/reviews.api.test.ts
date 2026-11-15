@@ -109,6 +109,12 @@ describe("deciding a request", () => {
       actorId: s.reviewer.id,
       reason: null,
     });
+
+    // One timestamp for the whole decision: the request's decision time is the new history entry's time.
+    const decided = await row(s.request.id);
+    expect(decided.decidedAt, "decided_at is set").not.toBeNull();
+    expect(decided.decidedAt!.toISOString()).toBe(history[1].createdAt.toISOString());
+    expect(res.body.request.decidedAt).toBe(decided.decidedAt!.toISOString());
   });
 
   it("TEST-F04-04 / AC-F04-04: an approval reason is trimmed and stored on the request and the event", async () => {
