@@ -5,9 +5,9 @@
 #
 # Do not rename: the job id `test-and-docker` is the name the branch ruleset requires.
 #
-# What it checks: the server (type-check, migrate, seed, all tests against a real PostgreSQL), the client (type-check,
-# tests, production build), that the production image builds, and that the image starts, reaches its database, and
-# serves the UI.
+# What it checks: the deployment scripts (syntax and offline tests), the server (type-check, migrate, seed, all tests
+# against a real PostgreSQL), the client (type-check, tests, production build), that the production image builds, and
+# that the image starts, reaches its database, and serves the UI.
 #
 # Adapted from the Lab 5 Starter Kit. The database credentials below are throw-away values for a database that
 # exists only inside this job: they are not secrets.
@@ -64,6 +64,21 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
+
+      # Python is only needed for the offline tests of the deployment scripts below.
+      - name: Set up Python 3.14
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
+      # Syntax check and offline tests of the deployment scripts. No access to Google Cloud: every gcloud call in
+      # these tests is a local stub.
+      - name: Check the deployment scripts without accessing GCP
+        run: |
+          bash -n deploy/deploy.sh deploy/teardown.sh deploy/release.sh
+          bash deploy/tests/test_deploy_stub.sh
+          bash deploy/tests/test_release_stub.sh
+          python3 -m unittest discover -s deploy/tests -p 'test_smoke.py'
 
       - name: Install, type-check, migrate, seed, and test the server
         working-directory: ./server
