@@ -11,7 +11,7 @@
 | Version | Date | Author | Change | Reason |
 |---|---|---|---|---|
 | 0.1 | 2026-11-14 | | Skeleton created | Repository structure |
-| 0.2 | 2026-11-15 | Menelaus122 | Section 1 covers all 18 FR, 18 BR, and 16 NFR. Sprint 1 rows link the AC IDs of the five contracts. Sections 2 and 3 filled. Section 4 added: AC → planned TEST → actual test → result for the 101 Sprint 1 ACs, from a real run. | Issue #5; Definition of Done RD-3 |
+| 0.2 | 2026-11-15 | Menelaus122 | Section 1 covers all 18 FR, 18 BR, and 16 NFR. Sprint 1 rows link the AC IDs of the five contracts. Sections 2 and 3 filled. Section 4 added: AC → planned TEST → actual test → result for the 108 Sprint 1 ACs, from a real run. | Issue #5; Definition of Done RD-3 |
 
 ---
 
@@ -60,17 +60,17 @@ How to read it:
 | BR-16 Return rules | F-06 | 2 | AC and TEST IDs are defined in the F-06 contract at the start of Sprint 2 | Planned |
 | BR-17 Multi-stage threshold | F-07 | 2 | AC and TEST IDs are defined in the F-07 contract at the start of Sprint 2; the threshold and status name are provisional (Q-06) | Planned |
 | BR-18 Scope of lists and reports | F-08, F-09 (SYS-07) | 3 | AC and TEST IDs are defined in the F-08 contract at the start of Sprint 3; Sprint 1 applies it to the two lists that exist (TEST-F03-11, TEST-F04-01) | Planned |
-| NFR-01 Authentication enforced | F-01, F-02 (SYS-03) | 1 | AC-F01-09, AC-F02-01, AC-F02-02, AC-F02-09 | Verified |
+| NFR-01 Authentication enforced | F-01, F-02, F-05 (SYS-03) | 1 | AC-F01-09, AC-F02-01, AC-F02-02, AC-F02-09, AC-F05-24 | Verified |
 | NFR-02 Authorization in the backend | F-02, F-03, F-04 (SYS-03) | 1 | AC-F02-03, AC-F02-04, AC-F02-05, AC-F02-06, AC-F02-07, AC-F02-08, AC-F02-09, AC-F02-12, AC-F02-14, AC-F03-13, AC-F04-09, AC-F04-10 | Verified |
 | NFR-03 Password hashing | F-01, F-05 | 1 | AC-F01-01, AC-F05-05, AC-F05-07 | Verified |
 | NFR-04 Session protection | F-01 | 1 | AC-F01-01, AC-F01-06, AC-F01-10, AC-F01-11, AC-F01-12, AC-F01-19, AC-F01-21 | Verified |
 | NFR-05 Sign-in throttle | F-01 | 1 | AC-F01-05, AC-F01-07, AC-F01-08, AC-F01-16, AC-F01-20 | Verified |
-| NFR-06 Safe errors | F-01, F-02, F-05 (SYS-01) | 1 | AC-F01-04, AC-F02-05, AC-F02-10, AC-F02-13, AC-F02-15, AC-F05-10 | Verified |
+| NFR-06 Safe errors | F-01, F-02, F-05 (SYS-01) | 1 | AC-F01-04, AC-F02-05, AC-F02-10, AC-F02-13, AC-F02-15, AC-F05-10, AC-F05-24, AC-F05-25 | Verified |
 | NFR-07 Database integrity | F-03, F-04 (SYS-04) | 1 | AC-F03-09, AC-F04-14 | Verified |
 | NFR-08 Persistence | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-05: a request created before a restart and a redeploy is still there afterwards, with before and after evidence on the deployed service | Planned |
-| NFR-09 Configuration and secrets | F-05 (SYS-02) | 1 | AC-F05-03, AC-F05-04, AC-F05-05, AC-F05-06, AC-F05-18, AC-F05-20, AC-F05-21 | Verified |
+| NFR-09 Configuration and secrets | F-05 (SYS-02) | 1 | AC-F05-03, AC-F05-04, AC-F05-05, AC-F05-06, AC-F05-18, AC-F05-20, AC-F05-21, AC-F05-22, AC-F05-27 | Verified |
 | NFR-10 Reproducible build | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-03: a fresh clone builds, migrates, seeds, and answers 200 on `/api/ready` | Planned |
-| NFR-11 Basic usability | F-01, F-03, F-04 (SYS-06) | 1 | AC-F01-15, AC-F03-16, AC-F03-18, AC-F04-17 | Verified (automated); manual keyboard pass pending (section 2) |
+| NFR-11 Basic usability | F-01, F-03, F-04 (SYS-06) | 1 | AC-F01-15, AC-F03-16, AC-F03-18, AC-F04-17 | Verified (automated, and a scripted keyboard-only walkthrough); a human keyboard pass is still recommended (section 2) |
 | NFR-12 Accessibility (WCAG 2.1 AA) | F-10, SYS-06 | 3 | Playwright with axe on every main screen; TEST IDs in the F-10 contract | Planned |
 | NFR-13 Responsiveness | F-10, SYS-06 | 3 | Playwright screenshots and layout checks at 390 × 844, 820 × 1180, and 1440 × 900; TEST IDs in the F-10 contract | Planned |
 | NFR-14 Performance | F-10 | 3 | A scripted timing run of 50 requests per operation on the deployed service; TEST IDs in the F-10 contract | Planned |
@@ -84,7 +84,7 @@ Every requirement has a feature or responsibility and a sprint, so no requiremen
 | Requirement | Gap | Plan |
 |---|---|---|
 | NFR-08, NFR-10, NFR-15, NFR-16 | No automated Sprint 1 test: they can only be checked on a fresh clone or on the deployed service. | Lab 5 checks C-03, C-05, C-06, and the console screenshots, before the Sprint 1 release is accepted. Status stays Planned until then. |
-| NFR-11 | The automated part (messages beside fields, `aria-describedby`, status as text) is verified. The manual keyboard pass over the five main screens (RD-7) has not been done yet. | Both members do the pass on the release candidate and record it in the release PR. |
+| NFR-11 | The automated part (messages beside fields, `aria-describedby`, status as text) is verified. The keyboard pass over the five main screens (RD-7) was run as a keyboard-only walkthrough scripted with Playwright (keyboard events only, no mouse; the log is in the release PR). It is not a pass by a person. | One of the members repeats it by hand on the release candidate and records it in the release PR. |
 | FR-13 to FR-18, BR-16 to BR-18, NFR-12 to NFR-14 | No AC or TEST yet. | Allocated to F-06 to F-10 in section 1. The contract of each feature is written before its tests and code, at the start of its sprint. |
 | Q-05, Q-06, Q-07, Q-08 (SRS section 9) | Open questions that change F-06, F-07, F-09, and F-10. | Q-05 is decided in the F-06 contract and Q-06 in the F-07 contract (Sprint 2), Q-07 in the F-09 contract and Q-08 in F-10 (Sprint 3). BR-17 carries provisional values until Q-06 is closed. |
 
@@ -98,15 +98,15 @@ Self-registration, password recovery, account administration, real payments, att
 
 ## 4. Sprint 1 verification results
 
-The table is produced from the test runs, not typed by hand: the AC and TEST IDs come from the five contracts, and the result of each TEST is read from the report of the run below. A TEST's name carries its ID (one exception, below), so it can be found with `git grep TEST-F04-09`.
+The table is produced from the test runs, not typed by hand: the AC and TEST IDs come from the five contracts, and the result of each TEST is read from the report of the run below. A TEST's name starts with its ID, so it can be found with `git grep TEST-F04-09`.
 
 | Item | Value |
 |---|---|
-| Code commit tested | `546027b` (commits after it change only documents) |
-| Server: unit, API with a real database, process | `cd server && npm test`: 13 files, **124 passed, 0 failed, 0 skipped** |
+| Code commit tested | `72902c8` (commits after it change only documents) |
+| Server: unit, API with a real database, process | `cd server && npm test`: 14 files, **131 passed, 0 failed, 0 skipped** |
 | Client: component | `cd client && npm test`: 8 files, **36 passed, 0 failed, 0 skipped** |
-| End-to-end: Playwright on Chromium | `cd client && npm run e2e`: **4 passed, 0 failed, 0 skipped, 0 flaky** |
-| Automated vs manual | 100 of the 101 ACs are checked by automated tests (all pass). One AC is manual: AC-F05-13 (TEST-F05-13, the static check of environment variables), it was run on this commit and found every variable the code reads (`DATABASE_URL`, `DEMO_USER_PASSWORD`, `NODE_ENV`, `PORT`, `CLIENT_ORIGINS`, `API_PROXY_TARGET`, `CI`, and the Docker Compose `POSTGRES_*` ones) in an `.env.example` file and in `docs/labs/lab-05/deployment.md`; `API_PROXY_TARGET` and `CI` are commented lines in `client/.env.example`. The manual keyboard pass (RD-7) is separate and still to do. |
+| End-to-end: Playwright on Chromium | `cd client && npm run e2e`: **7 passed, 0 failed, 0 skipped, 0 flaky** (4 are AC tests, 3 are the release journeys below) |
+| Automated vs manual | 107 of the 108 ACs are checked by automated tests (all pass). 1 AC is manual: AC-F05-13 (TEST-F05-13, the static check of environment variables), it was run on this commit and found every variable the code reads (`DATABASE_URL`, `DEMO_USER_PASSWORD`, `NODE_ENV`, `PORT`, `CLIENT_ORIGINS`, `API_PROXY_TARGET`, `CI`, and the Docker Compose `POSTGRES_*` ones) in an `.env.example` file and in `docs/labs/lab-05/deployment.md`; `API_PROXY_TARGET` and `CI` are commented lines in `client/.env.example`. The keyboard pass (RD-7) is separate: a scripted keyboard-only walkthrough passed on the release candidate, and a pass by a person is still recommended. |
 | Not yet verified | NFR-08, NFR-10, NFR-15, NFR-16 (Lab 5), and the later-sprint requirements (section 2). |
 
 "Cases" is the number of test cases (`it` and `it.each` rows) that carry the TEST ID. The "Actual test name" column shows the first of them. TEST-F01-08 names its file in the contract and its cases are labelled (a), (b), (c) instead of carrying the ID.
@@ -214,3 +214,20 @@ The table is produced from the test runs, not typed by hand: the AC and TEST IDs
 | AC-F05-19 | TEST-F05-19 | integration (DB) | `server/tests/sprint-1/seed.test.ts` | TEST-F05-19 / AC-F05-19: a changed name and role are restored by one update | 1 | pass |
 | AC-F05-20 | TEST-F05-20 | integration (process) | `server/tests/sprint-1/seed.test.ts` | TEST-F05-20 / AC-F05-20: without DATABASE_URL the seed exits 1 within 15 s | 1 | pass |
 | AC-F05-21 | TEST-F05-21 | integration (process) | `server/tests/sprint-1/seed.test.ts` | TEST-F05-21 / AC-F05-21: the placeholder password in server/.env.example is refused | 1 | pass |
+| AC-F05-22 | TEST-F05-22 | unit | `server/tests/sprint-1/config.test.ts` | TEST-F05-22 / AC-F05-22: CLIENT_DIST_DIR is null when unset or blank, and trimmed when set | 1 | pass |
+| AC-F05-23 | TEST-F05-23 | API | `server/tests/sprint-1/static-ui.api.test.ts` | TEST-F05-23 / AC-F05-23: the page, a deep link, and a file are served to anyone | 1 | pass |
+| AC-F05-24 | TEST-F05-24 | API | `server/tests/sprint-1/static-ui.api.test.ts` | TEST-F05-24 / AC-F05-24: the API is unchanged while the UI is served | 1 | pass |
+| AC-F05-25 | TEST-F05-25 | API | `server/tests/sprint-1/static-ui.api.test.ts` | TEST-F05-25 / AC-F05-25: nothing outside the directory is served | 1 | pass |
+| AC-F05-26 | TEST-F05-26 | API | `server/tests/sprint-1/static-ui.api.test.ts` | TEST-F05-26 / AC-F05-26: without CLIENT_DIST_DIR the UI is not served | 1 | pass |
+| AC-F05-27 | TEST-F05-27 | unit | `server/tests/sprint-1/static-ui.api.test.ts` | TEST-F05-27 / AC-F05-27: a directory without index.html is refused when the app is created | 1 | pass |
+| AC-F05-28 | TEST-F05-28 | API | `server/tests/sprint-1/static-ui.api.test.ts` | TEST-F05-28 / AC-F05-28: a missing file with an extension is a 404, not the page, and deep links still work | 1 | pass |
+
+### Release verification journeys (not AC tests)
+
+These three end-to-end journeys (Issue #12, defined in `docs/sprints/sprint-1/README.md`) check the integrated increment. They pass when first written, so they are not red evidence.
+
+| TEST | Journey | File | Result |
+|---|---|---|---|
+| TEST-REL-01 | happy path, from submission to the approved request seen by its requester | `client/e2e/sprint-1/journeys.spec.ts` | pass |
+| TEST-REL-02 | business rules block a bad request and an undecided rejection, and change nothing | `client/e2e/sprint-1/journeys.spec.ts` | pass |
+| TEST-REL-03 | a requester cannot reach or use reviewer operations, and an unrelated reviewer sees nothing | `client/e2e/sprint-1/journeys.spec.ts` | pass |
