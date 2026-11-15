@@ -11,6 +11,51 @@ export const PLOY = { id: 1, name: "Ploy Srisawat", email: "ploy.requester@examp
 export const MINT = { id: 3, name: "Mint Chaiyaporn", email: "mint.reviewer@example.com", role: "REVIEWER" } as const;
 export const PASSWORD = "Synthetic-Pass-A1";
 
+export const REVIEWERS = [
+  { id: 3, name: "Mint Chaiyaporn" },
+  { id: 4, name: "Korn Thanakit" },
+];
+
+// 14 Nov 2026 09:05 UTC is 16:05 in Asia/Bangkok, the zone every date is shown in.
+const CREATED = "2026-11-14T09:05:00.000Z";
+
+export function requestSummary(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 12,
+    requestNumber: "REQ-000012",
+    title: "Oscilloscope for the electronics lab",
+    amount: "18500.00",
+    status: "SUBMITTED",
+    assignedReviewer: REVIEWERS[0],
+    createdAt: CREATED,
+    ...overrides,
+  };
+}
+
+export function requestDetail(overrides: Record<string, unknown> = {}) {
+  return {
+    ...requestSummary(),
+    description: "Replace the broken unit in room 401.",
+    requester: { id: 1, name: "Ploy Srisawat" },
+    decidedBy: null,
+    decisionReason: null,
+    decidedAt: null,
+    updatedAt: CREATED,
+    history: [
+      {
+        id: 31,
+        type: "SUBMITTED",
+        fromStatus: null,
+        toStatus: "SUBMITTED",
+        actor: { id: 1, name: "Ploy Srisawat" },
+        reason: null,
+        createdAt: CREATED,
+      },
+    ],
+    ...overrides,
+  };
+}
+
 export const UNAUTHENTICATED = { error: { code: "UNAUTHENTICATED", message: "Please sign in." } };
 
 export interface Reply {

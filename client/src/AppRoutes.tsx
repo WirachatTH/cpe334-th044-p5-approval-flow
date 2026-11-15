@@ -4,8 +4,11 @@ import { RequireAuth } from "./components/RequireAuth.js";
 import { RequireRole } from "./components/RequireRole.js";
 import { homeFor, useAuth } from "./context/AuthContext.js";
 import { Login } from "./screens/Login.js";
+import { MyRequests } from "./screens/MyRequests.js";
+import { NewRequest } from "./screens/NewRequest.js";
 import { NotAvailable } from "./screens/NotAvailable.js";
 import { Placeholder } from "./screens/Placeholder.js";
+import { RequestDetail } from "./screens/RequestDetail.js";
 
 // The routes (SDS §4.1). Guards are a convenience for people: the API refuses the same calls on its own.
 
@@ -21,8 +24,9 @@ export function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Home />} />
       <Route element={<RequireAuth />}>
-        <Route path="/requests" element={<Placeholder title="My Requests" />} />
-        <Route path="/requests/new" element={<Placeholder title="New Request" />} />
+        <Route path="/requests" element={<MyRequests />} />
+        <Route path="/requests/new" element={<NewRequest />} />
+        <Route path="/requests/:id" element={<RequestDetail />} />
         <Route element={<RequireRole role="REVIEWER" />}>
           <Route path="/reviews" element={<Placeholder title="Review Inbox" />} />
         </Route>
