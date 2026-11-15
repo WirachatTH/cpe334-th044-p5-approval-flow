@@ -3,7 +3,7 @@
 > For Deliverable 1 (Part F) and Lab 5. Each member writes their own entries; the other member reviews them.
 > The rules for agents are in [`AGENTS.md`](../AGENTS.md) and [`CLAUDE.md`](../CLAUDE.md): AI use is declared here,
 > not in commit trailers or PR footers. Full prompt transcripts are not included.
-> Status: Menelaus122's entries written (15 Nov 2026); **WirachatTH's entries are still to be written by WirachatTH.**
+> Status: both members' entries written (15 Nov 2026). WirachatTH's entries were drafted with Claude Code and checked by WirachatTH; Menelaus122 reviews them.
 
 ## How AI was used, in short
 
@@ -49,15 +49,28 @@
 
 ## WirachatTH (Member A)
 
-_To be written by WirachatTH: the same two tables (what you used AI for, with the tool, the Issue or PR, and how you verified it; and the
-mistakes you caught). If no AI tool was used for some of your work, say so here._
+- **Tool:** Claude Code, run by WirachatTH on their own computer, in this repository and in the folder that holds the course
+  handouts. It was used for planning, for the GitHub commands I asked for, for reviewing the teammate's pull requests, and for
+  drafting documents. I did not use an AI tool to write the application code; that was written in the teammate's Claude Code
+  session (see their section).
+- **My reviews were AI-assisted.** For each pull request, Claude Code read the diff, ran checks, and produced findings and a
+  suggested review comment. I read the result again, decided what to post, and posted the comments and merged the pull requests
+  myself. The AI did not approve or merge anything.
+- **Secrets:** I did not give a password, token, key, or connection string to the AI tool.
 
 | Period | Tool | Task (Issue / PR) | How I verified the result |
 |---|---|---|---|
-| | | | |
+| Nov 2026, start of the project | Claude Code | Converted the course PDFs to Markdown, explained the deliverables and how Lab 5 relates to Deliverable 1, checked the theme choice, compressed the schedule, and advised reusing the TokTickIT scaffold | Compared the Markdown with the PDFs and the schedule with the handout dates; the theme and stack decisions were mine |
+| 14 Nov | Claude Code | Created the public repository, wrote the git-ignored `private/plan.md` that the teammate's agent used as its plan, and closed Issue #2, using `gh` commands I asked for (#2) | Checked the repository, its settings, and the Issue on GitHub; `private/` is not tracked |
+| 14 to 15 Nov | Claude Code | A shell script that watches GitHub for new pull requests (`private/watch-prs.sh`, git-ignored, read-only) | Ran it and read its output against the pull request list on GitHub |
+| 14 to 15 Nov | Claude Code | Reviews of the teammate's pull requests #13 to #47: findings and suggested comments, with checks run in scratch folders (clean installs, type-checks, the tests that need no database, mutation checks, `npm audit`, the offline deploy-script tests, and `gh api` checks) | I read each finding and the evidence, posted the comments, and decided each merge. Results that needed the database or Google Cloud were not rechecked by me |
+| 15 Nov | Claude Code | Google Cloud help for Issue #1: a step list and a checklist to find out whether a Gmail can get the Free Trial (kept outside the repository) | Followed the Student Guide, Episode 1, and checked each step against it |
+| 15 Nov | Claude Code | The three-sprint plan, `docs/sprints/plan.md` (Issue #6, PR #48) | The allocation was checked with a script against `srs.md` and `features.md` (10 of 10 features agree on sprint and dependencies); reviewed by Menelaus122 in PR #48 |
 
 ### AI mistakes caught, and how
 
 | Mistake | How it was caught | Result |
 |---|---|---|
-| | | |
+| A check on PR #37 that swaps in a deliberately unsafe file handler to see whether the path-traversal test fails did not change the file, so it proved nothing | The output still showed the original line, so I did not accept the "pass" | The check was redone and the test failed as it should |
+| A script that cross-checked the result table of PR #44 against the contracts matched 0 rows, because it split the table columns wrongly | The output said 0 rows for 108 acceptance criteria | The script was fixed, and it then matched 108 of 108 |
+| The first advice for merging the stacked pull requests suggested "delete branch on merge", which could close the dependent pull requests | Working out the merge order for the stack | The advice was withdrawn, and the next pull request is retargeted by hand instead |
