@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import type { PrismaClient } from "@prisma/client";
 import { registerAuthRoutes } from "./auth.js";
 import { authorize, rejectForeignOrigin } from "./authorization.js";
+import { serveClientUi } from "./clientUi.js";
 import type { AppConfig } from "./config.js";
 import { errorHandler, notFound } from "./errors.js";
 import { LoginThrottle } from "./loginThrottle.js";
@@ -22,6 +23,10 @@ export function createApp({ prisma, config, throttle = new LoginThrottle() }: Ap
   app.disable("x-powered-by");
   app.set("case sensitive routing", true);
   app.set("strict routing", true);
+
+  // F-05 v0.7: the built UI, when the server is configured to serve it. Before the F-02 guards, so the UI is public;
+  // it never answers a path under /api.
+  if (config.clientDistDir) serveClientUi(app, config.clientDistDir);
 
   // F-02 §1.2, in this order. The JSON body is read only after authorization, so a caller who may not use a route
   // learns nothing by sending one.

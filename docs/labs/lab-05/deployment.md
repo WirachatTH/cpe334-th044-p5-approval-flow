@@ -20,7 +20,7 @@
 | Component | Reference (Lab 5 Starter Kit) | Ours | Reason for any change |
 |---|---|---|---|
 | Runtime | Node 24 (kit: `node:24-alpine`) | Node 24 | none |
-| Container | One image: UI + API | One image (Lab 5 Issue) | none planned |
+| Container | One image: UI + API | One image: the root `Dockerfile` (three stages). The API serves the built UI itself (`CLIENT_DIST_DIR`), so the kit's nginx is not used. | The kit's `client/Dockerfile`, `server/Dockerfile`, and `nginx.conf` are for a two-container local setup; one container is what Cloud Run runs |
 | Hosting | Cloud Run | Cloud Run (planned) | none planned |
 | Database | Cloud SQL for PostgreSQL | Cloud SQL for PostgreSQL 16 (planned); locally PostgreSQL 16 in Docker | none |
 | Images | Artifact Registry | Artifact Registry (planned) | none planned |
@@ -41,12 +41,14 @@
 | `NODE_ENV` | server | `development`, `test`, or `production` (default `development`); `production` turns on the cookie `Secure` flag (F-01) and requires `CLIENT_ORIGINS` | No | `server/.env`; the test runner sets `test` | Cloud Run environment variable (`production`) |
 | `PORT` | server | HTTP port, 1 to 65535 (default 3000) | No | `server/.env` or the default | Set by Cloud Run |
 | `CLIENT_ORIGINS` | server | Comma-separated browser origins allowed to `POST` (F-02); required in production, default `http://localhost:5173` otherwise | No | `server/.env` or the default | Cloud Run environment variable; set **before** the first deploy (SDS §8) |
+| `CLIENT_DIST_DIR` | server | Directory of the built UI. When set, the API serves the UI and the deep links of the single-page app, and the server refuses to start if `index.html` is missing (F-05 v0.7). Unset in development | No | unset (the Vite dev server serves the UI) | Set to `/app/client/dist` in the image (`Dockerfile`) |
 | `API_PROXY_TARGET` | client dev server (Vite) | Where `/api` is proxied during local development (default `http://localhost:3000`) | No | `client/.env` (optional) | Not used: the API container serves the built client |
 | `CI` | client Playwright config | Set to a true value by GitHub Actions; Playwright then starts its own dev server | No | unset | Set by GitHub Actions |
 | `POSTGRES_USER` | Docker Compose (`db` service) | Database user of the local container (default `approval_flow`) | No | `.env` (git-ignored) | Not used: Cloud SQL |
 | `POSTGRES_PASSWORD` | Docker Compose (`db` service) | Password of the local database user; required | **Yes** | `.env` (git-ignored) | Not used: Cloud SQL |
 | `POSTGRES_DB` | Docker Compose (`db` service) | Database name of the local container (default `approval_flow`) | No | `.env` | Not used: Cloud SQL |
 | `POSTGRES_PORT` | Docker Compose (`db` service) | Host port of the local container (default 5433) | No | `.env` | Not used |
+| `APP_PORT` | Docker Compose (`app` service, profile `app`) | Host port, on 127.0.0.1 only, of the application container (default 3000) | No | `.env` | Not used: Cloud Run assigns the port |
 
 **One behaviour to know.** Importing `@prisma/client` loads `server/.env` into `process.env`, without overriding
 any variable that is already defined (an empty value counts as defined). A local `.env` is therefore configuration
@@ -66,7 +68,10 @@ files (the Lab 5 `.dockerignore` excludes them), so in the cloud only the real e
 | Type-check | `npm run typecheck` in `server` and in `client` |
 | Build | `cd server && npm run build` (to `dist/`); `cd client && npm run build` |
 | Run locally with DB | `docker compose up -d db`, then `cd server && npm run dev` and `cd client && npm run dev` |
-| Fresh-clone check (C-03) | The README setup on a clean clone is verified in #8. The Docker image version of C-03 comes with the Dockerfile in Lab 5. |
+| Build the image | `docker build -t approval-flow:local .` (from the repository root) |
+| Run the whole application in containers | Put `DEMO_USER_PASSWORD`, `APP_PORT`, and `CLIENT_ORIGINS` in `.env`, then `docker compose --profile app up --build`. It starts the database, runs a one-shot job (`prisma migrate deploy` and the seed), and then the application on `http://localhost:<APP_PORT>`. |
+| Stop the application containers, keep the database | `docker compose --profile app rm -sf app migrate` |
+| Fresh-clone check (C-03) | Clone, copy `.env.example` to `.env`, replace the placeholders (`POSTGRES_PASSWORD`, `DEMO_USER_PASSWORD`), run the compose command above, then check `/api/ready` (200), the Login screen at `/`, and a sign-in. Output is recorded in the Lab 5 evidence. |
 
 ## 4. GCP project and resources
 

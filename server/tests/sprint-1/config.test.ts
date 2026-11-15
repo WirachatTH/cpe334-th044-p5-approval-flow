@@ -77,4 +77,10 @@ describe("loadConfig", () => {
       expect(config).toMatchObject({ nodeEnv: "production", port: 8080, clientOrigins: ["https://a.example"] });
     });
   });
+
+  it("TEST-F05-22 / AC-F05-22: CLIENT_DIST_DIR is null when unset or blank, and trimmed when set", () => {
+    expect(loadConfig({ DATABASE_URL: DB }).clientDistDir).toBeNull();
+    expect(loadConfig({ DATABASE_URL: DB, CLIENT_DIST_DIR: "" }).clientDistDir).toBeNull();
+    expect(loadConfig({ DATABASE_URL: DB, CLIENT_DIST_DIR: "  /app/client/dist  " }).clientDistDir).toBe("/app/client/dist");
+  });
 });

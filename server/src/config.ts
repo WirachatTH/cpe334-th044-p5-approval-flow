@@ -16,6 +16,9 @@ export interface AppConfig {
   port: number;
   databaseUrl: string;
   clientOrigins: string[];
+  // The directory of the built UI, or null when the API does not serve it (F-05 contract section 1.4). Optional in
+  // the type so that code that builds a configuration by hand, such as a test, need not set it.
+  clientDistDir?: string | null;
 }
 
 const NODE_ENVS: readonly string[] = ["development", "test", "production"];
@@ -52,6 +55,9 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     else clientOrigins = DEFAULT_CLIENT_ORIGINS;
   }
 
+  // Optional: where the built UI is, when this server serves it. Whether the directory is usable is checked by createApp.
+  const clientDistDir = (env.CLIENT_DIST_DIR ?? "").trim();
+
   if (problems.length > 0) throw new ConfigError(problems.join("\n"));
-  return { nodeEnv, port, databaseUrl, clientOrigins };
+  return { nodeEnv, port, databaseUrl, clientOrigins, clientDistDir: clientDistDir === "" ? null : clientDistDir };
 }
