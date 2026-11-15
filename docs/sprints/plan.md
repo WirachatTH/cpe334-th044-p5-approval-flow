@@ -3,7 +3,7 @@
 > **Project Deliverable 1, Part D.** Together the three sprints cover the whole product baseline in
 > [`../srs.md`](../srs.md) and [`../features.md`](../features.md). The requirement-by-requirement mapping is in
 > [`../traceability.md`](../traceability.md); the Sprint 1 contracts are in [`sprint-1/`](sprint-1/README.md).
-> Status: first complete draft (v0.2) for review. Sprint 1 is implemented; Sprints 2 and 3 are planned.
+> Status: agreed (v0.3), after the review of PR #48. Sprint 1 is implemented; Sprints 2 and 3 are planned.
 
 ## Version history
 
@@ -11,6 +11,7 @@
 |---|---|---|---|---|
 | 0.1 | 2026-11-14 | | Skeleton created | Repository structure |
 | 0.2 | 2026-11-15 | WirachatTH | First complete plan: the three sprints, the Sprint 1 scope explanation, the dependencies, the allocation check, and the risks | Issue #6 |
+| 0.3 | 2026-11-15 | WirachatTH | Section 1: "F-08 (finished)" now says "F-08 (started in Sprint 2, finished in Sprint 3)". Section 3 names the Deliverable 2 handout for the two course rules it cites. Status: agreed | Review of PR #48 |
 
 ---
 
@@ -24,7 +25,7 @@ The product is a departmental purchase and funding **approval workflow** (Theme 
 |---|---|---|---|---|---|
 | 1 | Small working domain slice with authentication, permissions, and persistence | F-01, F-02, F-03, F-04, F-05 | F-05 first, then F-01, F-02, F-03, F-04 in that order (section 5) | A requester signs in, submits a request, and sees it. The assigned reviewer approves or rejects it with a recorded reason and history. Nobody can approve their own request. Data lives in PostgreSQL and the app is released from `main` | **Deliverable 1** (15 Nov 2026; the handout still shows 8 Nov) |
 | 2 | Completed core expansion under engineering contracts | F-06, F-07 | F-06 needs F-03 and F-04. F-07 needs F-04 and F-06 | A reviewer can return a request and the requester can edit and resubmit it. A high-value request needs a second approval by a different reviewer. Everything is deployed from `main` and Sprint 1 still works. Deliverable 2 also needs the contracts of the Sprint 3 features and one Sprint 3 workflow working, so that work starts early (section 3) | **Deliverable 2** (29 Nov 2026) |
-| 3 | Remaining features, integration, and product hardening | F-08 (finished), F-09, F-10 | F-09 needs F-04, F-07, F-08. F-10 needs F-01 to F-09 | Filters, decided requests, and summaries work. Accessibility, responsiveness, and performance targets are met and verified. The full regression run passes on the final version | Progress at 29 Nov; **complete by 13 Dec 2026** (Final Delivery) |
+| 3 | Remaining features, integration, and product hardening | F-08 (started in Sprint 2, finished in Sprint 3), F-09, F-10 | F-09 needs F-04, F-07, F-08. F-10 needs F-01 to F-09 | Filters, decided requests, and summaries work. Accessibility, responsiveness, and performance targets are met and verified. The full regression run passes on the final version | Progress at 29 Nov; **complete by 13 Dec 2026** (Final Delivery) |
 
 Every sprint follows the same engineering workflow (`AGENTS.md` and the Product Definition of Done): an Issue, a
 branch from `staging`, the **contract first**, a failing test (red), the implementation (green), a teammate-reviewed
@@ -69,9 +70,10 @@ and their tests, and released from `staging` into `main` as the tag `v1.0.0-spri
 ## 3. Sprint 2
 
 **Goal.** Complete the core expansion: the two workflows that change the status model, under engineering contracts,
-and make the product ready for Sprint 3. The course says a required feature may not be moved to Sprint 3 only to mark
-the sprint complete, so F-06 and F-07 stay in Sprint 2. Deliverable 2 also asks for the contracts of all remaining features and at least
-one Sprint 3 workflow implemented and tested. That is Sprint 3 work started early: F-08, F-09, and F-10 stay allocated
+and make the product ready for Sprint 3. According to the Deliverable 2 handout (section 3.2, Part B), a required feature may not be moved to Sprint 3
+only to mark the sprint complete, so F-06 and F-07 stay in Sprint 2. The same handout (sections 2 and 3.3, Part C) asks
+for the contracts of all remaining Sprint 3 features and at least one Sprint 3 workflow implemented and tested by
+Deliverable 2. That is Sprint 3 work started early: F-08, F-09, and F-10 stay allocated
 to Sprint 3.
 
 | Feature | What it delivers | Requirements | Decision needed first |
