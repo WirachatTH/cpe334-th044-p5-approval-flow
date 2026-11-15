@@ -40,6 +40,16 @@ export interface RequestSummary {
   createdAt: string;
 }
 
+// A row of the review inbox (F-04 contract section 2.2).
+export interface InboxItem {
+  id: number;
+  requestNumber: string;
+  title: string;
+  amount: string;
+  requester: PersonRef;
+  createdAt: string;
+}
+
 export interface HistoryEntry {
   id: number;
   type: RequestStatus;

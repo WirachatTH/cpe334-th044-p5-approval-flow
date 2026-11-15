@@ -8,8 +8,8 @@ Nobody can decide their own request.
 
 > **Status: Sprint 1 in progress.** The database, the seeded demo accounts, configuration loading, and the
 > `/api/health` and `/api/ready` endpoints work (F-05). Sign-in, sign-out, sessions, and role-based access work
-> (F-01, F-02), and so does submitting a request and viewing your own requests (F-03). Deciding a request and
-> the review screens arrive with F-04.
+> (F-01, F-02), and so does submitting a request and viewing your own requests (F-03). A reviewer can see their
+> inbox and approve or reject a request with a recorded reason (F-04).
 
 **Stack:** Node 24 + TypeScript, Express 4, Prisma 5 + PostgreSQL 16, React 18 + Vite, Vitest + Supertest,
 Playwright, Docker.
