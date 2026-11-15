@@ -1,0 +1,111 @@
+# CI & Docker Build (Lab 5, Issue #34).
+#
+# Runs on every pull request into `staging` or `main`, and is reused by deploy.yml (`workflow_call`) so that a
+# deployment starts only after these checks pass. It does not deploy anything.
+#
+# Do not rename: the job id `test-and-docker` is the name the branch ruleset requires.
+#
+# What it checks: the server (type-check, migrate, seed, all tests against a real PostgreSQL), the client (type-check,
+# tests, production build), that the production image builds, and that the image starts, reaches its database, and
+# serves the UI.
+#
+# Adapted from the Lab 5 Starter Kit. The database credentials below are throw-away values for a database that
+# exists only inside this job: they are not secrets.
+
+name: CI & Docker Build
+
+on:
+  workflow_call:
+  pull_request:
+    branches: [main, staging]
+  workflow_dispatch:
+
+# Least privilege: the job only reads the repository.
+permissions:
+  contents: read
+
+# A newer run on the same ref cancels the older one.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Throw-away CI values (the database lives only inside this job).
+  CI_DATABASE_URL: postgresql://ci_user:ci-throwaway-password@localhost:5432/ci_db?schema=public
+
+jobs:
+  test-and-docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci-throwaway-password
+          POSTGRES_DB: ci_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci_user -d ci_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      # Actions are pinned to a commit SHA (the comment shows the version); Dependabot keeps them updated.
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Install, type-check, migrate, seed, and test the server
+        working-directory: ./server
+        env:
+          DATABASE_URL: ${{ env.CI_DATABASE_URL }}
+          # A synthetic password for the seed; it meets the password rules and protects nothing.
+          DEMO_USER_PASSWORD: Ci-Throwaway-1
+        run: |
+          npm ci
+          npm run typecheck
+          # The process tests start the built server (node dist/index.js), so it is built before the tests.
+          npm run build
+          npm run db:deploy
+          npm run db:seed
+          npm test
+
+      - name: Install, type-check, test, and build the client
+        working-directory: ./client
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run build
+
+      - name: Build the production image
+        run: docker build -t approval-flow:ci .
+
+      # The image is run against the job's database (already migrated and seeded above), and must answer.
+      - name: Start the image and check it serves the API and the UI
+        run: |
+          docker run -d --name approval-flow-ci --network host \
+            -e DATABASE_URL="$CI_DATABASE_URL" \
+            -e CLIENT_ORIGINS=http://localhost:3000 \
+            -e PORT=3000 \
+            approval-flow:ci
+          curl --retry 20 --retry-delay 2 --retry-connrefused --fail --silent --show-error http://localhost:3000/api/ready
+          echo
+          curl --fail --silent --show-error http://localhost:3000/ | grep -q "<title>Approval Flow</title>"
+          curl --fail --silent --show-error http://localhost:3000/requests/1 | grep -q "<title>Approval Flow</title>"
+          status=$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost:3000/api/nope)
+          test "$status" = "404"
+
+      - name: Show the container log when a step failed
+        if: failure()
+        run: docker logs approval-flow-ci || true
