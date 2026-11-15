@@ -13,7 +13,7 @@ function fail(throttle: LoginThrottle, email: string, now: number) {
 }
 
 describe("LoginThrottle", () => {
-  it("(a) the oldest failure leaves the window at exactly 15 minutes", () => {
+  it("TEST-F01-08 / AC-F01-08 (a): the oldest failure leaves the window at exactly 15 minutes", () => {
     const throttle = new LoginThrottle();
     for (let i = 0; i < 5; i += 1) fail(throttle, "ploy@example.com", T0 + i * SECOND);
 
@@ -22,7 +22,7 @@ describe("LoginThrottle", () => {
     expect(atBoundary.allowed).toBe(true);
   });
 
-  it("(b) a success clears the count", () => {
+  it("TEST-F01-08 / AC-F01-08 (b): a success clears the count", () => {
     const throttle = new LoginThrottle();
     const email = "mint@example.com";
     for (let i = 0; i < 4; i += 1) fail(throttle, email, T0 + i * SECOND);
@@ -33,7 +33,7 @@ describe("LoginThrottle", () => {
     expect(throttle.beginAttempt(email, T0 + 30 * SECOND).allowed, "the sixth new failure is refused").toBe(false);
   });
 
-  it("(c) an unknown email is throttled exactly like a known one", () => {
+  it("TEST-F01-08 / AC-F01-08 (c): an unknown email is throttled exactly like a known one", () => {
     const throttle = new LoginThrottle();
     const email = "nobody@example.com";
     for (let i = 0; i < 5; i += 1) fail(throttle, email, T0 + i * SECOND);
