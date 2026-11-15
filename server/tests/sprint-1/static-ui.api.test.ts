@@ -116,6 +116,21 @@ describe("serving the built UI", () => {
     }
   });
 
+  it("TEST-F05-28 / AC-F05-28: a missing file with an extension is a 404, not the page, and deep links still work", async () => {
+    const app = serving();
+    // Control: serving is on, so the answers below are not just a switched-off feature.
+    expect((await get(app, "/requests/12")).body).toContain(INDEX_MARKER);
+    expect((await get(app, "/assets/app.js")).body).toBe(SCRIPT);
+
+    for (const path of ["/assets/missing.js", "/missing.css", "/favicon.ico"]) {
+      const res = await get(app, path);
+      expect(res.status, path).toBe(404);
+      expect(JSON.parse(res.body).error.code, path).toBe("NOT_FOUND");
+      expect(res.body, path).not.toContain(INDEX_MARKER);
+    }
+    expect((await request(app).head("/assets/missing.js")).status).toBe(404);
+  });
+
   it("TEST-F05-26 / AC-F05-26: without CLIENT_DIST_DIR the UI is not served", async () => {
     const app = createApp({ prisma, config: base });
     for (const path of ["/", "/requests/12"]) {
