@@ -31,6 +31,7 @@
 | 15 Nov | Claude Code | Part B features and traceability (#5, PR #31); release journeys (#12, PR #32); follow-ups (PR #36) | The AC to TEST to result table is generated from the contracts and from the test reports, not typed; the journeys were repeated 3 times; review by WirachatTH (AI-assisted, see their section) |
 | 15 Nov | Claude Code | Lab 5: production image and serving the UI from the API (#33, PR #37), CI workflow (#34, PR #38), deploy scripts and Lab 5 documentation (#35, PR #39) | Tests first for the one code change; a fresh clone was built and run in containers; the CI run on each PR; the deploy scripts only against local stubs. Nothing has been run on Google Cloud |
 | 14 to 15 Nov | Claude Code | GitHub board moves, Issue closing, PR descriptions | Compared with the real state on GitHub; the descriptions follow the PR template and state what was not verified |
+| 15 Nov | Claude Code | Reviews of WirachatTH's pull requests: the plan (Issue #6, PRs #48 and #50) and the AI-use entries (Issue #16, PRs #49 and #51) | Claude Code read each diff and checked the claims against GitHub and the repository (`gh pr view`, `gh api`, `git log`, counts of pull requests, lines, and files). I read the findings again, chose what to post, and posted the reviews myself; the reviews of #48 and #49 asked for changes that became #50 and #51. I did not run the test suites, because each PR changes one document. No agent approved or merged anything |
 
 ### AI mistakes caught, and how
 
