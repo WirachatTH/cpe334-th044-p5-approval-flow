@@ -98,6 +98,7 @@ One image holds the API and the built UI (the root `Dockerfile`). To run it with
 The image runs with `NODE_ENV=production`, so the session cookie is `Secure`. Chrome, Edge, and Firefox keep it on
 `http://localhost`, but Safari does not, so there a sign-in seems to work and the next page is signed out. Use another
 browser for the local container. On Cloud Run the address is `https`, so this does not apply there.
+
 ## Tests and build
 
 | What | Command | Needs |
