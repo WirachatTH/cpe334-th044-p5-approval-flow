@@ -38,7 +38,8 @@ RUN npx prisma generate && npm run build
 # ---- Stage 3: runtime -------------------------------------------------------------------------------------
 FROM node:24-alpine AS production
 WORKDIR /app/server
-RUN apk add --no-cache openssl
+# openssl for Prisma; tzdata so that TZ=Asia/Bangkok below really changes the time zone (Alpine has no zone data).
+RUN apk add --no-cache openssl tzdata
 
 COPY --from=server-builder /app/server/package*.json ./
 COPY --from=server-builder /app/server/node_modules ./node_modules

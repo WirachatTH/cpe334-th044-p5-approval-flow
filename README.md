@@ -94,6 +94,10 @@ One image holds the API and the built UI (the root `Dockerfile`). To run it with
 3. Open `http://localhost:<APP_PORT>` and sign in with a demo account.
 
 `docker compose --profile app rm -sf app migrate` stops the application and keeps the database.
+
+The image runs with `NODE_ENV=production`, so the session cookie is `Secure`. Chrome, Edge, and Firefox keep it on
+`http://localhost`, but Safari does not, so there a sign-in seems to work and the next page is signed out. Use another
+browser for the local container. On Cloud Run the address is `https`, so this does not apply there.
 ## Tests and build
 
 | What | Command | Needs |
