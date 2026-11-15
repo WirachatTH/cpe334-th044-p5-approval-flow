@@ -13,8 +13,9 @@ set -euo pipefail
 # Optional environment variables: PROJECT_ID (default: the active gcloud project), REGION (default asia-southeast1),
 # DRY_RUN (1 = print the commands only).
 #
-# WHO RUNS IT: a team member, after reading this file. It creates billable resources (a Cloud SQL instance) and
-# touches IAM and Secret Manager, which AGENTS.md section 7 reserves for a person who has read the commands.
+# WHO RUNS IT: the project Owner, after reading this file. It creates billable resources (a Cloud SQL instance) and
+# touches IAM and Secret Manager, which AGENTS.md section 7 reserves for a person who has read the commands. Step 5
+# binds a role on the project, which the Editor role cannot do, so an Editor must not run it.
 #
 # WHAT IT DOES (safe to run again: existing resources and secrets are reused, never replaced)
 #    1 enable the APIs                    2 Artifact Registry repository      3 Cloud SQL instance (smallest tier)
@@ -28,7 +29,8 @@ set -euo pipefail
 #
 # CLIENT_ORIGINS: the API refuses a sign-in whose Origin is not listed. The service's public address is known before
 # the first deploy (https://<service>-<project number>.<region>.run.app), so it is set from the start. Afterwards the
-# script reads the real address and corrects the setting if it differs.
+# script reads every address Cloud Run reports for the service (it can have more than one form) and lists all of them,
+# comma-separated, using the ^|^ delimiter because gcloud itself splits a value on commas.
 #
 # Offline test (no GCP access): deploy/tests/test_deploy_stub.sh
 # ==============================================================================
@@ -61,6 +63,11 @@ run_cmd() {
     "$@"
   fi
 }
+
+# A secret counts as done only when it has a version. An interrupted run can leave a secret without one, so
+# existing is not enough (the repeat adds the missing version and does not create the secret again).
+secret_exists() { gcloud secrets describe "$1" --project "$PROJECT_ID" >/dev/null 2>&1; }
+secret_has_version() { [ -n "$(gcloud secrets versions list "$1" --project "$PROJECT_ID" --limit=1 --format='value(name)' 2>/dev/null || true)" ]; }
 
 # The project: $PROJECT_ID, else the active gcloud project.
 if [ "$DRY_RUN" = "1" ]; then
@@ -183,9 +190,9 @@ run_cmd gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --quiet
 
 # ==============================================================================
-# 6. Database user and the DATABASE_URL secret. Created once: if the secret exists nothing is replaced, so a rerun
-#    never changes a credential. If the secret is missing but the user exists (an interrupted run), the user's
-#    password is reset so that it matches the new secret.
+# 6. Database user and the DATABASE_URL secret. Created once: if the secret has a version nothing is replaced, so a
+#    rerun never changes a credential. If the secret has no version (an interrupted run) but the user exists, the
+#    user's password is reset so that it matches the new secret.
 # ==============================================================================
 if [ "$DRY_RUN" = "1" ]; then
   run_cmd gcloud secrets describe "$SECRET_DB_URL" --project "$PROJECT_ID"
@@ -194,7 +201,7 @@ if [ "$DRY_RUN" = "1" ]; then
   run_cmd gcloud secrets create "$SECRET_DB_URL" --replication-policy="automatic" --project "$PROJECT_ID"
   run_cmd gcloud secrets versions add "$SECRET_DB_URL" --data-file=- --project "$PROJECT_ID"
 else
-  if ! gcloud secrets describe "$SECRET_DB_URL" --project "$PROJECT_ID" >/dev/null 2>&1; then
+  if ! secret_has_version "$SECRET_DB_URL"; then
     DB_PASS="$(openssl rand -hex 24)"
     if gcloud sql users list --instance="$SQL_INSTANCE" --project "$PROJECT_ID" --format="value(name)" | grep -qx "$DB_USER"; then
       run_cmd gcloud sql users set-password "$DB_USER" --instance="$SQL_INSTANCE" --password="$DB_PASS" --project "$PROJECT_ID"
@@ -203,7 +210,9 @@ else
     fi
     # Unix-socket form for Cloud Run's Cloud SQL connection. The value goes to Secret Manager through a pipe.
     DB_URL_VALUE="postgresql://${DB_USER}:${DB_PASS}@localhost/${DB_NAME}?host=/cloudsql/${SQL_CONN_NAME}&schema=public&connection_limit=3"
-    run_cmd gcloud secrets create "$SECRET_DB_URL" --replication-policy="automatic" --project "$PROJECT_ID"
+    if ! secret_exists "$SECRET_DB_URL"; then
+      run_cmd gcloud secrets create "$SECRET_DB_URL" --replication-policy="automatic" --project "$PROJECT_ID"
+    fi
     printf "%s" "$DB_URL_VALUE" | gcloud secrets versions add "$SECRET_DB_URL" --data-file=- --project "$PROJECT_ID"
   fi
 fi
@@ -217,9 +226,11 @@ if [ "$DRY_RUN" = "1" ]; then
   run_cmd gcloud secrets create "$SECRET_DEMO_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
   run_cmd gcloud secrets versions add "$SECRET_DEMO_PASS" --data-file=- --project "$PROJECT_ID"
 else
-  if ! gcloud secrets describe "$SECRET_DEMO_PASS" --project "$PROJECT_ID" >/dev/null 2>&1; then
+  if ! secret_has_version "$SECRET_DEMO_PASS"; then
     GENERATED_DEMO_PASSWORD="$(openssl rand -base64 16 | tr -d '/+=' | cut -c1-14)Dd1"
-    run_cmd gcloud secrets create "$SECRET_DEMO_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
+    if ! secret_exists "$SECRET_DEMO_PASS"; then
+      run_cmd gcloud secrets create "$SECRET_DEMO_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
+    fi
     printf "%s" "$GENERATED_DEMO_PASSWORD" | gcloud secrets versions add "$SECRET_DEMO_PASS" --data-file=- --project "$PROJECT_ID"
   fi
 fi
@@ -297,16 +308,26 @@ run_cmd gcloud run deploy "$SERVICE_NAME" \
 
 if [ "$DRY_RUN" = "1" ]; then
   SERVICE_URL="$PUBLIC_ORIGIN"
+  ALL_ORIGINS="$PUBLIC_ORIGIN"
 else
   SERVICE_URL="$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --project "$PROJECT_ID" --format='value(status.url)')"
+  # Every address of the service (the annotation is a JSON list such as ["https://a","https://b"]); the characters
+  # [ ] " and spaces are removed to leave a comma-separated list. The main address is always included.
+  ALL_ORIGINS="$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --project "$PROJECT_ID" --format='value(metadata.annotations."run.googleapis.com/urls")' | tr -d '[]" ' || true)"
+  case ",${ALL_ORIGINS}," in
+    *",${SERVICE_URL},"*) ;;
+    *) ALL_ORIGINS="${ALL_ORIGINS:+${ALL_ORIGINS},}${SERVICE_URL}" ;;
+  esac
 fi
 
-# The address Cloud Run reports is the one people open. If it is not the one computed above, correct the setting.
-if [ "$SERVICE_URL" != "$PUBLIC_ORIGIN" ]; then
-  printf '%s\n' "Note: the service address differs from the computed one; setting CLIENT_ORIGINS to the address Cloud Run reports."
+# People may open any of the service's addresses, so the sign-in origin check must allow all of them. If the list is
+# not just the address computed above, correct the setting. ^|^ makes | the separator between settings, because gcloud
+# would otherwise split the comma-separated list of origins into several settings.
+if [ "$ALL_ORIGINS" != "$PUBLIC_ORIGIN" ]; then
+  printf '%s\n' "Note: setting CLIENT_ORIGINS to every address Cloud Run reports for the service."
   run_cmd gcloud run services update "$SERVICE_NAME" \
     --region "$REGION" \
-    --update-env-vars "CLIENT_ORIGINS=${SERVICE_URL}" \
+    --update-env-vars "^|^CLIENT_ORIGINS=${ALL_ORIGINS}" \
     --project "$PROJECT_ID"
 fi
 
