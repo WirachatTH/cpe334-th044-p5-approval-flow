@@ -70,7 +70,7 @@ How to read it:
 | NFR-08 Persistence | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-05: a request created before a restart and a redeploy is still there afterwards, with before and after evidence on the deployed service | Planned |
 | NFR-09 Configuration and secrets | F-05 (SYS-02) | 1 | AC-F05-03, AC-F05-04, AC-F05-05, AC-F05-06, AC-F05-18, AC-F05-20, AC-F05-21, AC-F05-22, AC-F05-27 | Verified |
 | NFR-10 Reproducible build | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-03: a fresh clone builds, migrates, seeds, and answers 200 on `/api/ready` | Planned |
-| NFR-11 Basic usability | F-01, F-03, F-04 (SYS-06) | 1 | AC-F01-15, AC-F03-16, AC-F03-18, AC-F04-17 | Verified (automated, and a scripted keyboard-only walkthrough); a human keyboard pass is still recommended (section 2) |
+| NFR-11 Basic usability | F-01, F-03, F-04 (SYS-06) | 1 | AC-F01-15, AC-F03-16, AC-F03-18, AC-F04-17 | Verified (automated, including the keyboard-only journey TEST-REL-04); a pass by a person is still to do (section 2) |
 | NFR-12 Accessibility (WCAG 2.1 AA) | F-10, SYS-06 | 3 | Playwright with axe on every main screen; TEST IDs in the F-10 contract | Planned |
 | NFR-13 Responsiveness | F-10, SYS-06 | 3 | Playwright screenshots and layout checks at 390 × 844, 820 × 1180, and 1440 × 900; TEST IDs in the F-10 contract | Planned |
 | NFR-14 Performance | F-10 | 3 | A scripted timing run of 50 requests per operation on the deployed service; TEST IDs in the F-10 contract | Planned |
@@ -84,7 +84,7 @@ Every requirement has a feature or responsibility and a sprint, so no requiremen
 | Requirement | Gap | Plan |
 |---|---|---|
 | NFR-08, NFR-10, NFR-15, NFR-16 | No automated Sprint 1 test: they can only be checked on a fresh clone or on the deployed service. | Lab 5 checks C-03, C-05, C-06, and the console screenshots, before the Sprint 1 release is accepted. Status stays Planned until then. |
-| NFR-11 | The automated part (messages beside fields, `aria-describedby`, status as text) is verified. The keyboard pass over the five main screens (RD-7) was run as a keyboard-only walkthrough scripted with Playwright (keyboard events only, no mouse; the log is in the release PR). It is not a pass by a person. | One of the members repeats it by hand on the release candidate and records it in the release PR. |
+| NFR-11 | The automated part (messages beside fields, `aria-describedby`, status as text) is verified. The keyboard-only journey TEST-REL-04 (Playwright, keyboard events only, no mouse) passes on the five main screens. It is not a pass by a person (RD-7). | One of the members does the pass by hand on the release candidate and records it in the release PR. |
 | FR-13 to FR-18, BR-16 to BR-18, NFR-12 to NFR-14 | No AC or TEST yet. | Allocated to F-06 to F-10 in section 1. The contract of each feature is written before its tests and code, at the start of its sprint. |
 | Q-05, Q-06, Q-07, Q-08 (SRS section 9) | Open questions that change F-06, F-07, F-09, and F-10. | Q-05 is decided in the F-06 contract and Q-06 in the F-07 contract (Sprint 2), Q-07 in the F-09 contract and Q-08 in F-10 (Sprint 3). BR-17 carries provisional values until Q-06 is closed. |
 
@@ -102,14 +102,14 @@ The table is produced from the test runs, not typed by hand: the AC and TEST IDs
 
 | Item | Value |
 |---|---|
-| Code commit tested | `72902c8` (commits after it change only documents) |
+| Code commit tested | `7f8cf54` (commits after it change only documents) |
 | Server: unit, API with a real database, process | `cd server && npm test`: 14 files, **131 passed, 0 failed, 0 skipped** |
 | Client: component | `cd client && npm test`: 8 files, **36 passed, 0 failed, 0 skipped** |
-| End-to-end: Playwright on Chromium | `cd client && npm run e2e`: **7 passed, 0 failed, 0 skipped, 0 flaky** (4 are AC tests, 3 are the release journeys below) |
-| Automated vs manual | 107 of the 108 ACs are checked by automated tests (all pass). 1 AC is manual: AC-F05-13 (TEST-F05-13, the static check of environment variables), it was run on this commit and found every variable the code reads (`DATABASE_URL`, `DEMO_USER_PASSWORD`, `NODE_ENV`, `PORT`, `CLIENT_ORIGINS`, `API_PROXY_TARGET`, `CI`, and the Docker Compose `POSTGRES_*` ones) in an `.env.example` file and in `docs/labs/lab-05/deployment.md`; `API_PROXY_TARGET` and `CI` are commented lines in `client/.env.example`. The keyboard pass (RD-7) is separate: a scripted keyboard-only walkthrough passed on the release candidate, and a pass by a person is still recommended. |
+| End-to-end: Playwright on Chromium | `cd client && npm run e2e`: **8 passed, 0 failed, 0 skipped, 0 flaky** (4 are AC tests, 4 are the release journeys below) |
+| Automated vs manual | 107 of the 108 ACs are checked by automated tests (all pass). 1 AC is manual: AC-F05-13 (TEST-F05-13, the static check of environment variables), it was run on this commit and found every variable the code reads (`DATABASE_URL`, `DEMO_USER_PASSWORD`, `NODE_ENV`, `PORT`, `CLIENT_ORIGINS`, `API_PROXY_TARGET`, `CI`, and the Docker Compose `POSTGRES_*` ones) in an `.env.example` file and in `docs/labs/lab-05/deployment.md`; `API_PROXY_TARGET` and `CI` are commented lines in `client/.env.example`. The keyboard pass by a person (RD-7) is separate and still to do; the keyboard-only journey TEST-REL-04 passed. |
 | Not yet verified | NFR-08, NFR-10, NFR-15, NFR-16 (Lab 5), and the later-sprint requirements (section 2). |
 
-"Cases" is the number of test cases (`it` and `it.each` rows) that carry the TEST ID. The "Actual test name" column shows the first of them. TEST-F01-08 names its file in the contract and its cases are labelled (a), (b), (c) instead of carrying the ID.
+"Cases" is the number of test cases (`it` and `it.each` rows) that carry the TEST ID. The "Actual test name" column shows the first of them.
 
 | AC | Planned TEST | Level | Actual test file | Actual test name | Cases | Result |
 |---|---|---|---|---|---|---|
@@ -120,7 +120,7 @@ The table is produced from the test runs, not typed by hand: the AC and TEST IDs
 | AC-F01-05 | TEST-F01-05 | API-DB | `server/tests/sprint-1/auth.api.test.ts` | TEST-F01-05 / AC-F01-05: invalid bodies are 400, and are not counted by the throttle | 1 | pass |
 | AC-F01-06 | TEST-F01-06 | API-DB | `server/tests/sprint-1/auth.api.test.ts` | TEST-F01-06 / AC-F01-06: an inactive account gets 403 for the right password and 401 for a wrong one | 1 | pass |
 | AC-F01-07 | TEST-F01-07 | API-DB | `server/tests/sprint-1/auth.api.test.ts` | TEST-F01-07 / AC-F01-07: after five wrong passwords the sixth attempt is 429, and other accounts are unaffe... | 1 | pass |
-| AC-F01-08 | TEST-F01-08 | unit | `server/tests/sprint-1/login-throttle.test.ts` | LoginThrottle (a) the oldest failure leaves the window at exactly 15 minutes | 3 | pass |
+| AC-F01-08 | TEST-F01-08 | unit | `server/tests/sprint-1/login-throttle.test.ts` | TEST-F01-08 / AC-F01-08 (a): the oldest failure leaves the window at exactly 15 minutes | 3 | pass |
 | AC-F01-09 | TEST-F01-09 | API-DB | `server/tests/sprint-1/auth.api.test.ts` | TEST-F01-09 / AC-F01-09: /me returns the signed-in user, and 401 without a valid session | 1 | pass |
 | AC-F01-10 | TEST-F01-10 | API-DB | `server/tests/sprint-1/auth.api.test.ts` | TEST-F01-10 / AC-F01-10: an expired session answers 401 and its row is deleted | 1 | pass |
 | AC-F01-11 | TEST-F01-11 | API-DB | `server/tests/sprint-1/auth.api.test.ts` | TEST-F01-11 / AC-F01-11: a session of a user who became inactive answers 401 | 1 | pass |
@@ -224,10 +224,11 @@ The table is produced from the test runs, not typed by hand: the AC and TEST IDs
 
 ### Release verification journeys (not AC tests)
 
-These three end-to-end journeys (Issue #12, defined in `docs/sprints/sprint-1/README.md`) check the integrated increment. They pass when first written, so they are not red evidence.
+These four end-to-end journeys (Issue #12, defined in `docs/sprints/sprint-1/README.md`) check the integrated increment. They pass when first written, so they are not red evidence.
 
 | TEST | Journey | File | Result |
 |---|---|---|---|
 | TEST-REL-01 | happy path, from submission to the approved request seen by its requester | `client/e2e/sprint-1/journeys.spec.ts` | pass |
 | TEST-REL-02 | business rules block a bad request and an undecided rejection, and change nothing | `client/e2e/sprint-1/journeys.spec.ts` | pass |
 | TEST-REL-03 | a requester cannot reach or use reviewer operations, and an unrelated reviewer sees nothing | `client/e2e/sprint-1/journeys.spec.ts` | pass |
+| TEST-REL-04 | every action on the five main screens can be done with the keyboard alone | `client/e2e/sprint-1/keyboard.spec.ts` | pass |
