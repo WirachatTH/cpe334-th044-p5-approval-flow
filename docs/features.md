@@ -11,13 +11,16 @@
 |---|---|---|---|---|
 | 0.1 | 2026-11-14 | | Skeleton created | Repository structure |
 | 0.2 | 2026-11-15 | Menelaus122 | Ten features (F-01 to F-10) with description, requirements, dependencies, sprint, and contract link; seven cross-cutting responsibilities (SYS-01 to SYS-07). Sprint 1 requirement lists match the five contracts. | Issue #5 |
+| 0.3 | 2026-11-15 | Menelaus122 | The contracts of F-08, F-09, and F-10 are written during Sprint 2, as `plan.md` section 3 says, not at the start of Sprint 3 (the introduction of section 1 and the Contract column of the three features). The sprint of each feature does not change. | Review of PR #48, and the description of PR #50 |
 
 ---
 
 ## 1. Features
 
-Each Sprint 1 feature has an engineering contract in [`sprints/sprint-1/`](sprints/sprint-1/README.md). Contracts for
-Sprint 2 and Sprint 3 features are written at the start of that sprint, before any test or code.
+Each Sprint 1 feature has an engineering contract in [`sprints/sprint-1/`](sprints/sprint-1/README.md). The contracts of
+F-06 and F-07 are written at the start of Sprint 2. The contracts of the Sprint 3 features (F-08, F-09, F-10) are written
+during Sprint 2, because Deliverable 2 asks for them ([`sprints/plan.md`](sprints/plan.md) section 3). Every contract is
+written before any test or code of its feature.
 
 | ID | Feature | Description | Related requirements | Depends on | Planned sprint | Contract |
 |---|---|---|---|---|---|---|
@@ -28,9 +31,9 @@ Sprint 2 and Sprint 3 features are written at the start of that sprint, before a
 | F-05 | Seed data and cloud-ready configuration | The same schema from migrations and the same four demo accounts from an idempotent seed in every environment; all settings from environment variables with no secret in the repository; `/api/health` and `/api/ready`. | FR-11, FR-12; NFR-03, NFR-06, NFR-08, NFR-09, NFR-10 | None (foundation) | 1 | [F-05](sprints/sprint-1/F-05-seed-and-config.md) |
 | F-06 | Return and resubmission | The assigned reviewer returns a `SUBMITTED` request with a comment (`RETURNED`); the requester edits and resubmits it under the same number and reviewer; the history shows each return and resubmission. This is the only way to change a request after submission. Decides Q-05 (a reviewer who can no longer decide). | FR-13, FR-14; BR-15, BR-16 | F-03, F-04 | 2 | Written at the start of Sprint 2 |
 | F-07 | Multi-stage approval | A request above the threshold (provisionally 100,000.00 THB) needs a second approval from a different reviewer. It becomes `APPROVED` only after both approvals, and either reviewer can reject it. Confirms the threshold and the interim status (Q-06). | FR-15; BR-17 | F-04, F-06 | 2 | Written at the start of Sprint 2 |
-| F-08 | Filtering, search, and decided requests | Filter and search My Requests, the Review Inbox, and the decided requests by status, date range, amount range, and number or title text; a reviewer's list of requests they decided; paging for the lists (A-04). | FR-16, FR-17; BR-18 | F-03, F-04 | 3 | Written at the start of Sprint 3 |
-| F-09 | Decision summaries and reports | Counts and totals by status for a chosen period, and for a reviewer the number approved and rejected, limited to the requests the viewer may see. Decides Q-07 (export). | FR-18; BR-18 | F-04, F-07, F-08 | 3 | Written at the start of Sprint 3 |
-| F-10 | Product hardening | Full accessibility (axe on every main screen), responsive layouts at three sizes, a timed performance run, a decision on a throttle shared between instances (Q-08, D-10), error pages, and a regression run over all earlier features. | NFR-12, NFR-13, NFR-14 | F-01 to F-09 | 3 | Written at the start of Sprint 3 |
+| F-08 | Filtering, search, and decided requests | Filter and search My Requests, the Review Inbox, and the decided requests by status, date range, amount range, and number or title text; a reviewer's list of requests they decided; paging for the lists (A-04). | FR-16, FR-17; BR-18 | F-03, F-04 | 3 | Written in Sprint 2 (plan.md section 3) |
+| F-09 | Decision summaries and reports | Counts and totals by status for a chosen period, and for a reviewer the number approved and rejected, limited to the requests the viewer may see. Decides Q-07 (export). | FR-18; BR-18 | F-04, F-07, F-08 | 3 | Written in Sprint 2 (plan.md section 3) |
+| F-10 | Product hardening | Full accessibility (axe on every main screen), responsive layouts at three sizes, a timed performance run, a decision on a throttle shared between instances (Q-08, D-10), error pages, and a regression run over all earlier features. | NFR-12, NFR-13, NFR-14 | F-01 to F-09 | 3 | Written in Sprint 2 (plan.md section 3) |
 
 ## 2. Cross-cutting system responsibilities
 
