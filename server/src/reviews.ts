@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { Prisma, type PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 import type { AuthLocals } from "./authorization.js";
 import { sendError } from "./errors.js";
 import { detailInclude, toDetail } from "./requests.js";
@@ -104,22 +104,20 @@ export function registerReviewRoutes(app: Express, { prisma }: { prisma: PrismaC
 
       // Step 7 (BR-13, BR-14). The UPDATE matches only while the request is still SUBMITTED and assigned to the
       // caller, so of two simultaneous decisions only one changes a row. The other changes none, and nothing is
-      // written for it. The database clock sets the time, in the same statement that changes the status.
+      // written for it. One timestamp, from the application clock like every other time in the system, is used for
+      // the decision and for its history entry, so the two always show the same time.
       const { decision, reason } = parsed.value;
       const status = decision === "APPROVE" ? "APPROVED" : "REJECTED";
+      const now = new Date();
       const decided = await prisma.$transaction(async (tx) => {
-        const changed = await tx.$executeRaw(Prisma.sql`
-          UPDATE request
-             SET status = CAST(${status} AS "RequestStatus"),
-                 decided_by_id = ${user.id},
-                 decided_at = now(),
-                 decision_reason = ${reason},
-                 updated_at = now()
-           WHERE id = ${id} AND status = 'SUBMITTED' AND assigned_reviewer_id = ${user.id}`);
-        if (changed === 0) return null;
+        const changed = await tx.approvalRequest.updateMany({
+          where: { id, status: "SUBMITTED", assignedReviewerId: user.id },
+          data: { status, decidedById: user.id, decidedAt: now, decisionReason: reason, updatedAt: now },
+        });
+        if (changed.count === 0) return null;
 
         await tx.requestEvent.create({
-          data: { requestId: id, actorId: user.id, type: status, fromStatus: "SUBMITTED", toStatus: status, reason },
+          data: { requestId: id, actorId: user.id, type: status, fromStatus: "SUBMITTED", toStatus: status, reason, createdAt: now },
         });
         return tx.approvalRequest.findUniqueOrThrow({ where: { id }, include: detailInclude });
       });

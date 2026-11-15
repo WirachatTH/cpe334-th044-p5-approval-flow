@@ -169,6 +169,9 @@ describe("submitting a request", () => {
         ["an unknown id", 999999, ACTIVE],
         ["a missing reviewer", undefined, "Choose a reviewer."],
         ["an id sent as a string", String(ids.mint), "Choose a reviewer."],
+        // Above the largest value of the INT4 column: refused here, not by a database error.
+        ["an id one above the column maximum", 2_147_483_648, "Choose a reviewer."],
+        ["an id far above it", 1e20, "Choose a reviewer."],
       ];
       for (const [label, assignedReviewerId, message] of cases) {
         const res = await agent.post("/api/requests").send(body({ assignedReviewerId }));

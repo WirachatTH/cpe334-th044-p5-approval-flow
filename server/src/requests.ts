@@ -48,7 +48,7 @@ function parseSubmission(body: unknown): { ok: true; value: Submission } | { ok:
   }
 
   const reviewer = input.assignedReviewerId;
-  if (typeof reviewer !== "number" || !Number.isInteger(reviewer) || reviewer < 1) {
+  if (typeof reviewer !== "number" || !Number.isInteger(reviewer) || reviewer < 1 || reviewer > MAX_INT4) {
     fields.assignedReviewerId = "Choose a reviewer.";
   }
 
