@@ -24,6 +24,7 @@
 | 0.4 | 2026-11-15 | Menelaus122 | Wording only: the tables, constraints, and trigger come from F-03's two migrations (`add_requests` and `add_request_rules`). No change to any AC or test. | F-03 v0.4 | #10 |
 | 0.5 | 2026-11-15 | Menelaus122 | AC-F04-14 and TEST-F04-14: cases (g) and (h) now start from a valid `request_event` row that is inserted first as a control, so the `UPDATE` and `DELETE` are refused by the trigger and not by a missing row. The database errors are asserted by SQLSTATE code and constraint name (`P0001` for the trigger). A note says these tests cannot be red in #11, because every rule they check was added by F-03's `add_request_rules` migration; they guard against a regression. | Review of PR #26; found while planning the red tests for #11 | #11 |
 | 0.6 | 2026-11-15 | Menelaus122 | Status: Implemented; section 6 filled in. STS notes only, no change to any AC or behaviour: TEST-F04-09 also checks that the assigned reviewer can still decide the request after the two 404s, so it is red before the route exists (any request answered 404 then); TEST-F04-10 and the two "no panel" cases of TEST-F04-16 pass when first written and guard the green step, like TEST-F04-14. | Found while writing the red tests and the implementation for #11. The tests were changed first (`8cb661a`, `587d3e4`); this row brings the contract in line with them. | #11 |
+| 0.7 | 2026-11-15 | Menelaus122 | `decided_at` and the new history entry's `created_at` are one value (`$now`, taken once by the application), and AC-F04-03 / TEST-F04-03 assert that they are equal. Before this, `decided_at` came from the database's `now()` and the entry's time from Prisma's default, which is the application clock, so the two differed by up to a second. | Review of PR #30: my note that they were "the same value" was wrong. I read the database before changing anything: in all 7 decided rows they differed (up to 0.85 s). | #11 |
 
 ---
 
@@ -62,12 +63,13 @@ F-04 adds no table. It uses the decision columns and the trigger that F-03's mig
 7. **Write** (BR-13, BR-14), in one transaction:
    1. Conditional update:
       ```sql
-      UPDATE request SET status = $new, decided_by_id = $me, decided_at = now(),
-                         decision_reason = $reason, updated_at = now()
+      UPDATE request SET status = $new, decided_by_id = $me, decided_at = $now,
+                         decision_reason = $reason, updated_at = $now
       WHERE id = $id AND status = 'SUBMITTED' AND assigned_reviewer_id = $me
       ```
+      `$now` is one timestamp that the application takes once for the whole decision. It is the same clock that sets every other time in the application (the request's `created_at` and each history entry), and step 3 reuses the same value.
    2. If **0 rows** changed, another decision won the race: roll back and answer `409 INVALID_TRANSITION`.
-   3. Otherwise insert one `request_event` (`type` = `APPROVED` or `REJECTED`, `from_status = SUBMITTED`, `to_status` = the new status, `actor_id` = caller, `reason`), commit, and answer `200 { "request": RequestDetail }`.
+   3. Otherwise insert one `request_event` (`type` = `APPROVED` or `REJECTED`, `from_status = SUBMITTED`, `to_status` = the new status, `actor_id` = caller, `reason`, and `created_at` = `$now`), commit, and answer `200 { "request": RequestDetail }`.
 
 Step 6 gives the usual answer for an already decided request. Step 7's condition is what makes simultaneous
 decisions safe, because the database lets only one `UPDATE` match `status = 'SUBMITTED'`.
@@ -178,7 +180,7 @@ The examples use the seeded accounts: requesters Ploy and Nattapong, reviewers M
 |---|---|---|---|---|---|
 | AC-F04-01 | Mint is assigned two `SUBMITTED` requests (submitted at t1 < t2), one `APPROVED` request, and Korn is assigned one `SUBMITTED` request | Mint calls `GET /api/reviews/inbox` | Exactly Mint's two `SUBMITTED` requests, t1 first; each item has the `InboxItem` keys only | normal | FR-07, BR-08 |
 | AC-F04-02 | Korn has nothing assigned | Korn calls the inbox | `200 { "requests": [] }` | boundary | FR-07 |
-| AC-F04-03 | Ploy's `SUBMITTED` request assigned to Mint | Mint approves with no reason | `200`; `status` `APPROVED`; `decidedBy` Mint; `decidedAt` set; `decisionReason` `null`. The database has exactly one new event (`APPROVED`, from `SUBMITTED` to `APPROVED`, actor Mint, reason `NULL`), so 2 events in total. | normal | FR-08, BR-13 |
+| AC-F04-03 | Ploy's `SUBMITTED` request assigned to Mint | Mint approves with no reason | `200`; `status` `APPROVED`; `decidedBy` Mint; `decidedAt` set; `decisionReason` `null`. The database has exactly one new event (`APPROVED`, from `SUBMITTED` to `APPROVED`, actor Mint, reason `NULL`), so 2 events in total, and the request's `decided_at` equals the new event's `created_at`. | normal | FR-08, BR-13 |
 | AC-F04-04 | As above | Mint approves with the reason `"  Within budget  "` | `decisionReason` and the event's `reason` are `"Within budget"` | normal | FR-08, BR-12 |
 | AC-F04-05 | As above | Mint rejects with the reason `"Please get a second quotation."` | `200`; `status` `REJECTED`; the reason is stored on the request and on the new `REJECTED` event | normal | FR-09, BR-12, BR-13 |
 | AC-F04-06 | Fresh `SUBMITTED` requests assigned to Mint | Mint rejects with the reason missing, `null`, `""`, `"   "`, and a 1001-character reason; then rejects one with exactly 1000 characters; then approves one with 1001 characters | The five invalid rejections and the 1001-character approval answer `400` on `fields.reason`, and each request stays `SUBMITTED` with 1 event. The 1000-character rejection answers `200`. | boundary | BR-12 |
@@ -206,7 +208,7 @@ The examples use the seeded accounts: requesters Ploy and Nattapong, reviewers M
 |---|---|---|---|---|---|---|
 | TEST-F04-01 | AC-F04-01 | API-DB | Requests created through the F-03 API and one approved; created in time order | Mint `GET /api/reviews/inbox` | Exact ids in order; item keys exactly `id,requestNumber,title,amount,requester,createdAt` | `server/tests/sprint-1/reviews.api.test.ts` |
 | TEST-F04-02 | AC-F04-02 | API-DB | No request assigned to Korn | Korn calls the inbox | `200`, `requests` is `[]` | `server/tests/sprint-1/reviews.api.test.ts` |
-| TEST-F04-03 | AC-F04-03 | API-DB | Ploy's request for Mint | Mint `POST .../decision` `{ "decision": "APPROVE" }` | Response fields as stated; `request_event` count for the request = 2; the new row matches | `server/tests/sprint-1/reviews.api.test.ts` |
+| TEST-F04-03 | AC-F04-03 | API-DB | Ploy's request for Mint | Mint `POST .../decision` `{ "decision": "APPROVE" }` | Response fields as stated; `request_event` count for the request = 2; the new row matches; the request's `decided_at` equals the new row's `created_at` | `server/tests/sprint-1/reviews.api.test.ts` |
 | TEST-F04-04 | AC-F04-04 | API-DB | As above | Approve with `"  Within budget  "` | Stored reasons equal `"Within budget"` | `server/tests/sprint-1/reviews.api.test.ts` |
 | TEST-F04-05 | AC-F04-05 | API-DB | As above | Reject with the reason | `REJECTED`; the request and the event hold the reason | `server/tests/sprint-1/reviews.api.test.ts` |
 | TEST-F04-06 | AC-F04-06 | API-DB | Seven fresh requests for Mint | Table-driven over the seven cases | `400` on `fields.reason` for the six invalid ones, with status and event count unchanged; `200` for exactly 1000 characters | `server/tests/sprint-1/reviews.api.test.ts` |
@@ -251,4 +253,4 @@ The [Product Definition of Done](README.md#product-definition-of-done) applies, 
 | Green commit(s) | `546027b`: the same tests, all passing (`server/src/reviews.ts`, the inbox screen, the decision panel). |
 | PR (author → reviewer) | Menelaus122 → WirachatTH; branch `feat/11-review-decision` (the PR number is in Issue #11) |
 | Test run (command, commit, pass / fail / skip) | At `546027b`: `cd server && npm test`: 13 files, **124 passed, 0 failed, 0 skipped** (142 s; 29 are F-04: 19 API-DB cases including the race, and 10 database-rule cases). `cd client && npm test`: 8 files, **36 passed**. `cd client && npm run e2e` against an API built from this commit on port 3100: **4 passed** (Chromium). Type-check and build: exit 0 on both sides. TEST-F04-12: in each of the 20 rounds exactly one answer was `200` and one `409`, with one decision event. After the server run there were 0 leftover throwaway schemas. Node 24.14.0, PostgreSQL 16. |
-| Known limitations | Return and resubmission (FR-13, FR-14) and the second approval (FR-15) are Sprint 2 (F-06, F-07). A decision cannot be undone. `TRUNCATE` bypasses the append-only trigger (§1.5). The inbox is not paginated in Sprint 1 (SRS A-04). The decision time comes from the database clock, in the same statement as the status change. |
+| Known limitations | Return and resubmission (FR-13, FR-14) and the second approval (FR-15) are Sprint 2 (F-06, F-07). A decision cannot be undone. `TRUNCATE` bypasses the append-only trigger (§1.5). The inbox is not paginated in Sprint 1 (SRS A-04). The decision time comes from the application clock, like every other time in the system, so it is not corrected if that clock is wrong. |

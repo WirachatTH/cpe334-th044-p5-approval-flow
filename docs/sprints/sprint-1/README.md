@@ -22,7 +22,7 @@ See `AGENTS.md` section 3 for the full rules.
 | F-01 | [F-01-authentication.md](F-01-authentication.md) | #7 (contract), #9 (implementation) | Menelaus122 | WirachatTH | v0.3 |
 | F-02 | [F-02-access-control.md](F-02-access-control.md) | #7 (contract), #9 (implementation) | Menelaus122 | WirachatTH | v0.3 |
 | F-03 | [F-03-submit-request.md](F-03-submit-request.md) | #7 (contract), #10 (implementation) | Menelaus122 | WirachatTH | v0.3 |
-| F-04 | [F-04-review-decision.md](F-04-review-decision.md) | #7 (contract), #11 (implementation) | Menelaus122 | WirachatTH | v0.6 |
+| F-04 | [F-04-review-decision.md](F-04-review-decision.md) | #7 (contract), #11 (implementation) | Menelaus122 | WirachatTH | v0.7 |
 | F-05 | [F-05-seed-and-config.md](F-05-seed-and-config.md) | #7 (contract), #8 (implementation) | Menelaus122 | WirachatTH | v0.4 |
 
 Each contract's own header holds its status (Draft → Agreed → Implemented → Verified) and its version history.
