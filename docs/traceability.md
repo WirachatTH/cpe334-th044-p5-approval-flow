@@ -68,7 +68,7 @@ How to read it:
 | NFR-06 Safe errors | F-01, F-02, F-05 (SYS-01) | 1 | AC-F01-04, AC-F02-05, AC-F02-10, AC-F02-13, AC-F02-15, AC-F05-10 | Verified |
 | NFR-07 Database integrity | F-03, F-04 (SYS-04) | 1 | AC-F03-09, AC-F04-14 | Verified |
 | NFR-08 Persistence | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-05: a request created before a restart and a redeploy is still there afterwards, with before and after evidence on the deployed service | Planned |
-| NFR-09 Configuration and secrets | F-05 (SYS-02) | 1 | AC-F05-03, AC-F05-04, AC-F05-05, AC-F05-06, AC-F05-18, AC-F05-20, AC-F05-21 | Verified; one documentation gap (section 2) |
+| NFR-09 Configuration and secrets | F-05 (SYS-02) | 1 | AC-F05-03, AC-F05-04, AC-F05-05, AC-F05-06, AC-F05-18, AC-F05-20, AC-F05-21 | Verified |
 | NFR-10 Reproducible build | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-03: a fresh clone builds, migrates, seeds, and answers 200 on `/api/ready` | Planned |
 | NFR-11 Basic usability | F-01, F-03, F-04 (SYS-06) | 1 | AC-F01-15, AC-F03-16, AC-F03-18, AC-F04-17 | Verified (automated); manual keyboard pass pending (section 2) |
 | NFR-12 Accessibility (WCAG 2.1 AA) | F-10, SYS-06 | 3 | Playwright with axe on every main screen; TEST IDs in the F-10 contract | Planned |
@@ -85,7 +85,6 @@ Every requirement has a feature or responsibility and a sprint, so no requiremen
 |---|---|---|
 | NFR-08, NFR-10, NFR-15, NFR-16 | No automated Sprint 1 test: they can only be checked on a fresh clone or on the deployed service. | Lab 5 checks C-03, C-05, C-06, and the console screenshots, before the Sprint 1 release is accepted. Status stays Planned until then. |
 | NFR-11 | The automated part (messages beside fields, `aria-describedby`, status as text) is verified. The manual keyboard pass over the five main screens (RD-7) has not been done yet. | Both members do the pass on the release candidate and record it in the release PR. |
-| NFR-09 | The static check (TEST-F05-13) found one variable that is not in `.env.example`: `CI`, which GitHub Actions sets and the Playwright config reads. Every other variable is in both files. | Add a commented `CI` line to `client/.env.example` or document that it is not a setting, in the release verification (#12), and repeat the check on the release commit. |
 | FR-13 to FR-18, BR-16 to BR-18, NFR-12 to NFR-14 | No AC or TEST yet. | Allocated to F-06 to F-10 in section 1. The contract of each feature is written before its tests and code, at the start of its sprint. |
 | Q-05, Q-06, Q-07, Q-08 (SRS section 9) | Open questions that change F-06, F-07, F-09, and F-10. | Q-05 is decided in the F-06 contract and Q-06 in the F-07 contract (Sprint 2), Q-07 in the F-09 contract and Q-08 in F-10 (Sprint 3). BR-17 carries provisional values until Q-06 is closed. |
 
@@ -107,7 +106,7 @@ The table is produced from the test runs, not typed by hand: the AC and TEST IDs
 | Server: unit, API with a real database, process | `cd server && npm test`: 13 files, **124 passed, 0 failed, 0 skipped** |
 | Client: component | `cd client && npm test`: 8 files, **36 passed, 0 failed, 0 skipped** |
 | End-to-end: Playwright on Chromium | `cd client && npm run e2e`: **4 passed, 0 failed, 0 skipped, 0 flaky** |
-| Automated vs manual | 100 of the 101 ACs are checked by automated tests (all pass). One AC is manual: AC-F05-13 (TEST-F05-13, the static check of environment variables), see the NFR-09 row in section 2. The manual keyboard pass (RD-7) is separate and still to do. |
+| Automated vs manual | 100 of the 101 ACs are checked by automated tests (all pass). One AC is manual: AC-F05-13 (TEST-F05-13, the static check of environment variables), it was run on this commit and found every variable the code reads (`DATABASE_URL`, `DEMO_USER_PASSWORD`, `NODE_ENV`, `PORT`, `CLIENT_ORIGINS`, `API_PROXY_TARGET`, `CI`, and the Docker Compose `POSTGRES_*` ones) in an `.env.example` file and in `docs/labs/lab-05/deployment.md`; `API_PROXY_TARGET` and `CI` are commented lines in `client/.env.example`. The manual keyboard pass (RD-7) is separate and still to do. |
 | Not yet verified | NFR-08, NFR-10, NFR-15, NFR-16 (Lab 5), and the later-sprint requirements (section 2). |
 
 "Cases" is the number of test cases (`it` and `it.each` rows) that carry the TEST ID. The "Actual test name" column shows the first of them. TEST-F01-08 names its file in the contract and its cases are labelled (a), (b), (c) instead of carrying the ID.
