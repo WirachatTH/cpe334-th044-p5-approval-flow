@@ -10,8 +10,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
       POSTGRES_DB: ${POSTGRES_DB:-approval_flow}
     ports:
-      # 5433 on the host, because a local PostgreSQL install often already uses 5432.
-      - "${POSTGRES_PORT:-5433}:5432"
+      # 5433 on the host, because a local PostgreSQL install often already uses 5432. Bound to 127.0.0.1, so the
+      # database is not reachable from other computers on the network.
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

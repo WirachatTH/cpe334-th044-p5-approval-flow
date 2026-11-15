@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-01 |
 | Sprint | 1 |
-| Status | Agreed (Draft → Agreed → Implemented → Verified) |
+| Status | Implemented (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-01, FR-02, FR-03; BR-02; NFR-01, NFR-03, NFR-04, NFR-05, NFR-06 |
 | GitHub Issue | #7 (contract), #9 (implementation) |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -20,7 +20,8 @@
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-14 | Menelaus122 | Skeleton created | Repository structure | #13 |
 | 0.2 | 2026-11-14 | Menelaus122 | First complete draft | Issue #7 (F-01 part) | #23 |
-| 0.3 | 2026-11-14 | Menelaus122 | Sessions are looked up only for `roles` and `optional` routes (F-02 v0.3). AC-F01-05 now sends six invalid bodies for one email. AC-F01-08 pins the exact 15:00 boundary. AC-F01-20 (burst) and AC-F01-21 (independent sessions) added. `roles` instead of `any`. AC-F01-06 relinked. Non-string fields covered in §1.4. Status: Agreed. | Review of PR #23 | this PR |
+| 0.3 | 2026-11-14 | Menelaus122 | Sessions are looked up only for `roles` and `optional` routes (F-02 v0.3). AC-F01-05 now sends six invalid bodies for one email. AC-F01-08 pins the exact 15:00 boundary. AC-F01-20 (burst) and AC-F01-21 (independent sessions) added. `roles` instead of `any`. AC-F01-06 relinked. Non-string fields covered in §1.4. Status: Agreed. | Review of PR #23 | #26 |
+| 0.4 | 2026-11-15 | Menelaus122 | §1.5 says an attempt is refused until the oldest failure is *at least* 15 minutes old, so exactly 15:00.000 is allowed, as AC-F01-08 already specifies. | Review of PR #26 | this PR |
 
 ---
 
@@ -88,7 +89,7 @@ The email format is not otherwise checked: an address that is not on file simply
 
 ### 1.5 Failure and boundary cases
 
-- **The 5th failure, then a correct password:** the 6th attempt answers `429`, even with the right password, until the oldest failure is more than 15 minutes old.
+- **The 5th failure, then a correct password:** the 6th attempt answers `429`, even with the right password, until the oldest failure is at least 15 minutes old (an attempt at exactly 15:00.000 after it is allowed, AC-F01-08).
 - **A success inside the window** clears the count for that email. Failures for other emails are unaffected.
 - **Burst of simultaneous wrong attempts:** attempts are reserved before the password check, so no more than 5 pass the limit.
 - **Session expires while the app is open:** the next protected call answers `401`, and the client goes to Login with the "session has ended" message.
@@ -220,9 +221,9 @@ The [Product Definition of Done](README.md#product-definition-of-done) applies, 
 
 | Item | Value |
 |---|---|
-| Contract commit(s) | |
-| Red commit(s) and failing test | |
-| Green commit(s) | |
-| PR (author → reviewer) | |
-| Test run (command, commit, pass / fail / skip) | |
-| Known limitations | The throttle is per process (SRS D-10). Signing out ends one session, not all of a user's sessions. |
+| Contract commit(s) | `e776e04` v0.2 (PR #23), `e610b80` v0.3 (PR #26), `0e4875e` v0.4 (this branch, before any test) |
+| Red commit(s) and failing test | `89f2ff9` (with the stubs `2c112c4`): TEST-F01-01 to 21 against the stubs. **All 21 failed on assertions** (server: the routes answer 404 instead of 200, 401, 400, or 429; client: Testing Library cannot find the Login form; e2e: `expect(locator).toBeVisible() failed`). Before committing the red tests I strengthened TEST-F01-04, which first passed against the stubs by comparing two identical 404s. |
+| Green commit(s) | `efd8fdf`: the same tests, **21 passed** |
+| PR (author → reviewer) | Menelaus122 → WirachatTH; branch `feat/9-auth-rbac` into `staging` (the PR number is in Issue #9) |
+| Test run (command, commit, pass / fail / skip) | At `efd8fdf`: `cd server && npm test`: 9 files, **73 passed, 0 failed, 0 skipped** (83 s; 42 of them are the F-01 and F-02 tests, 31 are F-05). `cd client && npm test`: 3 files, **10 passed**. `cd client && npm run e2e`, against an API on port 3100 built from this commit: **2 passed** (Chromium). Type-check and build: exit 0 on both sides. Node 24.14.0, PostgreSQL 16. |
+| Known limitations | The throttle is per process (SRS D-10). Signing out ends one session, not all of a user's sessions. The Playwright journeys need the API running on a seeded database, and its `CLIENT_ORIGINS` must include `http://localhost:5174` (the origin of Playwright's dev server). |

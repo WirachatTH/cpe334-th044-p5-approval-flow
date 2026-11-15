@@ -33,6 +33,7 @@ describe("the built server process", () => {
       const response = await waitForHttp("http://127.0.0.1:4123/api/health", 10_000);
       expect(response, "nothing answered on port 4123").not.toBeNull();
       expect(response!.status).toBe(200);
+      expect(await response!.json()).toEqual({ status: "ok" });
     } finally {
       server.stop();
     }
