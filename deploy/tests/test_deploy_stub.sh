@@ -7,6 +7,7 @@
 #     first_run : nothing exists      -> everything is created
 #     rerun     : everything exists   -> nothing replaced (credentials kept)
 #     partial   : DB secret missing   -> DB user password reset + secret created
+#     interrupted: secrets exist, no version -> versions added, secrets not created again
 #     job-fail  : migration fails     -> script exits 1, service NOT deployed
 #   It also checks: `--edition=enterprise` and `--no-storage-auto-increase`, min 0 and max 3
 #   instances, the service starts with its exact public origin in CLIENT_ORIGINS (and the
@@ -63,12 +64,20 @@ if [ "${1:-} ${2:-}" = 'projects describe' ]; then
   exit 0
 fi
 if [ "${1:-} ${2:-} ${3:-}" = 'run services describe' ]; then
-  echo https://approval-flow-stub.example.invalid
+  case "$*" in
+    *run.googleapis.com/urls*) echo '["https://approval-flow-123456789012.asia-southeast1.run.app","https://approval-flow-stub.example.invalid"]' ;;
+    *) echo https://approval-flow-stub.example.invalid ;;
+  esac
   exit 0
 fi
 if [ "${1:-} ${2:-} ${3:-}" = 'run jobs execute' ]; then
   [ "$STUB_MODE" != job-fail ]
   exit $?
+fi
+if [ "${1:-} ${2:-} ${3:-}" = 'secrets versions list' ]; then
+  # Only a rerun has versions; an interrupted run created the secrets and stopped before adding one.
+  if [ "$STUB_MODE" = rerun ]; then echo 1; fi
+  exit 0
 fi
 if [ "${1:-} ${2:-} ${3:-}" = 'secrets versions add' ]; then
   cat > "$TEST_STATE_DIR/payload-${4}"
@@ -101,7 +110,7 @@ export REGION=asia-southeast1
 export DRY_RUN=0
 
 # --- Run every scenario and assert on what deploy.sh did ------------------------
-for MODE in first_run rerun partial job-fail; do
+for MODE in first_run rerun partial interrupted job-fail; do
   export STUB_MODE="$MODE"
   export GCLOUD_LOG="$TEST_STATE_DIR/gcloud-$MODE.log"
   rm -f "$TEST_STATE_DIR/sql-pass" "$TEST_STATE_DIR"/payload-*
@@ -122,7 +131,9 @@ for MODE in first_run rerun partial job-fail; do
   fi
   if [ "$MODE" != job-fail ]; then
     grep -q '^run deploy approval-flow .*CLIENT_ORIGINS=https://approval-flow-123456789012.asia-southeast1.run.app' "$GCLOUD_LOG"
-    grep -q '^run services update approval-flow .*CLIENT_ORIGINS=https://approval-flow-stub.example.invalid' "$GCLOUD_LOG"
+    # Both addresses Cloud Run reports are allowed, joined with a comma, so the delimiter ^|^ is needed (gcloud splits on commas).
+    grep -qF -- '^|^CLIENT_ORIGINS=https://approval-flow-123456789012.asia-southeast1.run.app,https://approval-flow-stub.example.invalid' "$GCLOUD_LOG" \
+      || { echo "FAIL $MODE: CLIENT_ORIGINS must list both addresses Cloud Run reports, with the ^|^ delimiter"; exit 1; }
     grep -q -- '--min-instances 0' "$GCLOUD_LOG"
     grep -q -- '--max-instances 3' "$GCLOUD_LOG"
   fi
@@ -138,6 +149,16 @@ for MODE in first_run rerun partial job-fail; do
       grep -q -- '--no-storage-auto-increase' "$GCLOUD_LOG"
       grep -q '^sql users create ' "$GCLOUD_LOG" ;;
     partial) grep -q '^sql users set-password ' "$GCLOUD_LOG" ;;
+    interrupted)
+      # The secrets exist but have no version: the run is repeated without creating them again.
+      grep -q '^sql users set-password ' "$GCLOUD_LOG"
+      grep -q '^secrets versions add approval-flow-database-url ' "$GCLOUD_LOG" \
+        || { echo 'FAIL interrupted: no version was added to approval-flow-database-url'; exit 1; }
+      grep -q '^secrets versions add approval-flow-demo-password ' "$GCLOUD_LOG" \
+        || { echo 'FAIL interrupted: no version was added to approval-flow-demo-password'; exit 1; }
+      if grep -q '^secrets create ' "$GCLOUD_LOG"; then
+        echo 'FAIL: an existing secret without a version was created again'; exit 1
+      fi ;;
     rerun)
       if grep -Eq '^(secrets create|sql users (create|set-password)) ' "$GCLOUD_LOG"; then
         echo 'FAIL: rerun replaced existing credentials'; exit 1
