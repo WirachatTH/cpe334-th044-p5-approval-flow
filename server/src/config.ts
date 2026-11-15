@@ -16,6 +16,9 @@ export interface AppConfig {
   port: number;
   databaseUrl: string;
   clientOrigins: string[];
+  // The directory of the built UI, or null when the API does not serve it (F-05 contract section 1.4). Optional in
+  // the type so that code that builds a configuration by hand, such as a test, need not set it.
+  clientDistDir?: string | null;
 }
 
 const NODE_ENVS: readonly string[] = ["development", "test", "production"];
