@@ -20,9 +20,12 @@ export function serveClientUi(app: Express, directory: string): void {
 
   app.use((req, res, next) => (isApiPath(req.path) ? next() : files(req, res, next)));
 
-  // Any other GET or HEAD outside /api is a page of the single-page app (a deep link), so it gets index.html.
+  // Any other GET or HEAD outside /api is a page of the single-page app (a deep link), so it gets index.html. A path
+  // that ends in a file extension and names no file is a missing file, not a page: it goes on to the JSON 404, so a
+  // stale page that asks for a removed script or style sheet gets an error and not HTML (AC-F05-28).
   app.use((req, res, next) => {
     if (isApiPath(req.path) || (req.method !== "GET" && req.method !== "HEAD")) return next();
+    if (path.extname(req.path) !== "") return next();
     res.set("Cache-Control", "no-cache");
     res.sendFile(indexFile, (error) => {
       if (error && !res.headersSent) next(error);
