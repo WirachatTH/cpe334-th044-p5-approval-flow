@@ -98,7 +98,7 @@ Self-registration, password recovery, account administration, real payments, att
 
 ## 4. Sprint 1 verification results
 
-The table is produced from the test runs, not typed by hand: the AC and TEST IDs come from the five contracts, and the result of each TEST is read from the report of the run below. A TEST's name starts with its ID, so it can be found with `git grep TEST-F04-09`.
+The table is produced from the test runs, not typed by hand: the AC and TEST IDs come from the five contracts, and the result of each TEST is read from the report of the run below. The title of a TEST, or of the group that holds its cases (the three cases (a), (b), (c) of TEST-F05-18), starts with its ID, so it can be found with `git grep TEST-F04-09`.
 
 | Item | Value |
 |---|---|
