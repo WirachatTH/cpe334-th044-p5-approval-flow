@@ -3,9 +3,9 @@
 > Required by Lab 5 section 4.3. Covers the stack and changes from the reference, every environment variable,
 > the build/test/run/migrate/seed commands, GCP resource names, and the release procedure.
 > Status: sections 1 to 3 are written (#8, #33). Sections 4 to 7 are written for the deploy pipeline (#35). The service
-> has been deployed once, from the Sprint 1 release; section 6.3 records that run and what was checked on the live URL. The
-> project, region, and URL below come from it. The budget is still to be written by the owner of Issue #1. The checks C-04
-> to C-06 are not finished: section 6.3 lists what is missing.
+> has been deployed twice, from the Sprint 1 release and from the Lab 5 release (PR #59); section 6.3 records both runs and
+> what the checks C-04, C-05, and C-06 showed on the live URL (the screenshots are in the Lab 5 report). The project, region,
+> and URL below come from them. The budget is still to be written by the owner of Issue #1.
 > **Never write a real secret value in this file**: names and sources only.
 
 ## Version history
@@ -18,6 +18,7 @@
 | 0.4 | 2026-11-15 | Menelaus122 | GCP resource names, the first-time setup runbook, the CI/CD table, the release, rollback, and cost sections | Issue #35 |
 | 0.5 | 2026-11-16 | Menelaus122 | The project ID, the public URL, and the status line, from the first successful deploy run. New section 6.3 records that run, what was checked on the live URL, and what C-04 to C-06 still need. | Issue #35 |
 | 0.6 | 2026-11-16 | Menelaus122 | Section 1 no longer says "planned" for what the run deployed; the introduction of section 4 no longer says the project values wait for the project; section 6.3 says why the first run failed; section 6.1 says the `gcloud` commands have not been run yet. | Review of PR #58 |
+| 0.7 | 2026-11-16 | WirachatTH | Section 6.3 records the second deployment (release PR #59, tag `v1.1.0-lab5`) and what C-04, C-05, and C-06 showed; the status line and the "not done yet" list are replaced by it. Section 6.1 gives the commands that were run against the deployed service. | Issue #35; review of PR #59, comment 2 |
 
 ---
 
@@ -146,7 +147,7 @@ member** (AGENTS.md section 7). Run it from the repository root, in Cloud Shell 
 ### 6.1 How to find the commit that is running
 
 - The run summary of the deploy workflow (Actions → Deploy demo → the run) lists **Commit image tag** (the full SHA), the **Digest**, and the URL.
-- From GCP: `gcloud run services describe approval-flow --region asia-southeast1 --format='value(spec.template.spec.containers[0].image)'` prints the image by digest (`...@sha256:...`). The tag of that digest is the commit: `gcloud artifacts docker images list asia-southeast1-docker.pkg.dev/<PROJECT_ID>/approval-flow/approval-flow --include-tags --filter='version=sha256:<digest>' --format='value(tags)'`. _These commands are written from the guide. They have not been run against the deployed service yet._
+- From GCP: `gcloud run services describe approval-flow --region asia-southeast1 --format='value(spec.template.spec.containers[0].image)'` prints the image by digest (`...@sha256:...`). To check that this is the commit you expect, print the digest of the image tagged with that commit and compare: `gcloud artifacts docker images describe asia-southeast1-docker.pkg.dev/<PROJECT_ID>/approval-flow/approval-flow:<full commit SHA> --format='value(image_summary.digest)'`. The account that last changed the service is `gcloud run services describe approval-flow --region asia-southeast1 --format='value(metadata.annotations["serving.knative.dev/lastModifier"])'`. _Both lookups were run in Cloud Shell on 2026-11-16 against revision `approval-flow-00004-rq6`: the digests were the same, and the account was `approval-flow-deployer`._
 - In the Console, Cloud Run → `approval-flow` → Revisions shows the serving revision and its container image.
 - On the page itself: the footer of every screen, including the public Login screen, reads `Build <first 7 characters of the commit>` (F-05 v0.10). A release built before v0.10 has no footer.
 
@@ -172,7 +173,7 @@ A rollback changes only the application image, never the database. It is safe on
 | Revision | `approval-flow-00003-l98`, serving 100 percent of the traffic |
 | Smoke test | `/api/health`, `/api/ready`, and `/` passed. The optional sign-in check was skipped (`SMOKE_EMAIL` and `SMOKE_PASSWORD` are not configured) |
 
-**Checked on the live URL on 2026-11-16**, with read-only requests and no sign-in:
+**Checked on the live URL after the first run, on 2026-11-16**, with read-only requests and no sign-in:
 
 | Request | Result |
 |---|---|
@@ -182,11 +183,26 @@ A rollback changes only the application image, never the database. It is safe on
 | `GET /api/auth/me` and `GET /api/requests/mine`, with no session | 401, `UNAUTHENTICATED`, no record data |
 | The built client file the page loads | It has no `Build` footer text. This is expected: the running commit `67d5cfd` is older than F-05 v0.10 (section 6.1) |
 
-**Not done yet:**
+**The second run: the release PR #59.** Merging PR #59 (`staging` into `main`) started Deploy demo by itself, with no manual step.
 
-- **C-04** (the domain workflow on the live URL): the service is public and ready, but nobody has done the submit, approve or reject, and history journey on it yet.
-- **C-05** (a record survives a restart and a redeploy): the record has to be created before the next deploy and read after it.
-- **C-06** (a reviewed change goes `staging` → `main` → pipeline → Cloud Run, and the running revision shows the release commit): needs a release PR that includes F-05 v0.10, so that the footer on the live page shows `Build <first 7 characters>` of the release commit. The run above deployed the Sprint 1 release, not a change that went through that path.
+| Item | Value |
+|---|---|
+| Run | "Deploy demo", [run 43899764286](https://github.com/WirachatTH/cpe334-th044-p5-approval-flow/actions/runs/43899764286), started 2026-11-16 15:45 UTC by the push of the merge commit of PR #59 |
+| Commit | `21b7135816cd4ba592247b9f0b053e2b51d5ae01`, the merge of PR #59, tagged `v1.1.0-lab5` (annotated) |
+| Jobs | `test / test-and-docker` passed (1 min 32 s); `deploy` passed (1 min 51 s) |
+| Image | `asia-southeast1-docker.pkg.dev/cpe334-th044-p5/approval-flow/approval-flow@sha256:24f5a6a6b59ad2ab37340e947aef253d6d500ae76e857c2a8414b76859c3a044` |
+| Migration | job `approval-flow-migrate`, execution `approval-flow-migrate-zlb8p`, completed before the service was updated |
+| Revision | `approval-flow-00004-rq6`, serving 100 percent of the traffic (the one before it was `approval-flow-00003-l98`) |
+| Deployed by | `approval-flow-deployer` (the service's last modifier, read in Cloud Shell) |
+| Smoke test | `/api/health`, `/api/ready`, and `/` passed; the optional sign-in check was skipped, as before |
+
+**What the checks showed**
+
+- **C-04** (the domain workflow on the live URL): on the public URL, signed in as seeded accounts, Ploy submitted `REQ-000003` ("Lab5 live check A") to Mint, Mint approved it with a reason, and Ploy saw it as Approved with the decision and the history. This was done by hand; the approve path only, not the reject path.
+- **C-05** (a record survives a redeploy): `REQ-000004` ("Lab5 persistence B") was created and left Submitted on revision `approval-flow-00003-l98`. After the deploy of `approval-flow-00004-rq6`, Ploy's list held the same four requests with the same statuses, and Mint then approved `REQ-000004` on the new revision. The data is in Cloud SQL, not in the container.
+- **C-06** (a reviewed change goes `staging` to `main` to Cloud Run, and the running revision shows the release commit): the public Login page and every signed-in screen show `Build 21b7135`, the first 7 characters of the release commit. In Cloud Shell, the image digest of revision `approval-flow-00004-rq6` is the digest of the image tagged `21b7135816cd4ba592247b9f0b053e2b51d5ae01`.
+
+**Not covered:** the reject path on the live URL; a sign-in in the pipeline's smoke test (`SMOKE_EMAIL` and `SMOKE_PASSWORD` are not configured); a rollback and a roll-forward on the live service (section 6.2 is not yet run); the Cloud SQL, Secret Manager, and Workload Identity names against the Console; and the budget (Issue #1).
 
 ## 7. Cost control
 
