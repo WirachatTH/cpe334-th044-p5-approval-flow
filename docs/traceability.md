@@ -4,7 +4,8 @@
 > Every baseline FR, BR, and important NFR from [`srs.md`](srs.md) appears in section 1. The features are in
 > [`features.md`](features.md). Later-sprint requirements have a feature and a sprint now; their AC and TEST IDs are added
 > when their contract is written.
-> Status: Sprint 1 requirements verified at the commit named in section 4; later sprints planned.
+> Status: Sprint 1 requirements verified at the commit named in section 4; later sprints planned. Section 5 lists the
+> acceptance criteria added after the Sprint 1 release, for Lab 5.
 
 ## Version history
 
@@ -13,6 +14,7 @@
 | 0.1 | 2026-11-14 | | Skeleton created | Repository structure |
 | 0.2 | 2026-11-15 | Menelaus122 | Section 1 covers all 18 FR, 18 BR, and 16 NFR. Sprint 1 rows link the AC IDs of the five contracts. Sections 2 and 3 filled. Section 4 added: AC → planned TEST → actual test → result for the 108 Sprint 1 ACs, from a real run. | Issue #5; Definition of Done RD-3 |
 | 0.3 | 2026-11-15 | Menelaus122 | The rows for FR-16, FR-17, FR-18, and BR-18 and the coverage-gap row say that the contracts of F-08, F-09, and F-10 are written in Sprint 2 (`plan.md` section 3), not at the start of Sprint 3. No sprint allocation and no result changes. | Review of PR #48, and the description of PR #50 |
+| 0.4 | 2026-11-16 | Menelaus122 | New section 5: AC-F05-29 and AC-F05-30 (the build footer, Lab 5 R-08) with their TESTs and results. Sections 1 to 4, and the Sprint 1 figures in them, are unchanged. | PRs #56 and #57 added the two ACs after the release |
 
 ---
 
@@ -233,3 +235,20 @@ These four end-to-end journeys (Issue #12, defined in `docs/sprints/sprint-1/REA
 | TEST-REL-02 | business rules block a bad request and an undecided rejection, and change nothing | `client/e2e/sprint-1/journeys.spec.ts` | pass |
 | TEST-REL-03 | a requester cannot reach or use reviewer operations, and an unrelated reviewer sees nothing | `client/e2e/sprint-1/journeys.spec.ts` | pass |
 | TEST-REL-04 | every action on the five main screens can be done with the keyboard alone | `client/e2e/sprint-1/keyboard.spec.ts` | pass |
+
+## 5. Lab 5 additions
+
+These acceptance criteria were added after the Sprint 1 release (`v1.0.0-sprint1`, tested at `7f8cf54`), for Lab 5 requirement R-08: the commit that is running can be read on the page. Sections 1 to 4 are not changed, so the Sprint 1 figures in them (108 ACs, 107 automated) stay as they were when the release was verified. With the two ACs below, F-05 has 30 ACs and the contracts hold 110 in all. The contract is [`F-05-seed-and-config.md`](sprints/sprint-1/F-05-seed-and-config.md) (version 0.11); neither AC changes a requirement in section 1.
+
+| Item | Value |
+|---|---|
+| Code commit tested | `aa1b589` (the merge of PR #57 into `staging`) |
+| Client: component | `cd client && npm test`: 9 files, **44 passed, 0 failed, 0 skipped** (8 files and 36 tests at `7f8cf54`; the new file is `BuildFooter.test.tsx`, with 8 tests) |
+| Not run for this section | The server suite and the end-to-end tests: neither AC touches `server/`. The footer on the deployed page is not checked yet: the running commit is older (`docs/labs/lab-05/deployment.md` section 6.3, check C-06) |
+
+| AC | TEST | Level | File | Test title (first case) | Tests | Result |
+|---|---|---|---|---|---|---|
+| AC-F05-29 | TEST-F05-29 | component | `client/tests/sprint-1/BuildFooter.test.tsx` | TEST-F05-29 / AC-F05-29: a 40-character commit shows as its first 7 characters, on the Login screen and when signed in | 1 | pass |
+| AC-F05-30 | TEST-F05-30 | component | `client/tests/sprint-1/BuildFooter.test.tsx` | TEST-F05-30 / AC-F05-30: a value that is unset shows Build dev | 7 | pass |
+
+Cases (f) 41 characters and (g) uppercase hexadecimal of AC-F05-30 pass when they were first written (a control, as TEST-F05-26 did; the mutation check in the contract shows they fail when a limit is loosened). The lower limit of 7 characters is checked from below only (a 6-character value is refused): no test uses a valid 7-character value yet.
