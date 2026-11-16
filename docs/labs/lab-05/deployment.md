@@ -17,6 +17,7 @@
 | 0.3 | 2026-11-15 | Menelaus122 | The image, `CLIENT_DIST_DIR`, the compose profile, and the C-03 procedure | Issue #33 |
 | 0.4 | 2026-11-15 | Menelaus122 | GCP resource names, the first-time setup runbook, the CI/CD table, the release, rollback, and cost sections | Issue #35 |
 | 0.5 | 2026-11-16 | Menelaus122 | The project ID, the public URL, and the status line, from the first successful deploy run. New section 6.3 records that run, what was checked on the live URL, and what C-04 to C-06 still need. | Issue #35 |
+| 0.6 | 2026-11-16 | Menelaus122 | Section 1 no longer says "planned" for what the run deployed; the introduction of section 4 no longer says the project values wait for the project; section 6.3 says why the first run failed; section 6.1 says the `gcloud` commands have not been run yet. | Review of PR #58 |
 
 ---
 
@@ -26,11 +27,11 @@
 |---|---|---|---|
 | Runtime | Node 24 (kit: `node:24-alpine`) | Node 24 | none |
 | Container | One image: UI + API | One image: the root `Dockerfile` (three stages). The API serves the built UI itself (`CLIENT_DIST_DIR`), so the kit's nginx is not used. | The kit's `client/Dockerfile`, `server/Dockerfile`, and `nginx.conf` are for a two-container local setup; one container is what Cloud Run runs |
-| Hosting | Cloud Run | Cloud Run (planned) | none planned |
-| Database | Cloud SQL for PostgreSQL | Cloud SQL for PostgreSQL 16 (planned); locally PostgreSQL 16 in Docker | none |
-| Images | Artifact Registry | Artifact Registry (planned) | none planned |
-| Runtime secrets | Secret Manager | Secret Manager (planned) | none planned |
-| CI/CD | GitHub Actions + Workload Identity Federation | Same (planned) | none planned |
+| Hosting | Cloud Run | Cloud Run: the service `approval-flow` is deployed and serving (section 6.3) | none |
+| Database | Cloud SQL for PostgreSQL | Cloud SQL for PostgreSQL 16, created by `deploy/deploy.sh`; the live `/api/ready` answers `"db":"connected"` (section 6.3). The version and settings are not yet checked in the Console. Locally: PostgreSQL 16 in Docker | none |
+| Images | Artifact Registry | Artifact Registry: the deploy run pushed the image there and deployed it by digest (section 6.3) | none |
+| Runtime secrets | Secret Manager | Secret Manager, created by `deploy/deploy.sh` (the names are in section 4); not yet checked in the Console | none |
+| CI/CD | GitHub Actions + Workload Identity Federation | Same: the deploy run logged in to Google Cloud without a key (section 6.3) | none |
 | Application | Express + Prisma + React | Express 4 + Prisma 5 + React 18 + Vite | the domain is the approval workflow, not the ticketing app |
 
 ## 2. Environment variables
@@ -82,7 +83,8 @@ files (the Lab 5 `.dockerignore` excludes them), so in the cloud only the real e
 ## 4. GCP project and resources
 
 > Resource **names** only. Never record secret values here. The names below are the ones `deploy/deploy.sh` creates;
-> the project values are written by the team member who owns the GCP project (Issue #1) once it exists.
+> the project ID and the URL were written from the first deploy run (section 6.3), and the budget row is still to be written by
+> the team member who owns the GCP project (Issue #1).
 
 | Item | Name / value |
 |---|---|
@@ -144,7 +146,7 @@ member** (AGENTS.md section 7). Run it from the repository root, in Cloud Shell 
 ### 6.1 How to find the commit that is running
 
 - The run summary of the deploy workflow (Actions → Deploy demo → the run) lists **Commit image tag** (the full SHA), the **Digest**, and the URL.
-- From GCP: `gcloud run services describe approval-flow --region asia-southeast1 --format='value(spec.template.spec.containers[0].image)'` prints the image by digest (`...@sha256:...`). The tag of that digest is the commit: `gcloud artifacts docker images list asia-southeast1-docker.pkg.dev/<PROJECT_ID>/approval-flow/approval-flow --include-tags --filter='version=sha256:<digest>' --format='value(tags)'`. _These commands are written from the guide and are checked against the first real deployment._
+- From GCP: `gcloud run services describe approval-flow --region asia-southeast1 --format='value(spec.template.spec.containers[0].image)'` prints the image by digest (`...@sha256:...`). The tag of that digest is the commit: `gcloud artifacts docker images list asia-southeast1-docker.pkg.dev/<PROJECT_ID>/approval-flow/approval-flow --include-tags --filter='version=sha256:<digest>' --format='value(tags)'`. _These commands are written from the guide. They have not been run against the deployed service yet._
 - In the Console, Cloud Run → `approval-flow` → Revisions shows the serving revision and its container image.
 - On the page itself: the footer of every screen, including the public Login screen, reads `Build <first 7 characters of the commit>` (F-05 v0.10). A release built before v0.10 has no footer.
 
@@ -158,7 +160,7 @@ A rollback changes only the application image, never the database. It is safe on
 
 ### 6.3 Deployment record
 
-**The first successful run.** The push run of 15 Nov (run 43693826837, the merge of the release PR #46) failed at the step "Authenticate to Google Cloud"; the validation step before it did not stop it, which PR #47 fixed. The next run succeeded.
+**The first successful run.** The push run of 15 Nov (run 43693826837, the merge of the release PR #46) failed at the step "Authenticate to Google Cloud"; the `demo` environment variables were not set yet (`PROJECT_ID` and `REGION` were empty in the log, and the login action received no `workload_identity_provider`). The validation step before it did not stop the run, which PR #47 fixed. The next run succeeded.
 
 | Item | Value |
 |---|---|
