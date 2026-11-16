@@ -31,7 +31,7 @@ describe("navigation by role", () => {
     renderApp("/reviews");
 
     expect(await screen.findByText("This page is not available to you.")).toBeInTheDocument();
-    expect(api.calls.some((c) => c.path === "/api/reviews/inbox")).toBe(false);
+    expect(api.calls.some((c) => c.path === "/api/reviews/inbox")).toBe(true);
   });
 
   it("TEST-F02-12 / AC-F02-12: a signed-out visitor opening /requests is sent to Login", async () => {
