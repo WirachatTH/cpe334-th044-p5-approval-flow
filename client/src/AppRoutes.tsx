@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { BuildFooter } from "./components/BuildFooter.js";
 import { Checking } from "./components/Checking.js";
 import { RequireAuth } from "./components/RequireAuth.js";
 import { RequireRole } from "./components/RequireRole.js";
@@ -20,18 +21,21 @@ function Home() {
 
 export function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/" element={<Home />} />
-      <Route element={<RequireAuth />}>
-        <Route path="/requests" element={<MyRequests />} />
-        <Route path="/requests/new" element={<NewRequest />} />
-        <Route path="/requests/:id" element={<RequestDetail />} />
-        <Route element={<RequireRole role="REVIEWER" />}>
-          <Route path="/reviews" element={<ReviewInbox />} />
+    <>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Home />} />
+        <Route element={<RequireAuth />}>
+          <Route path="/requests" element={<MyRequests />} />
+          <Route path="/requests/new" element={<NewRequest />} />
+          <Route path="/requests/:id" element={<RequestDetail />} />
+          <Route element={<RequireRole role="REVIEWER" />}>
+            <Route path="/reviews" element={<ReviewInbox />} />
+          </Route>
+          <Route path="*" element={<NotAvailable />} />
         </Route>
-        <Route path="*" element={<NotAvailable />} />
-      </Route>
-    </Routes>
+      </Routes>
+      <BuildFooter />
+    </>
   );
 }

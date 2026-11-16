@@ -4,7 +4,8 @@
 > Every baseline FR, BR, and important NFR from [`srs.md`](srs.md) appears in section 1. The features are in
 > [`features.md`](features.md). Later-sprint requirements have a feature and a sprint now; their AC and TEST IDs are added
 > when their contract is written.
-> Status: Sprint 1 requirements verified at the commit named in section 4; later sprints planned.
+> Status: Sprint 1 requirements verified at the commit named in section 4; later sprints planned. Section 5 lists the
+> acceptance criteria added after the Sprint 1 release, for Lab 5.
 
 ## Version history
 
@@ -12,6 +13,8 @@
 |---|---|---|---|---|
 | 0.1 | 2026-11-14 | | Skeleton created | Repository structure |
 | 0.2 | 2026-11-15 | Menelaus122 | Section 1 covers all 18 FR, 18 BR, and 16 NFR. Sprint 1 rows link the AC IDs of the five contracts. Sections 2 and 3 filled. Section 4 added: AC → planned TEST → actual test → result for the 108 Sprint 1 ACs, from a real run. | Issue #5; Definition of Done RD-3 |
+| 0.3 | 2026-11-15 | Menelaus122 | The rows for FR-16, FR-17, FR-18, and BR-18 and the coverage-gap row say that the contracts of F-08, F-09, and F-10 are written in Sprint 2 (`plan.md` section 3), not at the start of Sprint 3. No sprint allocation and no result changes. | Review of PR #48, and the description of PR #50 |
+| 0.4 | 2026-11-16 | Menelaus122 | New section 5: AC-F05-29 and AC-F05-30 (the build footer, Lab 5 R-08) with their TESTs and results. Sections 1 to 4, and the Sprint 1 figures in them, are unchanged. | PRs #56 and #57 added the two ACs after the release |
 
 ---
 
@@ -39,9 +42,9 @@ How to read it:
 | FR-13 Return for changes | F-06 | 2 | AC and TEST IDs are defined in the F-06 contract at the start of Sprint 2 | Planned |
 | FR-14 Edit and resubmit | F-06 | 2 | AC and TEST IDs are defined in the F-06 contract at the start of Sprint 2 | Planned |
 | FR-15 Second approval | F-07 | 2 | AC and TEST IDs are defined in the F-07 contract at the start of Sprint 2 | Planned |
-| FR-16 Filter and search | F-08 | 3 | AC and TEST IDs are defined in the F-08 contract at the start of Sprint 3 | Planned |
-| FR-17 Decided requests | F-08 | 3 | AC and TEST IDs are defined in the F-08 contract at the start of Sprint 3 | Planned |
-| FR-18 Summaries | F-09 | 3 | AC and TEST IDs are defined in the F-09 contract at the start of Sprint 3 | Planned |
+| FR-16 Filter and search | F-08 | 3 | AC and TEST IDs are defined in the F-08 contract, written in Sprint 2 (plan.md section 3) | Planned |
+| FR-17 Decided requests | F-08 | 3 | AC and TEST IDs are defined in the F-08 contract, written in Sprint 2 (plan.md section 3) | Planned |
+| FR-18 Summaries | F-09 | 3 | AC and TEST IDs are defined in the F-09 contract, written in Sprint 2 (plan.md section 3) | Planned |
 | BR-01 Session required | F-02 | 1 | AC-F02-01 | Verified |
 | BR-02 One role, from the session | F-02 | 1 | AC-F02-07 | Verified |
 | BR-03 Requester is the session user | F-03 | 1 | AC-F03-03 | Verified |
@@ -59,7 +62,7 @@ How to read it:
 | BR-15 No edit after submission | F-03 | 1 | AC-F03-14 | Verified |
 | BR-16 Return rules | F-06 | 2 | AC and TEST IDs are defined in the F-06 contract at the start of Sprint 2 | Planned |
 | BR-17 Multi-stage threshold | F-07 | 2 | AC and TEST IDs are defined in the F-07 contract at the start of Sprint 2; the threshold and status name are provisional (Q-06) | Planned |
-| BR-18 Scope of lists and reports | F-08, F-09 (SYS-07) | 3 | AC and TEST IDs are defined in the F-08 contract at the start of Sprint 3; Sprint 1 applies it to the two lists that exist (TEST-F03-11, TEST-F04-01) | Planned |
+| BR-18 Scope of lists and reports | F-08, F-09 (SYS-07) | 3 | AC and TEST IDs are defined in the F-08 contract, written in Sprint 2 (plan.md section 3); Sprint 1 applies it to the two lists that exist (TEST-F03-11, TEST-F04-01) | Planned |
 | NFR-01 Authentication enforced | F-01, F-02, F-05 (SYS-03) | 1 | AC-F01-09, AC-F02-01, AC-F02-02, AC-F02-09, AC-F05-24 | Verified |
 | NFR-02 Authorization in the backend | F-02, F-03, F-04 (SYS-03) | 1 | AC-F02-03, AC-F02-04, AC-F02-05, AC-F02-06, AC-F02-07, AC-F02-08, AC-F02-09, AC-F02-12, AC-F02-14, AC-F03-13, AC-F04-09, AC-F04-10 | Verified |
 | NFR-03 Password hashing | F-01, F-05 | 1 | AC-F01-01, AC-F05-05, AC-F05-07 | Verified |
@@ -85,7 +88,7 @@ Every requirement has a feature or responsibility and a sprint, so no requiremen
 |---|---|---|
 | NFR-08, NFR-10, NFR-15, NFR-16 | No automated Sprint 1 test: they can only be checked on a fresh clone or on the deployed service. | Lab 5 checks C-03, C-05, C-06, and the console screenshots, before the Sprint 1 release is accepted. Status stays Planned until then. |
 | NFR-11 | The automated part (messages beside fields, `aria-describedby`, status as text) is verified. The keyboard-only journey TEST-REL-04 (Playwright, keyboard events only, no mouse) passes on the five main screens. It is not a pass by a person (RD-7). | One of the members does the pass by hand on the release candidate and records it in the release PR. |
-| FR-13 to FR-18, BR-16 to BR-18, NFR-12 to NFR-14 | No AC or TEST yet. | Allocated to F-06 to F-10 in section 1. The contract of each feature is written before its tests and code, at the start of its sprint. |
+| FR-13 to FR-18, BR-16 to BR-18, NFR-12 to NFR-14 | No AC or TEST yet. | Allocated to F-06 to F-10 in section 1. The contract of each feature is written before its tests and code: at the start of Sprint 2 for F-06 and F-07, and during Sprint 2 for F-08, F-09, and F-10 (plan.md section 3). |
 | Q-05, Q-06, Q-07, Q-08 (SRS section 9) | Open questions that change F-06, F-07, F-09, and F-10. | Q-05 is decided in the F-06 contract and Q-06 in the F-07 contract (Sprint 2), Q-07 in the F-09 contract and Q-08 in F-10 (Sprint 3). BR-17 carries provisional values until Q-06 is closed. |
 
 Self-registration, password recovery, account administration, real payments, attachments, notifications, comments, delegation, single sign-on, and multiple organisations are excluded on purpose (SRS section 3.2), so they have no feature.
@@ -232,3 +235,20 @@ These four end-to-end journeys (Issue #12, defined in `docs/sprints/sprint-1/REA
 | TEST-REL-02 | business rules block a bad request and an undecided rejection, and change nothing | `client/e2e/sprint-1/journeys.spec.ts` | pass |
 | TEST-REL-03 | a requester cannot reach or use reviewer operations, and an unrelated reviewer sees nothing | `client/e2e/sprint-1/journeys.spec.ts` | pass |
 | TEST-REL-04 | every action on the five main screens can be done with the keyboard alone | `client/e2e/sprint-1/keyboard.spec.ts` | pass |
+
+## 5. Lab 5 additions
+
+These acceptance criteria were added after the Sprint 1 release (`v1.0.0-sprint1`, tested at `7f8cf54`), for Lab 5 requirement R-08: the commit that is running can be read on the page. Sections 1 to 4 are not changed, so the Sprint 1 figures in them (108 ACs, 107 automated) stay as they were when the release was verified. With the two ACs below, F-05 has 30 ACs and the contracts hold 110 in all. The contract is [`F-05-seed-and-config.md`](sprints/sprint-1/F-05-seed-and-config.md) (version 0.11); neither AC changes a requirement in section 1.
+
+| Item | Value |
+|---|---|
+| Code commit tested | `aa1b589` (the merge of PR #57 into `staging`) |
+| Client: component | `cd client && npm test`: 9 files, **44 passed, 0 failed, 0 skipped** (8 files and 36 tests at `7f8cf54`; the new file is `BuildFooter.test.tsx`, with 8 tests) |
+| Not run for this section | The server suite and the end-to-end tests: neither AC touches `server/`. The footer on the deployed page is not checked yet: the running commit is older (`docs/labs/lab-05/deployment.md` section 6.3, check C-06) |
+
+| AC | TEST | Level | File | Test title (first case) | Tests | Result |
+|---|---|---|---|---|---|---|
+| AC-F05-29 | TEST-F05-29 | component | `client/tests/sprint-1/BuildFooter.test.tsx` | TEST-F05-29 / AC-F05-29: a 40-character commit shows as its first 7 characters, on the Login screen and when signed in | 1 | pass |
+| AC-F05-30 | TEST-F05-30 | component | `client/tests/sprint-1/BuildFooter.test.tsx` | TEST-F05-30 / AC-F05-30: a value that is unset shows Build dev | 7 | pass |
+
+Cases (f) 41 characters and (g) uppercase hexadecimal of AC-F05-30 pass when they were first written (a control, as TEST-F05-26 did; the mutation check in the contract shows they fail when a limit is loosened). The lower limit of 7 characters is checked from below only (a 6-character value is refused): no test uses a valid 7-character value yet.

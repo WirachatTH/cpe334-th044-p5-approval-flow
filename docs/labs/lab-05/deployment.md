@@ -2,9 +2,10 @@
 
 > Required by Lab 5 section 4.3. Covers the stack and changes from the reference, every environment variable,
 > the build/test/run/migrate/seed commands, GCP resource names, and the release procedure.
-> Status: sections 1 to 3 are written (#8, #33). Sections 4 to 7 are written for the deploy pipeline (#35): the
-> resource names are the ones `deploy/deploy.sh` creates, but nothing has been deployed yet, so the project, the URL, and
-> the budget are filled in when the GCP project exists (Issue #1).
+> Status: sections 1 to 3 are written (#8, #33). Sections 4 to 7 are written for the deploy pipeline (#35). The service
+> has been deployed once, from the Sprint 1 release; section 6.3 records that run and what was checked on the live URL. The
+> project, region, and URL below come from it. The budget is still to be written by the owner of Issue #1. The checks C-04
+> to C-06 are not finished: section 6.3 lists what is missing.
 > **Never write a real secret value in this file**: names and sources only.
 
 ## Version history
@@ -15,6 +16,8 @@
 | 0.2 | 2026-11-15 | Menelaus122 | Stack, every environment variable the code reads, and the local commands | Issue #8 (F-05, TEST-F05-13) |
 | 0.3 | 2026-11-15 | Menelaus122 | The image, `CLIENT_DIST_DIR`, the compose profile, and the C-03 procedure | Issue #33 |
 | 0.4 | 2026-11-15 | Menelaus122 | GCP resource names, the first-time setup runbook, the CI/CD table, the release, rollback, and cost sections | Issue #35 |
+| 0.5 | 2026-11-16 | Menelaus122 | The project ID, the public URL, and the status line, from the first successful deploy run. New section 6.3 records that run, what was checked on the live URL, and what C-04 to C-06 still need. | Issue #35 |
+| 0.6 | 2026-11-16 | Menelaus122 | Section 1 no longer says "planned" for what the run deployed; the introduction of section 4 no longer says the project values wait for the project; section 6.3 says why the first run failed; section 6.1 says the `gcloud` commands have not been run yet. | Review of PR #58 |
 
 ---
 
@@ -24,11 +27,11 @@
 |---|---|---|---|
 | Runtime | Node 24 (kit: `node:24-alpine`) | Node 24 | none |
 | Container | One image: UI + API | One image: the root `Dockerfile` (three stages). The API serves the built UI itself (`CLIENT_DIST_DIR`), so the kit's nginx is not used. | The kit's `client/Dockerfile`, `server/Dockerfile`, and `nginx.conf` are for a two-container local setup; one container is what Cloud Run runs |
-| Hosting | Cloud Run | Cloud Run (planned) | none planned |
-| Database | Cloud SQL for PostgreSQL | Cloud SQL for PostgreSQL 16 (planned); locally PostgreSQL 16 in Docker | none |
-| Images | Artifact Registry | Artifact Registry (planned) | none planned |
-| Runtime secrets | Secret Manager | Secret Manager (planned) | none planned |
-| CI/CD | GitHub Actions + Workload Identity Federation | Same (planned) | none planned |
+| Hosting | Cloud Run | Cloud Run: the service `approval-flow` is deployed and serving (section 6.3) | none |
+| Database | Cloud SQL for PostgreSQL | Cloud SQL for PostgreSQL 16, created by `deploy/deploy.sh`; the live `/api/ready` answers `"db":"connected"` (section 6.3). The version and settings are not yet checked in the Console. Locally: PostgreSQL 16 in Docker | none |
+| Images | Artifact Registry | Artifact Registry: the deploy run pushed the image there and deployed it by digest (section 6.3) | none |
+| Runtime secrets | Secret Manager | Secret Manager, created by `deploy/deploy.sh` (the names are in section 4); not yet checked in the Console | none |
+| CI/CD | GitHub Actions + Workload Identity Federation | Same: the deploy run logged in to Google Cloud without a key (section 6.3) | none |
 | Application | Express + Prisma + React | Express 4 + Prisma 5 + React 18 + Vite | the domain is the approval workflow, not the ticketing app |
 
 ## 2. Environment variables
@@ -46,6 +49,7 @@
 | `CLIENT_ORIGINS` | server | Comma-separated browser origins allowed to `POST` (F-02); required in production, default `http://localhost:5173` otherwise | No | `server/.env` or the default | Cloud Run environment variable; set **before** the first deploy (SDS §8) |
 | `CLIENT_DIST_DIR` | server | Directory of the built UI. When set, the API serves the UI and the deep links of the single-page app, and the server refuses to start if `index.html` is missing (F-05 v0.7). Unset in development | No | unset (the Vite dev server serves the UI) | Set to `/app/client/dist` in the image (`Dockerfile`) |
 | `API_PROXY_TARGET` | client dev server (Vite) | Where `/api` is proxied during local development (default `http://localhost:3000`) | No | `client/.env` (optional) | Not used: the API container serves the built client |
+| `VITE_GIT_SHA` | client build (Vite) | The commit the UI was built from, shown in the footer as `Build <first 7 characters>`. Read when the UI is built, not at run time. Unset, or not a hexadecimal commit, shows `Build dev` (F-05 v0.10) | No | unset (the footer says `Build dev`) | Build argument `GIT_SHA` of the `Dockerfile`; the deploy workflow passes the full commit SHA |
 | `CI` | client Playwright config | Set to a true value by GitHub Actions; Playwright then starts its own dev server | No | unset | Set by GitHub Actions |
 | `POSTGRES_USER` | Docker Compose (`db` service) | Database user of the local container (default `approval_flow`) | No | `.env` (git-ignored) | Not used: Cloud SQL |
 | `POSTGRES_PASSWORD` | Docker Compose (`db` service) | Password of the local database user; required | **Yes** | `.env` (git-ignored) | Not used: Cloud SQL |
@@ -79,11 +83,12 @@ files (the Lab 5 `.dockerignore` excludes them), so in the cloud only the real e
 ## 4. GCP project and resources
 
 > Resource **names** only. Never record secret values here. The names below are the ones `deploy/deploy.sh` creates;
-> the project values are written by the team member who owns the GCP project (Issue #1) once it exists.
+> the project ID and the URL were written from the first deploy run (section 6.3), and the budget row is still to be written by
+> the team member who owns the GCP project (Issue #1).
 
 | Item | Name / value |
 |---|---|
-| Project ID | _not created yet: written here when Issue #1 is done_ |
+| Project ID | `cpe334-th044-p5` |
 | Region | `asia-southeast1` |
 | Artifact Registry repository | `approval-flow` (Docker); one image per commit: `approval-flow/approval-flow:<full commit SHA>` |
 | Cloud Run service | `approval-flow` (public, port 3000, 512 Mi, 1 CPU, **min 0, max 3 instances**) |
@@ -94,8 +99,12 @@ files (the Lab 5 `.dockerignore` excludes them), so in the cloud only the real e
 | Deployer service account | `approval-flow-deployer` (created in the Console, no key): `roles/run.developer` on the project; `roles/artifactregistry.writer` on the repository only; `roles/iam.serviceAccountUser` on `approval-flow-runner` only; it never reads Secret Manager |
 | Workload Identity pool / provider | `github-actions` / `github-main`; `roles/iam.workloadIdentityUser` on the deployer account, granted to the principal set for this repository only |
 | GitHub environment | `demo`, deployable from `main` only, with the variables `GCP_PROJECT_ID`, `GCP_REGION`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT` |
-| Public URL | _not deployed yet_. Its form is `https://approval-flow-<project number>.asia-southeast1.run.app` |
+| Public URL | `https://approval-flow-rdaxzekvca-as.a.run.app`. Cloud Run also lists a second address for the same service, of the form `https://approval-flow-<project number>.asia-southeast1.run.app` |
 | Budget alert | _alerts-only budget, created before any other resource (Issue #1)_ |
+
+Confirmed by the log of the deploy run in section 6.3: the project, the region, the Artifact Registry repository, the
+Cloud Run service, the migration job, and the name of the deployer account. The Cloud SQL, Secret Manager, runtime-account,
+and Workload Identity names are the ones `deploy/deploy.sh` creates; they are not yet checked against the Console.
 
 ### 4.1 First-time setup runbook
 
@@ -123,7 +132,7 @@ member** (AGENTS.md section 7). Run it from the repository root, in Cloud Shell 
 | Workflow | Trigger | Jobs | Required check name |
 |---|---|---|---|
 | `.github/workflows/ci-docker.yml` ("CI & Docker Build") | Pull request into `staging` or `main`; manual; `workflow_call` from `deploy.yml` | `test-and-docker`: deployment-script checks (offline), server (type-check, build, migrate, seed, tests, against PostgreSQL 16), client (type-check, tests, build), production image build, and a start of the image that must answer `/api/ready`, `/`, a deep link, and the JSON `404` | `test-and-docker` |
-| `.github/workflows/deploy.yml` ("Deploy demo") | Push to `main`; manual run with `image_tag` for a rollback | `test` (reuses the CI workflow), then `deploy`: validate settings, keyless Google login (Workload Identity Federation), build and push the image tagged with the full commit SHA, `deploy/release.sh` (resolve the digest, run the migration job to completion, update the service to the digest), the smoke test (`deploy/smoke_test.py`), and a summary of the tag, digest, and URL | none (it is not a pull-request check) |
+| `.github/workflows/deploy.yml` ("Deploy demo") | Push to `main`; manual run with `image_tag` for a rollback | `test` (reuses the CI workflow), then `deploy`: validate settings, keyless Google login (Workload Identity Federation), build and push the image tagged with the full commit SHA (the same SHA is the build argument `GIT_SHA`, shown in the UI footer), `deploy/release.sh` (resolve the digest, run the migration job to completion, update the service to the digest), the smoke test (`deploy/smoke_test.py`), and a summary of the tag, digest, and URL | none (it is not a pull-request check) |
 
 ## 6. Release procedure
 
@@ -137,8 +146,9 @@ member** (AGENTS.md section 7). Run it from the repository root, in Cloud Shell 
 ### 6.1 How to find the commit that is running
 
 - The run summary of the deploy workflow (Actions → Deploy demo → the run) lists **Commit image tag** (the full SHA), the **Digest**, and the URL.
-- From GCP: `gcloud run services describe approval-flow --region asia-southeast1 --format='value(spec.template.spec.containers[0].image)'` prints the image by digest (`...@sha256:...`). The tag of that digest is the commit: `gcloud artifacts docker images list asia-southeast1-docker.pkg.dev/<PROJECT_ID>/approval-flow/approval-flow --include-tags --filter='version=sha256:<digest>' --format='value(tags)'`. _These commands are written from the guide and are checked against the first real deployment._
+- From GCP: `gcloud run services describe approval-flow --region asia-southeast1 --format='value(spec.template.spec.containers[0].image)'` prints the image by digest (`...@sha256:...`). The tag of that digest is the commit: `gcloud artifacts docker images list asia-southeast1-docker.pkg.dev/<PROJECT_ID>/approval-flow/approval-flow --include-tags --filter='version=sha256:<digest>' --format='value(tags)'`. _These commands are written from the guide. They have not been run against the deployed service yet._
 - In the Console, Cloud Run → `approval-flow` → Revisions shows the serving revision and its container image.
+- On the page itself: the footer of every screen, including the public Login screen, reads `Build <first 7 characters of the commit>` (F-05 v0.10). A release built before v0.10 has no footer.
 
 ### 6.2 Rollback and roll forward
 
@@ -147,6 +157,36 @@ member** (AGENTS.md section 7). Run it from the repository root, in Cloud Shell 
 3. To go forward again, run it again with the SHA of the newer release (an empty `image_tag` would test and rebuild the current `main` instead).
 
 A rollback changes only the application image, never the database. It is safe only while the schema is compatible with the older image, which is why migrations are additive (AGENTS.md section 5). Sprint 1 has no destructive migration.
+
+### 6.3 Deployment record
+
+**The first successful run.** The push run of 15 Nov (run 43693826837, the merge of the release PR #46) failed at the step "Authenticate to Google Cloud"; the `demo` environment variables were not set yet (`PROJECT_ID` and `REGION` were empty in the log, and the login action received no `workload_identity_provider`). The validation step before it did not stop the run, which PR #47 fixed. The next run succeeded.
+
+| Item | Value |
+|---|---|
+| Run | "Deploy demo", [run 43818649901](https://github.com/WirachatTH/cpe334-th044-p5-approval-flow/actions/runs/43818649901), started 2026-11-16 06:42 UTC by a manual run on `main` (`workflow_dispatch`, empty `image_tag`, so it tested and built the current `main`) |
+| Commit | `67d5cfd3eb5fbf8462c6836a954d83e1589aba11`, the merge of PR #46, tagged `v1.0.0-sprint1` |
+| Jobs | `test / test-and-docker` passed (1 min 31 s); `deploy` passed (2 min 2 s) |
+| Image | `asia-southeast1-docker.pkg.dev/cpe334-th044-p5/approval-flow/approval-flow@sha256:965a4be21f5599e7069be5c1201db5c59a694997c061984ca5dd16723c313ab0` |
+| Migration | job `approval-flow-migrate`, execution `approval-flow-migrate-28pfq`, completed before the service was updated |
+| Revision | `approval-flow-00003-l98`, serving 100 percent of the traffic |
+| Smoke test | `/api/health`, `/api/ready`, and `/` passed. The optional sign-in check was skipped (`SMOKE_EMAIL` and `SMOKE_PASSWORD` are not configured) |
+
+**Checked on the live URL on 2026-11-16**, with read-only requests and no sign-in:
+
+| Request | Result |
+|---|---|
+| `GET /` | 200, the HTML page (title "Approval Flow") |
+| `GET /api/health` | 200, `{"status":"ok"}` |
+| `GET /api/ready` | 200, `{"status":"ready","db":"connected"}` |
+| `GET /api/auth/me` and `GET /api/requests/mine`, with no session | 401, `UNAUTHENTICATED`, no record data |
+| The built client file the page loads | It has no `Build` footer text. This is expected: the running commit `67d5cfd` is older than F-05 v0.10 (section 6.1) |
+
+**Not done yet:**
+
+- **C-04** (the domain workflow on the live URL): the service is public and ready, but nobody has done the submit, approve or reject, and history journey on it yet.
+- **C-05** (a record survives a restart and a redeploy): the record has to be created before the next deploy and read after it.
+- **C-06** (a reviewed change goes `staging` → `main` → pipeline → Cloud Run, and the running revision shows the release commit): needs a release PR that includes F-05 v0.10, so that the footer on the live page shows `Build <first 7 characters>` of the release commit. The run above deployed the Sprint 1 release, not a change that went through that path.
 
 ## 7. Cost control
 

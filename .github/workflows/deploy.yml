@@ -129,8 +129,16 @@ jobs:
           WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
           WIF_SERVICE_ACCOUNT: ${{ vars.WIF_SERVICE_ACCOUNT }}
         run: |
-          test -n "$PROJECT_ID" && test -n "$REGION"
-          test -n "$WIF_PROVIDER" && test -n "$WIF_SERVICE_ACCOUNT"
+          # GitHub runs this with `bash -e`, which does not stop when the FIRST command of an `a && b` line fails, so
+          # each setting is checked on its own line and named in the error. (Tested by deploy/tests/test_workflow_validate.py.)
+          missing=""
+          for name in PROJECT_ID REGION WIF_PROVIDER WIF_SERVICE_ACCOUNT; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Deployment settings are missing:$missing. Set the variables GCP_PROJECT_ID, GCP_REGION, WIF_PROVIDER, and WIF_SERVICE_ACCOUNT in the GitHub environment 'demo' (docs/labs/lab-05/deployment.md, section 4.1)."
+            exit 1
+          fi
           [[ "$IMAGE_TAG" =~ ^[0-9a-f]{40}$ ]] || { echo 'Image tag must be a full 40-character commit SHA.'; exit 1; }
 
       # ------------------------------------------------------------------------
@@ -154,7 +162,8 @@ jobs:
         run: |
           gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
           IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/approval-flow/approval-flow:$IMAGE_TAG"
-          docker build --tag "$IMAGE" .
+          # GIT_SHA is shown in the UI footer, so the page tells which commit it was built from (F-05 v0.10).
+          docker build --build-arg GIT_SHA="$IMAGE_TAG" --tag "$IMAGE" .
           docker push "$IMAGE"
 
       # ------------------------------------------------------------------------
