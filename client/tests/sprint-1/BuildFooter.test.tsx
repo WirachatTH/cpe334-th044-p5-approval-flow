@@ -35,6 +35,8 @@ describe("build footer", () => {
     ["not hexadecimal", "not-a-sha"],
     ["markup", "<b>67d5cfd</b>"],
     ["only 6 characters", "abc123"],
+    ["41 characters", SHA + "a"],
+    ["uppercase hexadecimal", "ABCDEF1"],
   ])("TEST-F05-30 / AC-F05-30: a value that is %s shows Build dev", async (_label, value) => {
     if (value !== undefined) vi.stubEnv("VITE_GIT_SHA", value);
     mockApi({ "GET /api/auth/me": { status: 401, body: UNAUTHENTICATED } });
