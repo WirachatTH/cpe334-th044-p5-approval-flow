@@ -162,7 +162,8 @@ jobs:
         run: |
           gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
           IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/approval-flow/approval-flow:$IMAGE_TAG"
-          docker build --tag "$IMAGE" .
+          # GIT_SHA is shown in the UI footer, so the page tells which commit it was built from (F-05 v0.10).
+          docker build --build-arg GIT_SHA="$IMAGE_TAG" --tag "$IMAGE" .
           docker push "$IMAGE"
 
       # ------------------------------------------------------------------------
