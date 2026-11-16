@@ -46,6 +46,7 @@
 | `CLIENT_ORIGINS` | server | Comma-separated browser origins allowed to `POST` (F-02); required in production, default `http://localhost:5173` otherwise | No | `server/.env` or the default | Cloud Run environment variable; set **before** the first deploy (SDS §8) |
 | `CLIENT_DIST_DIR` | server | Directory of the built UI. When set, the API serves the UI and the deep links of the single-page app, and the server refuses to start if `index.html` is missing (F-05 v0.7). Unset in development | No | unset (the Vite dev server serves the UI) | Set to `/app/client/dist` in the image (`Dockerfile`) |
 | `API_PROXY_TARGET` | client dev server (Vite) | Where `/api` is proxied during local development (default `http://localhost:3000`) | No | `client/.env` (optional) | Not used: the API container serves the built client |
+| `VITE_GIT_SHA` | client build (Vite) | The commit the UI was built from, shown in the footer as `Build <first 7 characters>`. Read when the UI is built, not at run time. Unset, or not a hexadecimal commit, shows `Build dev` (F-05 v0.10) | No | unset (the footer says `Build dev`) | Build argument `GIT_SHA` of the `Dockerfile`; the deploy workflow passes the full commit SHA |
 | `CI` | client Playwright config | Set to a true value by GitHub Actions; Playwright then starts its own dev server | No | unset | Set by GitHub Actions |
 | `POSTGRES_USER` | Docker Compose (`db` service) | Database user of the local container (default `approval_flow`) | No | `.env` (git-ignored) | Not used: Cloud SQL |
 | `POSTGRES_PASSWORD` | Docker Compose (`db` service) | Password of the local database user; required | **Yes** | `.env` (git-ignored) | Not used: Cloud SQL |
@@ -123,7 +124,7 @@ member** (AGENTS.md section 7). Run it from the repository root, in Cloud Shell 
 | Workflow | Trigger | Jobs | Required check name |
 |---|---|---|---|
 | `.github/workflows/ci-docker.yml` ("CI & Docker Build") | Pull request into `staging` or `main`; manual; `workflow_call` from `deploy.yml` | `test-and-docker`: deployment-script checks (offline), server (type-check, build, migrate, seed, tests, against PostgreSQL 16), client (type-check, tests, build), production image build, and a start of the image that must answer `/api/ready`, `/`, a deep link, and the JSON `404` | `test-and-docker` |
-| `.github/workflows/deploy.yml` ("Deploy demo") | Push to `main`; manual run with `image_tag` for a rollback | `test` (reuses the CI workflow), then `deploy`: validate settings, keyless Google login (Workload Identity Federation), build and push the image tagged with the full commit SHA, `deploy/release.sh` (resolve the digest, run the migration job to completion, update the service to the digest), the smoke test (`deploy/smoke_test.py`), and a summary of the tag, digest, and URL | none (it is not a pull-request check) |
+| `.github/workflows/deploy.yml` ("Deploy demo") | Push to `main`; manual run with `image_tag` for a rollback | `test` (reuses the CI workflow), then `deploy`: validate settings, keyless Google login (Workload Identity Federation), build and push the image tagged with the full commit SHA (the same SHA is the build argument `GIT_SHA`, shown in the UI footer), `deploy/release.sh` (resolve the digest, run the migration job to completion, update the service to the digest), the smoke test (`deploy/smoke_test.py`), and a summary of the tag, digest, and URL | none (it is not a pull-request check) |
 
 ## 6. Release procedure
 
@@ -139,6 +140,7 @@ member** (AGENTS.md section 7). Run it from the repository root, in Cloud Shell 
 - The run summary of the deploy workflow (Actions → Deploy demo → the run) lists **Commit image tag** (the full SHA), the **Digest**, and the URL.
 - From GCP: `gcloud run services describe approval-flow --region asia-southeast1 --format='value(spec.template.spec.containers[0].image)'` prints the image by digest (`...@sha256:...`). The tag of that digest is the commit: `gcloud artifacts docker images list asia-southeast1-docker.pkg.dev/<PROJECT_ID>/approval-flow/approval-flow --include-tags --filter='version=sha256:<digest>' --format='value(tags)'`. _These commands are written from the guide and are checked against the first real deployment._
 - In the Console, Cloud Run → `approval-flow` → Revisions shows the serving revision and its container image.
+- On the page itself: the footer of every screen, including the public Login screen, reads `Build <first 7 characters of the commit>` (F-05 v0.10). A release built before v0.10 has no footer.
 
 ### 6.2 Rollback and roll forward
 

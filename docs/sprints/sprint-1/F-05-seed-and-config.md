@@ -9,8 +9,8 @@
 | Feature ID | F-05 |
 | Sprint | 1 |
 | Status | Implemented (Draft → Agreed → Implemented → Verified) |
-| Linked requirements | FR-11, FR-12; NFR-03, NFR-06, NFR-08, NFR-09, NFR-10; Lab 5 R-01, R-02, R-04 |
-| GitHub Issue | #7 (contract), #8 (implementation), #33 (serving the UI, v0.7) |
+| Linked requirements | FR-11, FR-12; NFR-03, NFR-06, NFR-08, NFR-09, NFR-10; Lab 5 R-01, R-02, R-04, R-08 |
+| GitHub Issue | #7 (contract), #8 (implementation), #33 (serving the UI, v0.7), #35 (build footer, v0.10) |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
 | Depends on | System-level SDS §3.4, §7, §8, §9 (#4). F-01, F-03, and F-04 depend on this feature. |
 
@@ -27,6 +27,7 @@
 | 0.7 | 2026-11-15 | Menelaus122 | The server can serve the built UI: new optional setting `CLIENT_DIST_DIR` (§1.4, §2.2) and AC-F05-22 to AC-F05-27 with TEST-F05-22 to TEST-F05-27. No change to AC-F05-01 to AC-F05-21. | Lab 5 needs one container image for the API and the UI (Issue #33) | #33 |
 | 0.8 | 2026-11-15 | Menelaus122 | STS notes and completion evidence for v0.7, no change to any AC or behaviour: TEST-F05-26 passes when first written (a control); TEST-F05-24 and TEST-F05-25 start with a check that the UI is served, so they are red. Section 6 gets the v0.7 row. | Found while writing the red tests for #33 | #33 |
 | 0.9 | 2026-11-15 | Menelaus122 | AC-F05-28 and TEST-F05-28: with the UI served, a path with a file extension that names no file answers the JSON `404`, not `index.html` (§2.2). | Review of PR #37: a stale cached page would try to run HTML as a script | #33 |
+| 0.10 | 2026-11-16 | WirachatTH | The UI shows the commit it was built from: every screen ends with a footer line `Build <first 7 characters of the commit>` (§2.1), taken from the new build-time setting `VITE_GIT_SHA` (§1.4). AC-F05-29 and AC-F05-30 with TEST-F05-29 and TEST-F05-30. No change to AC-F05-01 to AC-F05-28 and no API change. | Lab 5 R-08 and check C-06: a person must be able to see which commit a running release was built from, and the second release of Ep. 7 needs a change that users can see | #35 |
 
 ---
 
@@ -40,6 +41,7 @@ F-05 makes the application reproducible and safe to run anywhere: on a laptop, i
 - **Health checks.** Two endpoints tell a person, the smoke test, and Cloud Run whether the service is alive and whether it can reach its database.
 - **Accounts for testing.** The seeded accounts are what the team and the Lab 6 partner team use, because Sprint 1 has no self-registration.
 - **One container for the whole application.** When `CLIENT_DIST_DIR` names the built UI, the same server serves the UI and the API on one port, so one image can run on Cloud Run (v0.7).
+- **A visible build identity.** The UI footer shows which commit the image was built from, so a person looking at the public page can tell which release is running (v0.10).
 
 ### 1.2 Workflow
 
@@ -80,6 +82,7 @@ In the cloud, steps 1 and 2 run in the Cloud Run job before each deploy, and ste
 | `PORT` (server) | Optional; an integer 1–65535; default `3000` | `config: PORT must be a port number` |
 | `NODE_ENV` (server) | `development`, `test`, or `production`; default `development` | `config: NODE_ENV must be development, test, or production` |
 | `CLIENT_DIST_DIR` (server) | Optional; the directory of the built UI. Unset or blank means the UI is not served (development and tests). Surrounding spaces are trimmed. When it is set, `createApp` requires `index.html` in it. | `config: CLIENT_DIST_DIR has no index.html` (a `ConfigError`, so `index.ts` prints it and exits with code 1 before listening) |
+| `VITE_GIT_SHA` (client build, v0.10) | Optional. Read once when the UI is built (Vite replaces `import.meta.env.VITE_GIT_SHA`), never at run time. The Docker build passes the commit as the build argument `GIT_SHA`, and the deploy workflow gives it the full commit SHA. Not a secret. | None: a missing or malformed value shows `Build dev`, and the build never fails because of it |
 
 `loadConfig(env)` collects **every** problem and throws one `ConfigError` whose message lists them, one per line.
 `index.ts` turns that error into stderr output and exit code 1 (§1.2 step 3). The messages name the variable and
@@ -117,7 +120,9 @@ never contain its value.
 
 ### 2.1 UI
 
-No change. F-05 adds no screen. The Login screen (F-01) must never show a default or demo password.
+F-05 adds no screen. The Login screen (F-01) must never show a default or demo password.
+
+**Build footer (v0.10).** Every screen, signed in or not (the Login screen is the public page), ends with one line, `Build <id>`, in a `footer` element (role `contentinfo`). `<id>` is the first 7 characters of `VITE_GIT_SHA` when that value is 7 to 40 lowercase hexadecimal characters, and `dev` otherwise (unset, empty, or anything else), so nothing from the build environment can put free text on the page. The line is plain text: no link, no button, no data from the API, and it needs no session.
 
 ### 2.2 API
 
@@ -198,6 +203,8 @@ isolation, and a second reviewer for unrelated-reviewer access.
 | AC-F05-26 | An app with no `clientDistDir` (the default) | `GET /` and `GET /requests/12` | Each answers the JSON `404 NOT_FOUND`, as before | boundary | Lab 5 R-02 |
 | AC-F05-27 | `clientDistDir` set to an existing directory that has no `index.html` | `createApp` runs | It throws a `ConfigError` whose message is `config: CLIENT_DIST_DIR has no index.html` and does not contain the directory path | negative | NFR-09, Lab 5 R-02 |
 | AC-F05-28 | The same app as AC-F05-23 | `GET /assets/missing.js`, `GET /missing.css`, `GET /favicon.ico`, `HEAD /assets/missing.js` (a last segment with a file extension, naming no file), then `GET /requests/12` and `GET /assets/app.js` | The first four answer `404` with the JSON `NOT_FOUND` and never the page; the deep link still answers the page; the existing file is still served | negative | Lab 5 R-01 |
+| AC-F05-29 | The UI is built with `VITE_GIT_SHA` set to a 40-character commit SHA, for example `67d5cfd3eb5fbf8462c6836a954d83e1589aba11` | The Login screen is shown with no session; then a signed-in screen (My Requests) is shown | Each has a `footer` (role `contentinfo`) whose text is `Build 67d5cfd`, the first 7 characters | normal | Lab 5 R-08 |
+| AC-F05-30 | `VITE_GIT_SHA` is (a) unset, (b) `""`, (c) `"not-a-sha"`, (d) `"<b>67d5cfd</b>"`, (e) `"abc123"` (6 characters) | The Login screen is shown | The footer text is `Build dev` in every case, and in (d) no `<b>` element appears in the page | boundary | Lab 5 R-08 |
 
 ## 4. Software Test Specification (STS)
 
@@ -231,15 +238,18 @@ isolation, and a second reviewer for unrelated-reviewer access.
 | TEST-F05-26 | AC-F05-26 | API | An app without `clientDistDir` | `GET /` and `GET /requests/12` | JSON `404` for both. **This test passes when it is first written**, because nothing is served without the setting; it is a control and guards the green step, not red evidence. | `server/tests/sprint-1/static-ui.api.test.ts` |
 | TEST-F05-27 | AC-F05-27 | unit | An empty temporary directory | `createApp` with it | Throws `ConfigError` with the stated message, without the path | `server/tests/sprint-1/static-ui.api.test.ts` |
 | TEST-F05-28 | AC-F05-28 | API | The same temporary directory and the same throwing stub | Call the six requests | As stated | `server/tests/sprint-1/static-ui.api.test.ts` |
+| TEST-F05-29 | AC-F05-29 | component | `VITE_GIT_SHA` stubbed to `67d5cfd3eb5fbf8462c6836a954d83e1589aba11`; the API mock answers "no session", then Ploy | Render `/login`; then render `/requests` signed in | The `contentinfo` text is `Build 67d5cfd` both times | `client/tests/sprint-1/BuildFooter.test.tsx` |
+| TEST-F05-30 | AC-F05-30 | component | `VITE_GIT_SHA` stubbed to each of the five values (unset by `vi.stubEnv(..., undefined)`); the API mock answers "no session" | Render `/login` for each | The `contentinfo` text is `Build dev`; for (d) the page has no `<b>` element | `client/tests/sprint-1/BuildFooter.test.tsx` |
 
 **Coverage check:**
-- AC-F05-01 to AC-F05-28 each map to exactly one TEST, and every rule in §1.4 has an AC:
+- AC-F05-01 to AC-F05-30 each map to exactly one TEST, and every rule in §1.4 has an AC:
   - `DEMO_USER_PASSWORD`: 04, 05, 21
   - `DATABASE_URL`: 11, 14, 18 (server); 20 (seed)
   - `CLIENT_ORIGINS`: 11, 17, 18
   - `PORT`: 12, 15
   - `NODE_ENV`: 16
   - `CLIENT_DIST_DIR`: 22, 27 (the setting); 23 to 26 and 28 (what it does)
+  - `VITE_GIT_SHA`: 29 (a valid value), 30 (missing and malformed values)
 - TEST-F05-13 is manual because it checks documentation against code. Every other test is automated.
 - The process-level tests (11, 12) prove the wiring from `ConfigError` to exit code 1. The unit tests (14 to 17) cover each rule without starting a process.
 
@@ -264,3 +274,4 @@ The [Product Definition of Done](README.md#product-definition-of-done) applies, 
 | Known limitations | Sessions created before a password rotation stay valid until they expire (§1.5). `loadConfig` rejects an empty `PORT` or `NODE_ENV` but treats an empty `DATABASE_URL`, `CLIENT_ORIGINS`, or `DEMO_USER_PASSWORD` as not set. A local `server/.env` is read by any process that imports `@prisma/client` (see `deployment.md` §2). |
 | v0.7 evidence (serving the UI, #33) | Contract `50d7f7d`; type stub `5394e6e`; red `db06747`: of the 6 new cases **5 failed on assertions** (`loadConfig` gave `undefined` where `null` is expected, `GET /` answered `404` where `200` is expected, `createApp` did not throw) and **1 passed**, the control TEST-F05-26; green `f6682d0`: all 6 pass, the same tests. `cd server && npm test` at `06d71c4`: 14 files, **130 passed, 0 failed, 0 skipped** (156 s). A local container check of the image is in the commit message of `06d71c4` and in the Lab 5 evidence. |
 | v0.9 evidence (missing files, #33) | Contract `7b22598`; red `161371f`: TEST-F05-28 fails with "/assets/missing.js: expected 200 to be 404"; green `324ad5a`: it passes with the other UI tests (6 of 6). `cd server && npm test` at `8fb3990`: 14 files, **131 passed, 0 failed, 0 skipped** (176 s). The two other points of the review (tzdata for `TZ`, the Safari note) are in `8fb3990`; the image prints `+07` for `date`. |
+| v0.10 evidence (build footer, #35) | Contract `312d423`; red `6fba797`: all **6** new cases failed on the same assertion (`Unable to find role="contentinfo"`), the 36 earlier client tests passed; green `3dbb4e0`: all 6 pass. `cd client && npm test` at `3dbb4e0`: 9 files, **42 passed, 0 failed, 0 skipped**; `npm run typecheck` is clean; a `vite build` with `VITE_GIT_SHA` set puts the commit into the bundle. Not run at that commit: the Docker build with `GIT_SHA` (Docker was not running) and the end-to-end tests. The server is unchanged. |

@@ -21,6 +21,10 @@ WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm ci
 COPY client/ ./
+# The commit the UI is built from, shown in the footer (F-05 v0.10). Vite reads VITE_GIT_SHA at build time. Without the
+# build argument the footer says "Build dev". It is not a secret.
+ARG GIT_SHA=
+ENV VITE_GIT_SHA=$GIT_SHA
 RUN npm run build
 
 # ---- Stage 2: API -----------------------------------------------------------------------------------------
