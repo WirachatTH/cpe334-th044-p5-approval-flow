@@ -28,6 +28,7 @@
 | 0.8 | 2026-11-15 | Menelaus122 | STS notes and completion evidence for v0.7, no change to any AC or behaviour: TEST-F05-26 passes when first written (a control); TEST-F05-24 and TEST-F05-25 start with a check that the UI is served, so they are red. Section 6 gets the v0.7 row. | Found while writing the red tests for #33 | #33 |
 | 0.9 | 2026-11-15 | Menelaus122 | AC-F05-28 and TEST-F05-28: with the UI served, a path with a file extension that names no file answers the JSON `404`, not `index.html` (§2.2). | Review of PR #37: a stale cached page would try to run HTML as a script | #33 |
 | 0.10 | 2026-11-16 | WirachatTH | The UI shows the commit it was built from: every screen ends with a footer line `Build <first 7 characters of the commit>` (§2.1), taken from the new build-time setting `VITE_GIT_SHA` (§1.4). AC-F05-29 and AC-F05-30 with TEST-F05-29 and TEST-F05-30. No change to AC-F05-01 to AC-F05-28 and no API change. | Lab 5 R-08 and check C-06: a person must be able to see which commit a running release was built from, and the second release of Ep. 7 needs a change that users can see | #35 |
+| 0.11 | 2026-11-16 | WirachatTH | AC-F05-30 gets two more boundary cases, (f) 41 hexadecimal characters and (g) `"ABCDEF1"` (uppercase hexadecimal), so that both limits in §2.1 ("7 to 40 lowercase hexadecimal characters") have a test; TEST-F05-30 grows from five to seven cases. No change to behaviour, to any other AC, or to the API. | Review of PR #56, comment 1: a mutation check (upper limit 64 instead of 40, uppercase accepted) was not caught by any test | #35 |
 
 ---
 
@@ -204,7 +205,7 @@ isolation, and a second reviewer for unrelated-reviewer access.
 | AC-F05-27 | `clientDistDir` set to an existing directory that has no `index.html` | `createApp` runs | It throws a `ConfigError` whose message is `config: CLIENT_DIST_DIR has no index.html` and does not contain the directory path | negative | NFR-09, Lab 5 R-02 |
 | AC-F05-28 | The same app as AC-F05-23 | `GET /assets/missing.js`, `GET /missing.css`, `GET /favicon.ico`, `HEAD /assets/missing.js` (a last segment with a file extension, naming no file), then `GET /requests/12` and `GET /assets/app.js` | The first four answer `404` with the JSON `NOT_FOUND` and never the page; the deep link still answers the page; the existing file is still served | negative | Lab 5 R-01 |
 | AC-F05-29 | The UI is built with `VITE_GIT_SHA` set to a 40-character commit SHA, for example `67d5cfd3eb5fbf8462c6836a954d83e1589aba11` | The Login screen is shown with no session; then a signed-in screen (My Requests) is shown | Each has a `footer` (role `contentinfo`) whose text is `Build 67d5cfd`, the first 7 characters | normal | Lab 5 R-08 |
-| AC-F05-30 | `VITE_GIT_SHA` is (a) unset, (b) `""`, (c) `"not-a-sha"`, (d) `"<b>67d5cfd</b>"`, (e) `"abc123"` (6 characters) | The Login screen is shown | The footer text is `Build dev` in every case, and in (d) no `<b>` element appears in the page | boundary | Lab 5 R-08 |
+| AC-F05-30 | `VITE_GIT_SHA` is (a) unset, (b) `""`, (c) `"not-a-sha"`, (d) `"<b>67d5cfd</b>"`, (e) `"abc123"` (6 characters), (f) 41 hexadecimal characters (`67d5cfd3eb5fbf8462c6836a954d83e1589aba11` followed by `a`), (g) `"ABCDEF1"` (7 uppercase hexadecimal characters) | The Login screen is shown | The footer text is `Build dev` in every case, and in (d) no `<b>` element appears in the page | boundary | Lab 5 R-08 |
 
 ## 4. Software Test Specification (STS)
 
@@ -239,7 +240,7 @@ isolation, and a second reviewer for unrelated-reviewer access.
 | TEST-F05-27 | AC-F05-27 | unit | An empty temporary directory | `createApp` with it | Throws `ConfigError` with the stated message, without the path | `server/tests/sprint-1/static-ui.api.test.ts` |
 | TEST-F05-28 | AC-F05-28 | API | The same temporary directory and the same throwing stub | Call the six requests | As stated | `server/tests/sprint-1/static-ui.api.test.ts` |
 | TEST-F05-29 | AC-F05-29 | component | `VITE_GIT_SHA` stubbed to `67d5cfd3eb5fbf8462c6836a954d83e1589aba11`; the API mock answers "no session", then Ploy | Render `/login`; then render `/requests` signed in | The `contentinfo` text is `Build 67d5cfd` both times | `client/tests/sprint-1/BuildFooter.test.tsx` |
-| TEST-F05-30 | AC-F05-30 | component | `VITE_GIT_SHA` stubbed to each of the five values (unset by `vi.stubEnv(..., undefined)`); the API mock answers "no session" | Render `/login` for each | The `contentinfo` text is `Build dev`; for (d) the page has no `<b>` element | `client/tests/sprint-1/BuildFooter.test.tsx` |
+| TEST-F05-30 | AC-F05-30 | component | `VITE_GIT_SHA` stubbed to each of the seven values (unset by not stubbing it); the API mock answers "no session" | Render `/login` for each | The `contentinfo` text is `Build dev`; for (d) the page has no `<b>` element. **Cases (f) and (g) pass when they are first written**, because the code already follows §2.1; they are controls that guard the two limits, not red evidence (the mutation check in §6 shows they fail when a limit is loosened). | `client/tests/sprint-1/BuildFooter.test.tsx` |
 
 **Coverage check:**
 - AC-F05-01 to AC-F05-30 each map to exactly one TEST, and every rule in §1.4 has an AC:
@@ -249,7 +250,7 @@ isolation, and a second reviewer for unrelated-reviewer access.
   - `PORT`: 12, 15
   - `NODE_ENV`: 16
   - `CLIENT_DIST_DIR`: 22, 27 (the setting); 23 to 26 and 28 (what it does)
-  - `VITE_GIT_SHA`: 29 (a valid value), 30 (missing and malformed values)
+  - `VITE_GIT_SHA`: 29 (a valid value), 30 (missing and malformed values, including 41 characters and uppercase)
 - TEST-F05-13 is manual because it checks documentation against code. Every other test is automated.
 - The process-level tests (11, 12) prove the wiring from `ConfigError` to exit code 1. The unit tests (14 to 17) cover each rule without starting a process.
 
