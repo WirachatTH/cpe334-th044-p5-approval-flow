@@ -244,7 +244,7 @@ These acceptance criteria were added after the Sprint 1 release (`v1.0.0-sprint1
 |---|---|
 | Code commit tested | `aa1b589` (the merge of PR #57 into `staging`) |
 | Client: component | `cd client && npm test`: 9 files, **44 passed, 0 failed, 0 skipped** (8 files and 36 tests at `7f8cf54`; the new file is `BuildFooter.test.tsx`, with 8 tests) |
-| Not run for this section | The server suite and the end-to-end tests: neither AC touches `server/`. The footer on the deployed page is not checked yet: the running commit is older (`docs/labs/lab-05/deployment.md` section 6.3, check C-06) |
+| Not run for this section | The server suite and the end-to-end tests: neither AC touches `server/`. The footer on the deployed page was checked after the release of PR #59: the live Login page shows `Build 21b7135` (`docs/labs/lab-05/deployment.md` section 6.3, check C-06) |
 
 | AC | TEST | Level | File | Test title (first case) | Tests | Result |
 |---|---|---|---|---|---|---|
