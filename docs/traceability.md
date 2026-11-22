@@ -5,7 +5,8 @@
 > [`features.md`](features.md). Later-sprint requirements have a feature and a sprint now; their AC and TEST IDs are added
 > when their contract is written.
 > Status: Sprint 1 requirements verified at the commit named in section 4; later sprints planned. Section 5 lists the
-> acceptance criteria added after the Sprint 1 release, for Lab 5.
+> acceptance criteria added after the Sprint 1 release, for Lab 5, and the results of the Lab 5 checks for NFR-08, NFR-10,
+> NFR-15, and NFR-16.
 
 ## Version history
 
@@ -15,6 +16,7 @@
 | 0.2 | 2026-11-15 | Menelaus122 | Section 1 covers all 18 FR, 18 BR, and 16 NFR. Sprint 1 rows link the AC IDs of the five contracts. Sections 2 and 3 filled. Section 4 added: AC → planned TEST → actual test → result for the 108 Sprint 1 ACs, from a real run. | Issue #5; Definition of Done RD-3 |
 | 0.3 | 2026-11-15 | Menelaus122 | The rows for FR-16, FR-17, FR-18, and BR-18 and the coverage-gap row say that the contracts of F-08, F-09, and F-10 are written in Sprint 2 (`plan.md` section 3), not at the start of Sprint 3. No sprint allocation and no result changes. | Review of PR #48, and the description of PR #50 |
 | 0.4 | 2026-11-16 | Menelaus122 | New section 5: AC-F05-29 and AC-F05-30 (the build footer, Lab 5 R-08) with their TESTs and results. Sections 1 to 4, and the Sprint 1 figures in them, are unchanged. | PRs #56 and #57 added the two ACs after the release |
+| 0.5 | 2026-11-22 | Menelaus122 | The status of NFR-08, NFR-10, NFR-15, and NFR-16 in sections 1 and 2 follows the Lab 5 checks, which are listed in section 5. The keyboard pass by a person (NFR-11, RD-7) is recorded as done in sections 1, 2, and 4. The Sprint 1 figures in section 4 (108 ACs, 107 automated, tested at `7f8cf54`) and every AC and TEST row are unchanged. | The deployment (PRs #58, #59, #60) gave the evidence; the keyboard pass was done on 15 Nov, after section 4 was written |
 
 ---
 
@@ -22,7 +24,7 @@
 
 How to read it:
 - Every Sprint 1 AC has one TEST with the same number: `AC-F04-09` is checked by `TEST-F04-09`. Section 4 lists each pair with the actual test file, test name, and result.
-- A status of **Verified** means every linked test passed in the run in section 4. **Planned** means the feature and sprint are allocated and the AC and TEST IDs do not exist yet.
+- A status of **Verified** means every linked test passed in the run in section 4. **Planned** means the feature and sprint are allocated and the AC and TEST IDs do not exist yet. NFR-08, NFR-10, NFR-15, and NFR-16 have no test: their status comes from the Lab 5 check named in the row, and section 5 lists the result. **Partly verified** means only part of that evidence exists.
 - `SYS-nn` is a cross-cutting responsibility from [`features.md`](features.md) section 2.
 
 | Requirement | Feature or responsibility | Sprint | Verification (AC / TEST) | Status |
@@ -70,15 +72,15 @@ How to read it:
 | NFR-05 Sign-in throttle | F-01 | 1 | AC-F01-05, AC-F01-07, AC-F01-08, AC-F01-16, AC-F01-20 | Verified |
 | NFR-06 Safe errors | F-01, F-02, F-05 (SYS-01) | 1 | AC-F01-04, AC-F02-05, AC-F02-10, AC-F02-13, AC-F02-15, AC-F05-10, AC-F05-24, AC-F05-25 | Verified |
 | NFR-07 Database integrity | F-03, F-04 (SYS-04) | 1 | AC-F03-09, AC-F04-14 | Verified |
-| NFR-08 Persistence | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-05: a request created before a restart and a redeploy is still there afterwards, with before and after evidence on the deployed service | Planned |
+| NFR-08 Persistence | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-05: a request created before a restart and a redeploy is still there afterwards, with before and after evidence on the deployed service | Verified (Lab 5 check C-05, section 5) |
 | NFR-09 Configuration and secrets | F-05 (SYS-02) | 1 | AC-F05-03, AC-F05-04, AC-F05-05, AC-F05-06, AC-F05-18, AC-F05-20, AC-F05-21, AC-F05-22, AC-F05-27 | Verified |
-| NFR-10 Reproducible build | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-03: a fresh clone builds, migrates, seeds, and answers 200 on `/api/ready` | Planned |
-| NFR-11 Basic usability | F-01, F-03, F-04 (SYS-06) | 1 | AC-F01-15, AC-F03-16, AC-F03-18, AC-F04-17 | Verified (automated, including the keyboard-only journey TEST-REL-04); a pass by a person is still to do (section 2) |
+| NFR-10 Reproducible build | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-03: a fresh clone builds, migrates, seeds, and answers 200 on `/api/ready` | Verified (Lab 5 check C-03, section 5) |
+| NFR-11 Basic usability | F-01, F-03, F-04 (SYS-06) | 1 | AC-F01-15, AC-F03-16, AC-F03-18, AC-F04-17 | Verified (automated, including the keyboard-only journey TEST-REL-04); the pass by a person (RD-7) was done by hand on 15 Nov 2026 (section 2) |
 | NFR-12 Accessibility (WCAG 2.1 AA) | F-10, SYS-06 | 3 | Playwright with axe on every main screen; TEST IDs in the F-10 contract | Planned |
 | NFR-13 Responsiveness | F-10, SYS-06 | 3 | Playwright screenshots and layout checks at 390 × 844, 820 × 1180, and 1440 × 900; TEST IDs in the F-10 contract | Planned |
 | NFR-14 Performance | F-10 | 3 | A scripted timing run of 50 requests per operation on the deployed service; TEST IDs in the F-10 contract | Planned |
-| NFR-15 Operability | SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 pipeline run (smoke test after every deploy) and the Cloud Run revision tag (C-06) | Planned |
-| NFR-16 Cost | SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 console screenshots: instance limits, database tier, budget | Planned |
+| NFR-15 Operability | SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 pipeline run (smoke test after every deploy) and the Cloud Run revision tag (C-06) | Verified (Lab 5 check C-06; the smoke test does not sign in, section 5) |
+| NFR-16 Cost | SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 console screenshots: instance limits, database tier, budget | Partly verified (budget and database size shown; section 5) |
 
 ## 2. Coverage gaps
 
@@ -86,8 +88,8 @@ Every requirement has a feature or responsibility and a sprint, so no requiremen
 
 | Requirement | Gap | Plan |
 |---|---|---|
-| NFR-08, NFR-10, NFR-15, NFR-16 | No automated Sprint 1 test: they can only be checked on a fresh clone or on the deployed service. | Lab 5 checks C-03, C-05, C-06, and the console screenshots, before the Sprint 1 release is accepted. Status stays Planned until then. |
-| NFR-11 | The automated part (messages beside fields, `aria-describedby`, status as text) is verified. The keyboard-only journey TEST-REL-04 (Playwright, keyboard events only, no mouse) passes on the five main screens. It is not a pass by a person (RD-7). | One of the members does the pass by hand on the release candidate and records it in the release PR. |
+| NFR-08, NFR-10, NFR-15, NFR-16 | No automated Sprint 1 test: they can only be checked on a fresh clone or on the deployed service. | Checked in Lab 5: C-03 (NFR-10), C-05 (NFR-08), C-06 (NFR-15), and the Console screenshots (NFR-16). The results are in section 5. NFR-16 is only partly verified: the budget and the database size are shown, but the Cloud Run instance limits and the storage setting are set in `deploy/deploy.sh` and not shown in a Console screenshot. |
+| NFR-11 | The automated part (messages beside fields, `aria-describedby`, status as text) is verified. The keyboard-only journey TEST-REL-04 (Playwright, keyboard events only, no mouse) passes on the five main screens. It is not a pass by a person (RD-7). | Done by hand by WirachatTH on 15 Nov 2026 on the deployed service, whose server and client code are identical to the release tag; recorded in Deliverable 1, Part F.5 (Figures 14 to 21). |
 | FR-13 to FR-18, BR-16 to BR-18, NFR-12 to NFR-14 | No AC or TEST yet. | Allocated to F-06 to F-10 in section 1. The contract of each feature is written before its tests and code: at the start of Sprint 2 for F-06 and F-07, and during Sprint 2 for F-08, F-09, and F-10 (plan.md section 3). |
 | Q-05, Q-06, Q-07, Q-08 (SRS section 9) | Open questions that change F-06, F-07, F-09, and F-10. | Q-05 is decided in the F-06 contract and Q-06 in the F-07 contract (Sprint 2), Q-07 in the F-09 contract and Q-08 in F-10 (Sprint 3). BR-17 carries provisional values until Q-06 is closed. |
 
@@ -109,8 +111,8 @@ The table is produced from the test runs, not typed by hand: the AC and TEST IDs
 | Server: unit, API with a real database, process | `cd server && npm test`: 14 files, **131 passed, 0 failed, 0 skipped** |
 | Client: component | `cd client && npm test`: 8 files, **36 passed, 0 failed, 0 skipped** |
 | End-to-end: Playwright on Chromium | `cd client && npm run e2e`: **8 passed, 0 failed, 0 skipped, 0 flaky** (4 are AC tests, 4 are the release journeys below) |
-| Automated vs manual | 107 of the 108 ACs are checked by automated tests (all pass). 1 AC is manual: AC-F05-13 (TEST-F05-13, the static check of environment variables), it was run on this commit and found every variable the code reads (`DATABASE_URL`, `DEMO_USER_PASSWORD`, `NODE_ENV`, `PORT`, `CLIENT_ORIGINS`, `API_PROXY_TARGET`, `CI`, and the Docker Compose `POSTGRES_*` ones) in an `.env.example` file and in `docs/labs/lab-05/deployment.md`; `API_PROXY_TARGET` and `CI` are commented lines in `client/.env.example`. The keyboard pass by a person (RD-7) is separate and still to do; the keyboard-only journey TEST-REL-04 passed. |
-| Not yet verified | NFR-08, NFR-10, NFR-15, NFR-16 (Lab 5), and the later-sprint requirements (section 2). |
+| Automated vs manual | 107 of the 108 ACs are checked by automated tests (all pass). 1 AC is manual: AC-F05-13 (TEST-F05-13, the static check of environment variables), it was run on this commit and found every variable the code reads (`DATABASE_URL`, `DEMO_USER_PASSWORD`, `NODE_ENV`, `PORT`, `CLIENT_ORIGINS`, `API_PROXY_TARGET`, `CI`, and the Docker Compose `POSTGRES_*` ones) in an `.env.example` file and in `docs/labs/lab-05/deployment.md`; `API_PROXY_TARGET` and `CI` are commented lines in `client/.env.example`. The keyboard pass by a person (RD-7) is separate and was done by hand after this run, on 15 Nov 2026 (section 2); the keyboard-only journey TEST-REL-04 passed in this run. |
+| Not covered by this run | NFR-08, NFR-10, NFR-15, NFR-16 (no automated test; checked in Lab 5, results in section 5), and the later-sprint requirements (section 2). |
 
 "Cases" is the number of test cases (`it` and `it.each` rows) that carry the TEST ID. The "Actual test name" column shows the first of them.
 
@@ -238,7 +240,7 @@ These four end-to-end journeys (Issue #12, defined in `docs/sprints/sprint-1/REA
 
 ## 5. Lab 5 additions
 
-These acceptance criteria were added after the Sprint 1 release (`v1.0.0-sprint1`, tested at `7f8cf54`), for Lab 5 requirement R-08: the commit that is running can be read on the page. Sections 1 to 4 are not changed, so the Sprint 1 figures in them (108 ACs, 107 automated) stay as they were when the release was verified. With the two ACs below, F-05 has 30 ACs and the contracts hold 110 in all. The contract is [`F-05-seed-and-config.md`](sprints/sprint-1/F-05-seed-and-config.md) (version 0.11); neither AC changes a requirement in section 1.
+These acceptance criteria were added after the Sprint 1 release (`v1.0.0-sprint1`, tested at `7f8cf54`), for Lab 5 requirement R-08: the commit that is running can be read on the page. The Sprint 1 figures in sections 1 to 4 (108 ACs, 107 automated) stay as they were when the release was verified; version 0.5 changes only the status and the wording of NFR-08, NFR-10, NFR-11, NFR-15, and NFR-16 there. With the two ACs below, F-05 has 30 ACs and the contracts hold 110 in all. The contract is [`F-05-seed-and-config.md`](sprints/sprint-1/F-05-seed-and-config.md) (version 0.11); neither AC changes a requirement in section 1.
 
 | Item | Value |
 |---|---|
@@ -252,3 +254,14 @@ These acceptance criteria were added after the Sprint 1 release (`v1.0.0-sprint1
 | AC-F05-30 | TEST-F05-30 | component | `client/tests/sprint-1/BuildFooter.test.tsx` | TEST-F05-30 / AC-F05-30: a value that is unset shows Build dev | 7 | pass |
 
 Cases (f) 41 characters and (g) uppercase hexadecimal of AC-F05-30 pass when they were first written (a control, as TEST-F05-26 did; the mutation check in the contract shows they fail when a limit is loosened). The lower limit of 7 characters is checked from below only (a 6-character value is refused): no test uses a valid 7-character value yet.
+
+### Lab 5 checks for the requirements without a Sprint 1 test
+
+NFR-08, NFR-10, NFR-15, and NFR-16 had no automated Sprint 1 test (section 2). They were checked in Lab 5 on a fresh clone and on the deployed service (project `cpe334-th044-p5`, region `asia-southeast1`). The record of the deployments is [`deployment.md`](labs/lab-05/deployment.md) section 6.3. Times are Thai time (UTC+7).
+
+| Requirement | Check | What was done | Result |
+|---|---|---|---|
+| NFR-10 Reproducible build | C-03 | A fresh clone of the branch `build/33-docker` (commit `c9d691e`, 15 Nov) was built and started with `docker compose --profile app up -d --build`: the migration job applied the 3 migrations, a seeded account could sign in, and `/api/ready` answered 200 (PR #37) | Verified |
+| NFR-08 Persistence | C-05 | REQ-000004 was created on 16 Nov at 22:28 on revision `approval-flow-00003-l98` and left Submitted. Run 43899764286 deployed the new revision `approval-flow-00004-rq6`. At 23:18 the same four requests were listed and REQ-000004 was still Submitted; it was decided at 23:19 on the new revision | Verified. A restart without a new revision was not run separately: each revision starts new containers |
+| NFR-15 Operability | C-06 | Run 43899764286, started by the merge of release PR #59 (commit `21b7135`, tag `v1.1.0-lab5`): the tests, the image tagged with the full commit, the migration job `approval-flow-migrate-zlb8p` before the service changed, the deploy by digest, and the smoke test of `/api/health`, `/api/ready`, and `/`. The serving revision has the digest of the image tagged `21b7135…`, and the Login page shows `Build 21b7135` | Verified. The smoke test does not sign in (`SMOKE_EMAIL` and `SMOKE_PASSWORD` are not set) |
+| NFR-16 Cost | Console | The budget `CPE334-TH044-P5-alert` (alerts only, at 10, 20, 50, and 90 percent) and the Cloud SQL instance `approval-flow-pg` (PostgreSQL 16, 1 vCPU, single zone) are shown in the Lab 5 report (Figures 19 and 6). The Cloud Run limits (minimum 0, maximum 3 instances) and the storage setting (10 GB, auto-increase off) are set in `deploy/deploy.sh` and are not shown in a Console screenshot | Partly verified |
