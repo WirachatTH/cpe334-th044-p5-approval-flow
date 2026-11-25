@@ -44,7 +44,7 @@ function parseSubmission(body: unknown): { ok: true; value: Submission } | { ok:
     const [whole, fraction = ""] = amount.split(".");
     const cents = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
     if (cents <= 0n) fields.amount = "Enter an amount greater than 0.";
-    else if (cents >= AMOUNT_MAX_CENTS) fields.amount = "Enter an amount of at most 1,000,000.00 THB.";
+    else if (cents > AMOUNT_MAX_CENTS) fields.amount = "Enter an amount of at most 1,000,000.00 THB.";
   }
 
   const reviewer = input.assignedReviewerId;
