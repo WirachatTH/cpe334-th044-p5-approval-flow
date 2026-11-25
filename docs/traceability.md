@@ -18,6 +18,7 @@
 | 0.4 | 2026-11-16 | Menelaus122 | New section 5: AC-F05-29 and AC-F05-30 (the build footer, Lab 5 R-08) with their TESTs and results. Sections 1 to 4, and the Sprint 1 figures in them, are unchanged. | PRs #56 and #57 added the two ACs after the release |
 | 0.5 | 2026-11-22 | Menelaus122 | The status of NFR-08, NFR-10, NFR-15, and NFR-16 in sections 1 and 2 follows the Lab 5 checks, which are listed in section 5. The keyboard pass by a person (NFR-11, RD-7) is recorded as done in sections 1, 2, and 4. The Sprint 1 figures in section 4 (108 ACs, 107 automated, tested at `7f8cf54`) and every AC and TEST row are unchanged. | The deployment (PRs #58, #59, #60) gave the evidence; the keyboard pass was done on 15 Nov, after section 4 was written |
 | 0.6 | 2026-11-26 | Menelaus122 | The BR-12 row follows the revised rule and lists AC-F04-24 to AC-F04-29, which are specified and not yet implemented. The Sprint 1 figures in section 4 are unchanged. | Change request #65 (Lab 7) |
+| 0.7 | 2026-11-26 | Menelaus122 | FR-09, BR-12, and NFR-07 list the acceptance criteria of the rejection category (AC-F04-30 to AC-F04-34), specified and not yet implemented. | Change request #65 (Lab 7) |
 
 ---
 
@@ -38,7 +39,7 @@ How to read it:
 | FR-06 Request detail and history | F-03, F-04 | 1 | AC-F03-12, AC-F03-19, AC-F03-21, AC-F04-13 | Verified |
 | FR-07 Review inbox | F-04 | 1 | AC-F04-01, AC-F04-02, AC-F04-15, AC-F04-16, AC-F04-20, AC-F04-23 | Verified |
 | FR-08 Approve | F-04 | 1 | AC-F04-03, AC-F04-04, AC-F04-18, AC-F04-20 | Verified |
-| FR-09 Reject with a reason | F-04 | 1 | AC-F04-05, AC-F04-13 | Verified |
+| FR-09 Reject with a category and a reason | F-04 | 1 | AC-F04-05, AC-F04-13; revised (#65): AC-F04-25, AC-F04-29, AC-F04-32, AC-F04-34 | Earlier ACs verified at the Sprint 1 release; the revised requirement is specified, not yet implemented |
 | FR-10 Navigation by role | F-02 | 1 | AC-F02-11, AC-F02-12 | Verified |
 | FR-11 Seeded accounts | F-05 | 1 | AC-F05-02, AC-F05-03, AC-F05-19 | Verified |
 | FR-12 Health and readiness | F-02, F-05 | 1 | AC-F02-13, AC-F05-08, AC-F05-09, AC-F05-10 | Verified |
@@ -59,7 +60,7 @@ How to read it:
 | BR-09 Only the assigned reviewer decides | F-02, F-04 | 1 | AC-F02-03, AC-F04-09, AC-F04-10, AC-F04-16 | Verified |
 | BR-10 No self-approval | F-04 | 1 | AC-F04-08, AC-F04-23 | Verified |
 | BR-11 Only SUBMITTED is decided | F-04 | 1 | AC-F04-07, AC-F04-11, AC-F04-19 | Verified |
-| BR-12 Rejection reason | F-04 | 1 | AC-F04-04, AC-F04-05, AC-F04-06, AC-F04-14, AC-F04-17, AC-F04-21, AC-F04-22; revised rule (#65): AC-F04-24, AC-F04-25, AC-F04-26, AC-F04-27, AC-F04-28, AC-F04-29 | Earlier ACs verified at the Sprint 1 release; the revised rule is specified, not yet implemented |
+| BR-12 Rejection reason | F-04 | 1 | AC-F04-04, AC-F04-05, AC-F04-06, AC-F04-14, AC-F04-17, AC-F04-21, AC-F04-22; revised rule (#65): AC-F04-24, AC-F04-25, AC-F04-26, AC-F04-27, AC-F04-28, AC-F04-29, AC-F04-30, AC-F04-31, AC-F04-32, AC-F04-33, AC-F04-34 | Earlier ACs verified at the Sprint 1 release; the revised rule is specified, not yet implemented |
 | BR-13 Append-only history | F-03, F-04 | 1 | AC-F03-01, AC-F04-03, AC-F04-05, AC-F04-14 | Verified |
 | BR-14 Competing decisions | F-04 | 1 | AC-F04-12, AC-F04-19 | Verified |
 | BR-15 No edit after submission | F-03 | 1 | AC-F03-14 | Verified |
@@ -72,7 +73,7 @@ How to read it:
 | NFR-04 Session protection | F-01 | 1 | AC-F01-01, AC-F01-06, AC-F01-10, AC-F01-11, AC-F01-12, AC-F01-19, AC-F01-21 | Verified |
 | NFR-05 Sign-in throttle | F-01 | 1 | AC-F01-05, AC-F01-07, AC-F01-08, AC-F01-16, AC-F01-20 | Verified |
 | NFR-06 Safe errors | F-01, F-02, F-05 (SYS-01) | 1 | AC-F01-04, AC-F02-05, AC-F02-10, AC-F02-13, AC-F02-15, AC-F05-10, AC-F05-24, AC-F05-25 | Verified |
-| NFR-07 Database integrity | F-03, F-04 (SYS-04) | 1 | AC-F03-09, AC-F04-14 | Verified |
+| NFR-07 Database integrity | F-03, F-04 (SYS-04) | 1 | AC-F03-09, AC-F04-14; revised (#65): AC-F04-33 | Earlier ACs verified; AC-F04-33 specified, not yet implemented |
 | NFR-08 Persistence | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-05: a request created before a restart and a redeploy is still there afterwards, with before and after evidence on the deployed service | Verified (Lab 5 check C-05, section 5) |
 | NFR-09 Configuration and secrets | F-05 (SYS-02) | 1 | AC-F05-03, AC-F05-04, AC-F05-05, AC-F05-06, AC-F05-18, AC-F05-20, AC-F05-21, AC-F05-22, AC-F05-27 | Verified |
 | NFR-10 Reproducible build | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-03: a fresh clone builds, migrates, seeds, and answers 200 on `/api/ready` | Verified (Lab 5 check C-03, section 5) |

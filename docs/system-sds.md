@@ -16,6 +16,7 @@
 | 0.3 | 2026-11-14 | Menelaus122 | Rejection-reason `CHECK` made NULL-safe; `NOT NULL` columns stated; naming convention and `ApprovalRequest` model name; origin-guard behaviour and `CLIENT_ORIGINS` on Cloud Run; aligned with the F-05 contract (`DEMO_USER_PASSWORD` required everywhere, `NODE_ENV=test`, read-then-write seed) | Review of PR #18 and PR #19 |
 | 0.4 | 2026-11-14 | Menelaus122 | Node 24, as agreed for local, Docker, and CI. Table `app_user`. Named constraints, with the stricter `request_decision_fields` `CHECK`. Reasons up to 1000 characters. Guard order with the policy lookup before the session. `413 PAYLOAD_TOO_LARGE`. `{ "user": ... }` responses. `CLIENT_ORIGINS` set from the deterministic URL before the first deploy. Migrations backward-compatible rather than strictly additive. *(SRS)* markers replaced by requirement IDs. | Reviews of PRs #20 and #22–#25; team decision on Node 24 |
 | 0.5 | 2026-11-26 | Menelaus122 | BR-12 change: the 10-character minimum of a rejection reason is checked by the application only. No table, constraint, or migration changes. | Change request #65 (Lab 7) |
+| 0.6 | 2026-11-26 | Menelaus122 | Rejection category: enum `RejectionCategory`, nullable columns `request.decision_category` and `request_event.category`, two `CHECK` constraints, one additive migration. | Change request #65 (Lab 7) |
 
 ---
 
@@ -81,12 +82,13 @@ The client also hides controls a role cannot use, but that is feedback for peopl
 |---|---|---|---|---|
 | `User` | `id`, `name` (1–100), `email` (stored trimmed and lowercased), `passwordHash` (scrypt string), `role` (`REQUESTER` \| `REVIEWER`), `isActive`, `createdAt`, `updatedAt` | has many `Session`, requests as requester, requests as assigned reviewer, events as actor | `email` unique; users are deactivated, never deleted | Self |
 | `Session` | `id`, `tokenHash` (SHA-256 hex of the cookie token), `userId`, `createdAt`, `expiresAt` | belongs to `User` (`ON DELETE CASCADE`: a session is not history) | `tokenHash` unique; indexes on `userId`, `expiresAt` | The user it belongs to |
-| `Request` (Prisma model `ApprovalRequest`) | `id`, `requestNumber` (`REQ-######`), `requesterId`, `assignedReviewerId`, `title` (1–120), `description` (1–2000), `amount` (`DECIMAL(12,2)`, THB), `status`, `decidedById`, `decisionReason` (≤ 1000), `decidedAt`, `createdAt`, `updatedAt` | belongs to `User` (requester), `User` (assigned reviewer), `User` (decider, nullable); has many `RequestEvent` | see 3.3; FKs `ON DELETE RESTRICT`; indexes `(requesterId, createdAt)`, `(assignedReviewerId, status)` | The requester owns it; the assigned reviewer may decide it |
-| `RequestEvent` | `id`, `requestId`, `actorId`, `type` (`SUBMITTED` \| `APPROVED` \| `REJECTED`), `fromStatus` (nullable), `toStatus`, `reason` (nullable, ≤ 1000), `createdAt` | belongs to `Request` and `User` (actor), both `ON DELETE RESTRICT` | append-only (trigger); index `(requestId, createdAt, id)` | Part of its request's history; visible to whoever may see the request |
+| `Request` (Prisma model `ApprovalRequest`) | `id`, `requestNumber` (`REQ-######`), `requesterId`, `assignedReviewerId`, `title` (1–120), `description` (1–2000), `amount` (`DECIMAL(12,2)`, THB), `status`, `decidedById`, `decisionReason` (≤ 1000), `decisionCategory` (nullable `RejectionCategory`), `decidedAt`, `createdAt`, `updatedAt` | belongs to `User` (requester), `User` (assigned reviewer), `User` (decider, nullable); has many `RequestEvent` | see 3.3; FKs `ON DELETE RESTRICT`; indexes `(requesterId, createdAt)`, `(assignedReviewerId, status)` | The requester owns it; the assigned reviewer may decide it |
+| `RequestEvent` | `id`, `requestId`, `actorId`, `type` (`SUBMITTED` \| `APPROVED` \| `REJECTED`), `fromStatus` (nullable), `toStatus`, `reason` (nullable, ≤ 1000), `category` (nullable `RejectionCategory`), `createdAt` | belongs to `Request` and `User` (actor), both `ON DELETE RESTRICT` | append-only (trigger); index `(requestId, createdAt, id)` | Part of its request's history; visible to whoever may see the request |
 
 **Enums.**
 - `Role`: `REQUESTER`, `REVIEWER`. One role per account in Sprint 1. A `REVIEWER` may also submit requests, which makes "no self-approval" a real, testable rule (SRS D-02, BR-10).
 - `RequestStatus`: `SUBMITTED`, `APPROVED`, `REJECTED`. Sprint 2 adds `RETURNED` with `ALTER TYPE ... ADD VALUE`, which is additive.
+- `RejectionCategory`: `BUDGET`, `INCOMPLETE`, `DUPLICATE`, `POLICY`, `OTHER`. Set only on a rejection (BR-12). The list is fixed, so a new value is an additive migration.
 
 **Naming.**
 - Prisma models are PascalCase and map to snake_case tables (`@@map`), with snake_case columns (`@map`). The SQL in §3.3 and the migrations uses the snake_case names; the API's JSON uses camelCase.
@@ -97,6 +99,7 @@ The client also hides controls a role cannot use, but that is feedback for peopl
 - `request.decided_by_id`, `request.decision_reason`, `request.decided_at`: empty until a decision is made.
 - `request_event.from_status`: empty on the `SUBMITTED` event.
 - `request_event.reason`: optional on approval.
+- `request.decision_category`, `request_event.category`: set only by a rejection made after the BR-12 change; empty on every other row, including earlier rejections.
 
 In particular `amount`, `title`, `description`, `requester_id`, `assigned_reviewer_id`, `status`, and `request_number` are `NOT NULL`.
 
@@ -116,7 +119,7 @@ erDiagram
 stateDiagram-v2
   [*] --> SUBMITTED : requester submits (event SUBMITTED)
   SUBMITTED --> APPROVED : assigned reviewer approves (event APPROVED)
-  SUBMITTED --> REJECTED : assigned reviewer rejects with a reason (event REJECTED)
+  SUBMITTED --> REJECTED : assigned reviewer rejects with a category and a reason (event REJECTED)
   APPROVED --> [*]
   REJECTED --> [*]
 ```
@@ -132,6 +135,8 @@ Every other transition is invalid and answers `409 INVALID_TRANSITION`. Sprint 2
 | `request_reviewer_not_requester`: `CHECK (requester_id <> assigned_reviewer_id)` | Nobody is assigned their own request (BR-06) |
 | `request_decision_fields`: `CHECK ((status = 'SUBMITTED' AND decided_at IS NULL AND decided_by_id IS NULL AND decision_reason IS NULL) OR (status <> 'SUBMITTED' AND decided_at IS NOT NULL AND decided_by_id IS NOT NULL))` | A decided request always records both who decided and when, and a submitted one has no decider, date, or reason (BR-11) |
 | `request_rejection_reason`: `CHECK (status <> 'REJECTED' OR (decision_reason IS NOT NULL AND length(btrim(decision_reason)) > 0))`; `decision_reason` and `request_event.reason` are `varchar(1000)` | A rejection always has a reason that is not empty or blank, and no reason is longer than 1000 characters (BR-12). The 10-character minimum of BR-12 is checked by the application only, not by this constraint |
+| `request_category_only_on_rejection`: `CHECK (decision_category IS NULL OR status = 'REJECTED')` | Only a rejected request has a category (BR-12). It does not require one, so earlier rows and the previous image stay valid |
+| `request_event_category_only_on_rejection`: `CHECK (category IS NULL OR type = 'REJECTED')` | The same for the history (BR-12, BR-13) |
 | `request_number_unique`: `UNIQUE (request_number)` | Request numbers are unique (BR-07) |
 | `request_number` default `'REQ-' \|\| lpad(nextval('request_number_seq')::text, 6, '0')` | The number is generated by the database, never by the client |
 | Trigger `request_event_append_only` (`BEFORE UPDATE OR DELETE ... RAISE EXCEPTION 'request_event is append-only'`) | History cannot be changed or removed, even by a bug (BR-13). Known gap: row triggers do not fire on `TRUNCATE`; the application never truncates, and F-10 can revoke it from the runtime role. |
@@ -230,7 +235,7 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 
 | Code | Status | Meaning |
 |---|---|---|
-| `VALIDATION_ERROR` | 400 | A field or parameter failed validation (see `fields`), including a rejection without a reason or with one shorter than 10 characters |
+| `VALIDATION_ERROR` | 400 | A field or parameter failed validation (see `fields`), including a rejection without a category, without a reason, or with a reason shorter than 10 characters |
 | `UNAUTHENTICATED` | 401 | No session, an unknown token, or an expired session |
 | `INVALID_CREDENTIALS` | 401 | Login: unknown email or wrong password, with one message for both |
 | `ACCOUNT_INACTIVE` | 403 | Login: correct password for a deactivated account |
@@ -244,7 +249,7 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 | `INTERNAL_ERROR` | 500 | An unexpected failure; the message is always "Something went wrong. Please try again." |
 
 **Competing decisions.** The decision runs in one transaction: a conditional update
-`... SET status = $new, decided_by_id = $me, decided_at = now(), decision_reason = $reason WHERE id = $id AND status = 'SUBMITTED' AND assigned_reviewer_id = $me`,
+`... SET status = $new, decided_by_id = $me, decided_at = now(), decision_reason = $reason, decision_category = $category WHERE id = $id AND status = 'SUBMITTED' AND assigned_reviewer_id = $me`,
 then one `RequestEvent` insert. If the update touches no row, the handler re-reads the request to answer `404`,
 `403`, or `409`, and writes nothing. Two simultaneous decisions therefore give exactly one success, one `409`,
 and one event.
