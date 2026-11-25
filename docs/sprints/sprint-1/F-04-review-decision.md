@@ -8,9 +8,9 @@
 |---|---|
 | Feature ID | F-04 |
 | Sprint | 1 |
-| Status | Implemented (Draft → Agreed → Implemented → Verified) |
+| Status | v0.7 behaviour implemented; v0.8 (BR-12 change) Draft, awaiting review (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-07, FR-08, FR-09; BR-08, BR-09, BR-10, BR-11, BR-12, BR-13, BR-14; NFR-02, NFR-07 |
-| GitHub Issue | #7 (contract), #11 (implementation) |
+| GitHub Issue | #7 (contract), #11 (implementation), #65 (v0.8 change) |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
 | Depends on | F-01 (session), F-02 (policies: `REVIEWER` only for both routes), F-03 (`request` and `request_event` tables, `RequestDetail`, the Request Detail screen). SDS §3.3, §5, §6. |
 
@@ -25,6 +25,7 @@
 | 0.5 | 2026-11-15 | Menelaus122 | AC-F04-14 and TEST-F04-14: cases (g) and (h) now start from a valid `request_event` row that is inserted first as a control, so the `UPDATE` and `DELETE` are refused by the trigger and not by a missing row. The database errors are asserted by SQLSTATE code and constraint name (`P0001` for the trigger). A note says these tests cannot be red in #11, because every rule they check was added by F-03's `add_request_rules` migration; they guard against a regression. | Review of PR #26; found while planning the red tests for #11 | #11 |
 | 0.6 | 2026-11-15 | Menelaus122 | Status: Implemented; section 6 filled in. STS notes only, no change to any AC or behaviour: TEST-F04-09 also checks that the assigned reviewer can still decide the request after the two 404s, so it is red before the route exists (any request answered 404 then); TEST-F04-10 and the two "no panel" cases of TEST-F04-16 pass when first written and guard the green step, like TEST-F04-14. | Found while writing the red tests and the implementation for #11. The tests were changed first (`8cb661a`, `587d3e4`); this row brings the contract in line with them. | #11 |
 | 0.7 | 2026-11-15 | Menelaus122 | `decided_at` and the new history entry's `created_at` are one value (`$now`, taken once by the application), and AC-F04-03 / TEST-F04-03 assert that they are equal. Before this, `decided_at` came from the database's `now()` and the entry's time from Prisma's default, which is the application clock, so the two differed by up to a second. | Review of PR #30: my note that they were "the same value" was wrong. I read the database before changing anything: in all 7 decided rows they differed (up to 0.85 s). | #11 |
+| 0.8 | 2026-11-26 | Menelaus122 | **BR-12 changed:** a rejection reason needs at least 10 characters after trimming; an approval reason is unchanged. Sections 1.1, 1.3, 1.4, 1.5, 2.1, and 2.3 follow. AC-F04-24 to AC-F04-29 and TEST-F04-24 to TEST-F04-29 added. TEST-F04-19 changes only the reason it types, from `"No."` to at least 10 characters, because the panel would no longer send it; its assertions stay. AC-F04-01 to AC-F04-23 keep their wording. | Change request #65 (Lab 7). A reason such as "No" satisfied the old rule and gave the requester nothing to act on. | #65 |
 
 ---
 
@@ -34,14 +35,14 @@
 
 F-04 is the decision step of the workflow.
 - A reviewer sees the `SUBMITTED` requests assigned to them (FR-07).
-- They approve one, with an optional reason (FR-08), or reject it with a required reason (FR-09).
+- They approve one, with an optional reason (FR-08), or reject it with a required reason of at least 10 characters (FR-09, BR-12).
 - The decision and a permanent history entry are written together, and the requester sees the outcome.
 
 The rules that make this trustworthy are all enforced on the server, with the database as a backstop:
 - only the assigned reviewer decides (BR-09)
 - nobody decides their own request (BR-10)
 - only `SUBMITTED` can be decided (BR-11)
-- a rejection needs a reason (BR-12)
+- a rejection needs a reason of at least 10 characters (BR-12)
 - history is append-only (BR-13)
 - two competing decisions cannot both succeed (BR-14)
 
@@ -87,7 +88,7 @@ decisions safe, because the database lets only one `UPDATE` match `status = 'SUB
 | BR-09: only the assigned reviewer decides. A `REQUESTER` gets `403`; a user who is neither the requester nor the assigned reviewer gets "not found". | F-02 role policy; handler step 4; `assigned_reviewer_id = $me` in the conditional update (server) |
 | BR-10: nobody decides their own request (`403`) | Handler step 3, before record scope (server). The `CHECK (requester_id <> assigned_reviewer_id)` from F-03 means a requester is never also the assigned reviewer (DB). |
 | BR-11: only `SUBMITTED` can be decided; the only transitions are `SUBMITTED → APPROVED` and `SUBMITTED → REJECTED` | Handler step 6, and the `WHERE status = 'SUBMITTED'` (server, DB) |
-| BR-12: a rejection needs a reason that is not blank; any reason is at most 1000 characters | Handler validation; `CHECK (status <> 'REJECTED' OR (decision_reason IS NOT NULL AND length(btrim(decision_reason)) > 0))`; `decision_reason` and `reason` are `varchar(1000)` (server, DB) |
+| BR-12: a rejection needs a reason of at least 10 characters after trimming; any reason is at most 1000 characters | Handler validation (both limits); the database refuses only a missing or blank reason: `CHECK (status <> 'REJECTED' OR (decision_reason IS NOT NULL AND length(btrim(decision_reason)) > 0))`; `decision_reason` and `reason` are `varchar(1000)` (server, DB) |
 | BR-13: every decision adds exactly one history entry; entries are never changed | The event is inserted in the same transaction as the update; trigger `request_event_append_only`; no endpoint edits history (server, DB) |
 | BR-14: of two simultaneous decisions, at most one succeeds; the other gets `409` and adds no entry | The conditional update's row count decides; the loser rolls back before inserting an event (server, DB) |
 | Decision fields match the status: a submitted request has no decider, date, or reason; a decided one has both decider and date | `request_decision_fields`: `CHECK ((status = 'SUBMITTED' AND decided_at IS NULL AND decided_by_id IS NULL AND decision_reason IS NULL) OR (status <> 'SUBMITTED' AND decided_at IS NOT NULL AND decided_by_id IS NOT NULL))` (DB) |
@@ -97,13 +98,17 @@ decisions safe, because the database lets only one `UPDATE` match `status = 'SUB
 | Field / input | Rule | Error returned (`400 VALIDATION_ERROR`, in `fields`) |
 |---|---|---|
 | `decision` | Exactly `"APPROVE"` or `"REJECT"` | "Choose approve or reject." |
-| `reason` with `REJECT` | A string; after trimming, 1–1000 characters; stored trimmed | "Enter a reason to reject this request." (missing, `null`, empty, or only spaces) / "Enter the reason as text." (any other non-string, such as a number or an object) / "Reason must be 1,000 characters or fewer." |
+| `reason` with `REJECT` | A string; after trimming, 10–1000 characters; stored trimmed | "Enter a reason to reject this request." (missing, `null`, empty, or only spaces) / "Reason must be at least 10 characters." (1 to 9 characters after trimming) / "Enter the reason as text." (any other non-string, such as a number or an object) / "Reason must be 1,000 characters or fewer." |
 | `reason` with `APPROVE` | Optional. Missing, `null`, or blank is stored as `NULL`; otherwise a string of 1–1000 characters after trimming, stored trimmed | "Reason must be 1,000 characters or fewer." / "Enter the reason as text." (not a string) |
 | `:id` | A positive integer for a request the caller may see | Not a validation error: `404 NOT_FOUND` (§1.2 steps 2 and 4) |
 
 ### 1.5 Failure and boundary cases
 
 - **Reason boundaries:** exactly 1000 characters after trimming is accepted; 1001 is refused. Spaces around the reason are trimmed first, so 1000 characters plus surrounding spaces is accepted.
+- **Minimum for a rejection (v0.8):** 9 characters after trimming are refused and 10 are accepted. Outer spaces are removed first and do not count; spaces inside the reason do count. Both limits count Unicode code points, on the server and in the panel. An approval reason has no minimum.
+- **A short rejection of a decided request** answers `400`, not `409`, because validation (step 5) runs before the status check (step 6), as for a blank reason. A requester, the request's own submitter, and an unrelated reviewer get the same `403`, `403`, and `404` as before, whatever the length of the reason.
+- **Earlier decisions** with a shorter reason stay as they are; nothing checks them again.
+- **Known limitation (v0.8):** the rule measures length, not meaning.
 - **A reviewer who submitted a request:** they see it in My Requests (F-03), not in their inbox, and deciding it answers `403 SELF_APPROVAL_FORBIDDEN`, even if the body is invalid (step 3 runs before step 5).
 - **An unrelated reviewer** guessing an id gets `404` from both the detail (F-03) and the decision endpoint. The bodies are the same as for a missing id.
 - **Deciding twice** (a double click, or two tabs): the first answers `200`; the second answers `409` from step 6, or from step 7 if they overlap. Either way only one event exists. The UI also disables the buttons while a request is in flight.
@@ -136,7 +141,7 @@ decisions safe, because the database lets only one `UPDATE` match `status = 'SUB
 | Review Inbox (`/reviews`) | One row per request, oldest first: **Number**, **Title**, **Requester**, **Amount** (THB, `1,250.50`), **Submitted** (date). Each row opens `/requests/:id`. |
 | Review Inbox: states | Loading: a spinner with "Loading your inbox…". Empty: "No requests are waiting for your review." Error: a message with **Try again**. |
 | Decision panel (on Request Detail) | Shown **only** when the signed-in user is the assigned reviewer and the status is `SUBMITTED`. It has: **Reason** (a multi-line field labelled "Reason (required to reject)", with a live counter "0 / 1000"); **Approve** and **Reject** buttons. |
-| Decision panel: validation | **Reject** with a blank reason shows "Enter a reason to reject this request." beneath the field (linked with `aria-describedby`), moves focus to the field, and sends nothing. More than 1000 characters shows "Reason must be 1,000 characters or fewer." and sends nothing. |
+| Decision panel: validation | **Reject** with a blank reason shows "Enter a reason to reject this request." beneath the field (linked with `aria-describedby`), moves focus to the field, and sends nothing. **Reject** with 1 to 9 characters after trimming shows "Reason must be at least 10 characters." in the same way (v0.8). **Approve** has no minimum. More than 1000 characters shows "Reason must be 1,000 characters or fewer." and sends nothing. |
 | Decision panel: busy | While a decision is in flight both buttons are disabled, and the clicked one reads "Saving…". |
 | After success | The page re-renders from the response: the status badge changes, a **Decision** section shows the decider, date, and reason, the history gains the new line, and the panel disappears. A banner reads "Request approved." or "Request rejected." |
 | After `409` | "This request has already been decided." The detail is fetched again, so the current status is shown and the panel disappears. |
@@ -172,6 +177,8 @@ No change. F-04 writes `request.status`, `decided_by_id`, `decided_at`, `decisio
 inserts `request_event` rows. All of these columns, the `CHECK` constraints, and the trigger were created by F-03's
 migrations (`add_requests` and `add_request_rules`).
 
+**v0.8:** no migration. `request_rejection_reason` still refuses only a missing or blank reason, and the 10-character minimum is checked by the application. A stricter `CHECK` could fail on rows stored under the old rule, and the previous image, which accepts short reasons, must keep working after a rollback.
+
 ## 3. Acceptance criteria
 
 The examples use the seeded accounts: requesters Ploy and Nattapong, reviewers Mint and Korn.
@@ -201,6 +208,12 @@ The examples use the seeded accounts: requesters Ploy and Nattapong, reviewers M
 | AC-F04-21 | A `SUBMITTED` request assigned to Mint | Mint rejects with `reason: 123`, then approves with `reason: { "text": "ok" }` | Both answer `400` with `fields.reason` = "Enter the reason as text."; nothing changes | negative | BR-12 |
 | AC-F04-22 | A `SUBMITTED` request assigned to Mint | Mint rejects with a reason of exactly 1000 characters plus two spaces before and two after | `200`; the stored `decision_reason` and event `reason` are exactly the 1000 characters, without the spaces | boundary | BR-12 |
 | AC-F04-23 | Mint submitted a request assigned to Korn | Mint and Korn each call `GET /api/reviews/inbox` | Mint's inbox does not contain the request; Korn's does | normal | FR-07, BR-10 |
+| AC-F04-24 | Fresh `SUBMITTED` requests assigned to Mint, and one request Mint already approved | Mint rejects with `"No"`, `"123456789"`, and `"  123456789  "`, each on its own fresh request, then rejects the approved request with `"No"` | All four answer `400` with `fields.reason` = "Reason must be at least 10 characters."; each fresh request stays `SUBMITTED` with 1 event; the approved request is unchanged | boundary | BR-12, BR-11 |
+| AC-F04-25 | Two fresh `SUBMITTED` requests assigned to Mint | Mint rejects one with `"1234567890"` and the other with `"  1234567890  "` | Both answer `200`; each request and its new `REJECTED` event store `"1234567890"` | boundary | BR-12, FR-09 |
+| AC-F04-26 | Three fresh `SUBMITTED` requests assigned to Mint | Mint approves with no reason, with `"ok"`, and with `"123456789"` | Each answers `200`; the stored reasons are `null`, `"ok"`, and `"123456789"` | boundary | BR-12, FR-08 |
+| AC-F04-27 | A request Mint submitted, assigned to Korn; Ploy's request assigned to Mint | Mint rejects the first with `"No"`; Korn and then Ploy reject the second with `"No"` | `403 SELF_APPROVAL_FORBIDDEN`, `404 NOT_FOUND`, and `403 FORBIDDEN`, in that order; both requests are unchanged | negative | BR-09, BR-10, NFR-02 |
+| AC-F04-28 | The decision panel | **Reject** with `"No"`, then with `"  123456789  "`, then with `"1234567890"` | For the first two, "Reason must be at least 10 characters." appears beneath the field, focus is on the field, and nothing is sent. The third is sent with `reason` `"1234567890"` | negative | BR-12, NFR-11 |
+| AC-F04-29 | The running stack with seeded data and a request Ploy submitted to Mint | Mint opens it, rejects with a 9-character reason, then with a 10-character reason; Ploy opens the request and reloads it | The first attempt shows the message and the request stays `SUBMITTED`; the second shows Rejected; Ploy sees `REJECTED`, the reason, and the history Submitted, Rejected, also after the reload | normal | BR-12, FR-09 |
 
 ## 4. Software Test Specification (STS)
 
@@ -224,15 +237,21 @@ The examples use the seeded accounts: requesters Ploy and Nattapong, reviewers M
 | TEST-F04-16 | AC-F04-16 | component | Auth context plus detail fixtures for the three cases | Render each | The panel (by role `region`, named "Decision") is present only in the first case. **The two "absent" cases pass when first written**, because no panel exists yet; they guard the green step and are not red evidence. | `client/tests/sprint-1/DecisionPanel.test.tsx` |
 | TEST-F04-17 | AC-F04-17 | component | Panel rendered; a fetch spy; a pending promise for (c) | Run (a) to (c) | As stated, including `aria-describedby`, focus, and fetch call counts | `client/tests/sprint-1/DecisionPanel.test.tsx` |
 | TEST-F04-18 | AC-F04-18 | component | Mocked `200` with an `APPROVED` detail | Click **Approve** | The badge, Decision section, history line, hidden panel, and banner, as stated | `client/tests/sprint-1/DecisionPanel.test.tsx` |
-| TEST-F04-19 | AC-F04-19 | component | Mocked `409`, then a detail fetch returning a decided request | Click **Reject** with a reason | The message is shown; the detail fetch is called again; the panel is absent | `client/tests/sprint-1/DecisionPanel.test.tsx` |
+| TEST-F04-19 | AC-F04-19 | component | Mocked `409`, then a detail fetch returning a decided request | Click **Reject** with a reason (v0.8: at least 10 characters; the test typed `"No."` before) | The message is shown; the detail fetch is called again; the panel is absent | `client/tests/sprint-1/DecisionPanel.test.tsx` |
 | TEST-F04-20 | AC-F04-20 | e2e | Running stack; the request is created through the API by Ploy in the test setup | Mint's journey as stated | Approved is shown; after the reload the inbox does not list the request | `client/e2e/sprint-1/reviews.spec.ts` |
 | TEST-F04-21 | AC-F04-21 | API-DB | A fresh request for Mint | Send the two bodies | `400` both, with the stated message; status and event count unchanged | `server/tests/sprint-1/reviews.api.test.ts` |
 | TEST-F04-22 | AC-F04-22 | API-DB | A fresh request for Mint | Reject with `"  " + "x".repeat(1000) + "  "` | `200`; stored values have length 1000 and no surrounding spaces | `server/tests/sprint-1/reviews.api.test.ts` |
 | TEST-F04-23 | AC-F04-23 | API-DB | Mint's agent submits a request for Korn | Call the inbox as Mint, then as Korn | The id is absent from Mint's list and present in Korn's | `server/tests/sprint-1/reviews.api.test.ts` |
+| TEST-F04-24 | AC-F04-24 | API-DB | As in the AC; the approved request's row read before | Table-driven over the four rejections | `400` with the stated message; status, decision fields, and event count unchanged | `server/tests/sprint-1/reviews.api.test.ts` |
+| TEST-F04-25 | AC-F04-25 | API-DB | Two fresh requests for Mint | Send the two rejections | `200`; the request and event rows hold the trimmed 10 characters. **Passes on the old code**; it guards a boundary and is not red evidence. | `server/tests/sprint-1/reviews.api.test.ts` |
+| TEST-F04-26 | AC-F04-26 | API-DB | Three fresh requests for Mint | Send the three approvals | `200`; the stored reasons as stated. **Passes on the old code**; it guards a boundary and is not red evidence. | `server/tests/sprint-1/reviews.api.test.ts` |
+| TEST-F04-27 | AC-F04-27 | API-DB | The two requests of the AC | Send the three rejections | The stated statuses and codes; rows and event counts unchanged. **Passes on the old code**; it guards a boundary and is not red evidence. | `server/tests/sprint-1/reviews.api.test.ts` |
+| TEST-F04-28 | AC-F04-28 | component | Panel rendered; a fetch spy; a mocked `200` for the third attempt | Run the three attempts | As stated, including `aria-describedby`, focus, fetch call counts, and the sent body | `client/tests/sprint-1/DecisionPanel.test.tsx` |
+| TEST-F04-29 | AC-F04-29 | e2e | Running stack; the request is created through the API by Ploy in the test setup | The journey as stated | As stated, including after the reload | `client/e2e/sprint-1/reviews.spec.ts` |
 
-**Coverage check:** AC-F04-01 to AC-F04-23 each map to exactly one TEST, and every test is automated.
-- 17 run on the server against a real database: BR-08 to BR-14, NFR-02, and NFR-07, including the concurrency test and the constraint and trigger tests.
-- 5 are component tests and 1 is an end-to-end test.
+**Coverage check:** AC-F04-01 to AC-F04-29 each map to exactly one TEST, and every test is automated.
+- 21 run on the server against a real database: BR-08 to BR-14, NFR-02, and NFR-07, including the concurrency test and the constraint and trigger tests.
+- 6 are component tests and 2 are end-to-end tests.
 
 The full cross-user journey (submit, decide, requester sees the result) is #12's end-to-end suite.
 
@@ -240,7 +259,8 @@ The full cross-user journey (submit, decide, requester sees the result) is #12's
 
 The [Product Definition of Done](README.md#product-definition-of-done) applies, plus:
 
-- [x] All AC in section 3 have a passing automated test
+- [x] AC-F04-01 to AC-F04-23 have a passing automated test
+- [ ] AC-F04-24 to AC-F04-29 (v0.8) have a passing automated test
 - [x] TDD evidence recorded for each rule (BR-09 to BR-14): failing test commit, then passing implementation commit
 - [x] TEST-F04-12 passes in 20 of 20 iterations on a fresh database, and the run is recorded
 

@@ -17,6 +17,7 @@
 | 0.3 | 2026-11-15 | Menelaus122 | The rows for FR-16, FR-17, FR-18, and BR-18 and the coverage-gap row say that the contracts of F-08, F-09, and F-10 are written in Sprint 2 (`plan.md` section 3), not at the start of Sprint 3. No sprint allocation and no result changes. | Review of PR #48, and the description of PR #50 |
 | 0.4 | 2026-11-16 | Menelaus122 | New section 5: AC-F05-29 and AC-F05-30 (the build footer, Lab 5 R-08) with their TESTs and results. Sections 1 to 4, and the Sprint 1 figures in them, are unchanged. | PRs #56 and #57 added the two ACs after the release |
 | 0.5 | 2026-11-22 | Menelaus122 | The status of NFR-08, NFR-10, NFR-15, and NFR-16 in sections 1 and 2 follows the Lab 5 checks, which are listed in section 5. The keyboard pass by a person (NFR-11, RD-7) is recorded as done in sections 1, 2, and 4. The Sprint 1 figures in section 4 (108 ACs, 107 automated, tested at `7f8cf54`) and every AC and TEST row are unchanged. | The deployment (PRs #58, #59, #60) gave the evidence; the keyboard pass was done on 15 Nov, after section 4 was written |
+| 0.6 | 2026-11-26 | Menelaus122 | The BR-12 row follows the revised rule and lists AC-F04-24 to AC-F04-29, which are specified and not yet implemented. The Sprint 1 figures in section 4 are unchanged. | Change request #65 (Lab 7) |
 
 ---
 
@@ -58,7 +59,7 @@ How to read it:
 | BR-09 Only the assigned reviewer decides | F-02, F-04 | 1 | AC-F02-03, AC-F04-09, AC-F04-10, AC-F04-16 | Verified |
 | BR-10 No self-approval | F-04 | 1 | AC-F04-08, AC-F04-23 | Verified |
 | BR-11 Only SUBMITTED is decided | F-04 | 1 | AC-F04-07, AC-F04-11, AC-F04-19 | Verified |
-| BR-12 Rejection reason | F-04 | 1 | AC-F04-04, AC-F04-05, AC-F04-06, AC-F04-14, AC-F04-17, AC-F04-21, AC-F04-22 | Verified |
+| BR-12 Rejection reason | F-04 | 1 | AC-F04-04, AC-F04-05, AC-F04-06, AC-F04-14, AC-F04-17, AC-F04-21, AC-F04-22; revised rule (#65): AC-F04-24, AC-F04-25, AC-F04-26, AC-F04-27, AC-F04-28, AC-F04-29 | Earlier ACs verified at the Sprint 1 release; the revised rule is specified, not yet implemented |
 | BR-13 Append-only history | F-03, F-04 | 1 | AC-F03-01, AC-F04-03, AC-F04-05, AC-F04-14 | Verified |
 | BR-14 Competing decisions | F-04 | 1 | AC-F04-12, AC-F04-19 | Verified |
 | BR-15 No edit after submission | F-03 | 1 | AC-F03-14 | Verified |
