@@ -17,6 +17,7 @@
 | 0.4 | 2026-11-14 | Menelaus122 | Node 24, as agreed for local, Docker, and CI. Table `app_user`. Named constraints, with the stricter `request_decision_fields` `CHECK`. Reasons up to 1000 characters. Guard order with the policy lookup before the session. `413 PAYLOAD_TOO_LARGE`. `{ "user": ... }` responses. `CLIENT_ORIGINS` set from the deterministic URL before the first deploy. Migrations backward-compatible rather than strictly additive. *(SRS)* markers replaced by requirement IDs. | Reviews of PRs #20 and #22–#25; team decision on Node 24 |
 | 0.5 | 2026-11-26 | Menelaus122 | BR-12 change: the 10-character minimum of a rejection reason is checked by the application only. No table, constraint, or migration changes. | Change request #65 (Lab 7) |
 | 0.6 | 2026-11-26 | Menelaus122 | Rejection category: enum `RejectionCategory`, nullable columns `request.decision_category` and `request_event.category`, two `CHECK` constraints, one additive migration. | Change request #65 (Lab 7) |
+| 0.7 | 2026-11-26 | Menelaus122 | The rejection category of 0.6 is applied as two additive migrations, the columns first and the `CHECK` constraints second (F-04 v0.10). No table, column, or constraint changes. | Review of PR #66 |
 
 ---
 
