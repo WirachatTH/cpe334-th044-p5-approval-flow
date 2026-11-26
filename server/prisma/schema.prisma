@@ -64,6 +64,17 @@ enum RequestEventType {
   REJECTED
 }
 
+// Why a request was rejected (BR-12, F-04 contract section 2.3). The list is fixed.
+enum RejectionCategory {
+  BUDGET
+  INCOMPLETE
+  DUPLICATE
+  POLICY
+  OTHER
+
+  @@map("rejection_category")
+}
+
 // A purchase or funding request (SDS section 3, F-03 contract section 2.3). The model is named ApprovalRequest so
 // the type never clashes with the global Request type.
 //
@@ -81,6 +92,7 @@ model ApprovalRequest {
   status             RequestStatus @default(SUBMITTED)
   decidedById        Int?          @map("decided_by_id")
   decisionReason     String?       @map("decision_reason") @db.VarChar(1000)
+  decisionCategory   RejectionCategory? @map("decision_category")
   decidedAt          DateTime?     @map("decided_at") @db.Timestamptz
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz
@@ -104,6 +116,7 @@ model RequestEvent {
   fromStatus RequestStatus?   @map("from_status")
   toStatus   RequestStatus    @map("to_status")
   reason     String?          @db.VarChar(1000)
+  category   RejectionCategory?
   createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz
 
   request ApprovalRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
