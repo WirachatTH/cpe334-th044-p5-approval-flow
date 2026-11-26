@@ -1,20 +1,34 @@
 import { useRef, useState } from "react";
 import { useApi } from "../context/AuthContext.js";
-import type { RequestDetail } from "../format.js";
+import { CATEGORY_LABEL, type RejectionCategory, type RequestDetail } from "../format.js";
 
 // The decision panel on Request Detail (F-04 contract §2.1). The caller shows it only to the assigned reviewer of a
 // SUBMITTED request; the API checks the same thing again, so hiding it is a convenience and not the rule.
 
+const REJECTION_REASON_MIN = 10;
 const REASON_MAX = 1000;
 const REASON_ID = "decision-reason";
 const ERROR_ID = "decision-reason-error";
+const CATEGORY_ID = "decision-category";
+const CATEGORY_ERROR_ID = "decision-category-error";
+const CATEGORIES = Object.keys(CATEGORY_LABEL) as RejectionCategory[];
 
 type Choice = "APPROVE" | "REJECT";
 
-// The same reason rules as the API: only the trimmed text counts, a rejection needs one, and 1000 is the limit.
+interface Problems {
+  reason: string | null;
+  category: string | null;
+}
+
+const NO_PROBLEMS: Problems = { reason: null, category: null };
+
+// The same reason rules as the API: only the trimmed text counts, in code points; a rejection needs at least 10
+// characters, an approval has no minimum, and 1000 is the limit.
 function reasonProblem(choice: Choice, reason: string): string | null {
-  if (reason === "" && choice === "REJECT") return "Enter a reason to reject this request.";
-  if ([...reason].length > REASON_MAX) return "Reason must be 1,000 characters or fewer.";
+  const length = [...reason].length;
+  if (length === 0 && choice === "REJECT") return "Enter a reason to reject this request.";
+  if (choice === "REJECT" && length < REJECTION_REASON_MIN) return "Reason must be at least 10 characters.";
+  if (length > REASON_MAX) return "Reason must be 1,000 characters or fewer.";
   return null;
 }
 
@@ -31,36 +45,54 @@ interface Props {
 export function DecisionPanel({ requestId, onDecided, onConflict, onUnavailable }: Props) {
   const api = useApi();
   const [reason, setReason] = useState("");
-  const [problem, setProblem] = useState<string | null>(null);
+  const [category, setCategory] = useState("");
+  const [problems, setProblems] = useState<Problems>(NO_PROBLEMS);
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState<Choice | null>(null);
-  const field = useRef<HTMLTextAreaElement>(null);
+  const reasonField = useRef<HTMLTextAreaElement>(null);
+  const categoryField = useRef<HTMLSelectElement>(null);
   const trimmed = reason.trim();
+
+  // Shows every problem at once and moves the focus to the first invalid field in form order.
+  function show(found: Problems) {
+    setProblems(found);
+    if (found.reason) reasonField.current?.focus();
+    else if (found.category) categoryField.current?.focus();
+  }
 
   async function decide(choice: Choice) {
     if (busy) return;
     setFailure(null);
 
-    const found = reasonProblem(choice, trimmed);
-    setProblem(found);
-    if (found) return field.current?.focus();
+    const found: Problems = {
+      reason: reasonProblem(choice, trimmed),
+      category: choice === "REJECT" && category === "" ? "Choose a rejection category." : null,
+    };
+    show(found);
+    if (found.reason || found.category) return;
 
     setBusy(choice);
     try {
+      // An approval never carries a category, whatever the select holds.
       const res = await api(`/api/requests/${requestId}/decision`, {
         method: "POST",
-        body: JSON.stringify(trimmed === "" ? { decision: choice } : { decision: choice, reason: trimmed }),
+        body: JSON.stringify({
+          decision: choice,
+          ...(trimmed === "" ? {} : { reason: trimmed }),
+          ...(choice === "REJECT" ? { category } : {}),
+        }),
       });
       if (res.ok) return onDecided((await res.json()).request, choice);
       if (res.status === 409) return onConflict();
       if (res.status === 403 || res.status === 404) return onUnavailable();
       const data = await res.json().catch(() => null);
-      if (res.status === 400 && typeof data?.error?.fields?.reason === "string") {
-        setProblem(data.error.fields.reason);
-        field.current?.focus();
-      } else {
-        setFailure("Something went wrong. Please try again.");
-      }
+      const fields = res.status === 400 ? data?.error?.fields : undefined;
+      const refused: Problems = {
+        reason: typeof fields?.reason === "string" ? fields.reason : null,
+        category: typeof fields?.category === "string" ? fields.category : null,
+      };
+      if (refused.reason || refused.category) show(refused);
+      else setFailure("Something went wrong. Please try again.");
     } catch {
       setFailure("Something went wrong. Please try again.");
     }
@@ -79,17 +111,40 @@ export function DecisionPanel({ requestId, onDecided, onConflict, onUnavailable 
         <label htmlFor={REASON_ID}>Reason (required to reject)</label>
         <textarea
           id={REASON_ID}
-          ref={field}
+          ref={reasonField}
           rows={4}
           value={reason}
           onChange={(event) => setReason(event.target.value)}
-          aria-invalid={problem ? true : undefined}
-          aria-describedby={problem ? ERROR_ID : undefined}
+          aria-invalid={problems.reason ? true : undefined}
+          aria-describedby={problems.reason ? ERROR_ID : undefined}
         />
         <p className="hint">{`${[...trimmed].length} / ${REASON_MAX}`}</p>
-        {problem && (
+        {problems.reason && (
           <p id={ERROR_ID} className="field-error">
-            {problem}
+            {problems.reason}
+          </p>
+        )}
+      </div>
+      <div className="field">
+        <label htmlFor={CATEGORY_ID}>Rejection category (required to reject)</label>
+        <select
+          id={CATEGORY_ID}
+          ref={categoryField}
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
+          aria-invalid={problems.category ? true : undefined}
+          aria-describedby={problems.category ? CATEGORY_ERROR_ID : undefined}
+        >
+          <option value="">Choose a category</option>
+          {CATEGORIES.map((code) => (
+            <option key={code} value={code}>
+              {CATEGORY_LABEL[code]}
+            </option>
+          ))}
+        </select>
+        {problems.category && (
+          <p id={CATEGORY_ERROR_ID} className="field-error">
+            {problems.category}
           </p>
         )}
       </div>

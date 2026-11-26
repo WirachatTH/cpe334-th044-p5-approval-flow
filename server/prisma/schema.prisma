@@ -64,7 +64,8 @@ enum RequestEventType {
   REJECTED
 }
 
-// Why a request was rejected (BR-12, F-04 contract section 2.3). The list is fixed.
+// Why a request was rejected (BR-12, F-04 contract section 2.3). The list is fixed. The CHECK constraints that keep a
+// category off everything but a rejection are in the migration add_rejection_category_rules.
 enum RejectionCategory {
   BUDGET
   INCOMPLETE
