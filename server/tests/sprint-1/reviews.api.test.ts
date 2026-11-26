@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { freshUser, signedIn, startTestApp, type TestApp } from "./helpers/app.js";
 
-// F-04: the review inbox and the decision, against a real database (contract §3, AC-F04-01 to 11, 13, 21 to 23).
+// F-04: the review inbox and the decision, against a real database (contract §3, AC-F04-01 to 11, 13, 21 to 27, and
+// 30 to 32).
 // Every test uses accounts it creates itself, so one test's requests never appear in another test's inbox.
 
 let t: TestApp;
@@ -128,7 +129,7 @@ describe("deciding a request", () => {
   it("TEST-F04-05 / AC-F04-05: rejecting with a reason stores it on the request and the event", async () => {
     const s = await scenario();
     const reason = "Please get a second quotation.";
-    const res = await decide(s.reviewerAgent, s.request.id, { decision: "REJECT", reason });
+    const res = await decide(s.reviewerAgent, s.request.id, { decision: "REJECT", reason, category: "INCOMPLETE" });
     expect(res.status, res.text).toBe(200);
     expect(res.body.request.status).toBe("REJECTED");
     expect((await row(s.request.id)).decisionReason).toBe(reason);
@@ -147,7 +148,7 @@ describe("deciding a request", () => {
     ];
     for (const [label, reason, message] of invalid) {
       const request = await submit(s.requesterAgent, s.reviewer.id);
-      const res = await decide(s.reviewerAgent, request.id, { decision: "REJECT", reason });
+      const res = await decide(s.reviewerAgent, request.id, { decision: "REJECT", reason, category: "BUDGET" });
       expect(res.status, label).toBe(400);
       expect(res.body.error?.fields, label).toEqual({ reason: message });
       expect((await row(request.id)).status, label).toBe("SUBMITTED");
@@ -155,7 +156,7 @@ describe("deciding a request", () => {
     }
 
     const exact = await submit(s.requesterAgent, s.reviewer.id);
-    const ok = await decide(s.reviewerAgent, exact.id, { decision: "REJECT", reason: "x".repeat(1000) });
+    const ok = await decide(s.reviewerAgent, exact.id, { decision: "REJECT", reason: "x".repeat(1000), category: "BUDGET" });
     expect(ok.status, "exactly 1000 characters is accepted").toBe(200);
 
     const approval = await submit(s.requesterAgent, s.reviewer.id);
@@ -227,7 +228,7 @@ describe("deciding a request", () => {
     expect((await decide(s.reviewerAgent, s.request.id, { decision: "APPROVE" })).status).toBe(200);
     const decided = await decisionOf(s.request.id);
 
-    for (const body of [{ decision: "APPROVE" }, { decision: "REJECT", reason: "Changed my mind." }]) {
+    for (const body of [{ decision: "APPROVE" }, { decision: "REJECT", reason: "Changed my mind.", category: "OTHER" }]) {
       const res = await decide(s.reviewerAgent, s.request.id, body);
       expect(res.status, JSON.stringify(body)).toBe(409);
       expect(res.body.error?.code).toBe("INVALID_TRANSITION");
@@ -243,7 +244,8 @@ describe("deciding a request", () => {
       ["APPROVE", { text: "ok" }],
     ];
     for (const [decision, reason] of cases) {
-      const res = await decide(s.reviewerAgent, s.request.id, { decision, reason });
+      const category = decision === "REJECT" ? "BUDGET" : undefined;
+      const res = await decide(s.reviewerAgent, s.request.id, { decision, reason, category });
       expect(res.status, `${decision} with ${JSON.stringify(reason)}`).toBe(400);
       expect(res.body.error?.fields).toEqual({ reason: "Enter the reason as text." });
     }
@@ -254,7 +256,8 @@ describe("deciding a request", () => {
   it("TEST-F04-22 / AC-F04-22: spaces around a 1000-character reason are not counted or stored", async () => {
     const s = await scenario();
     const reason = "x".repeat(1000);
-    const res = await decide(s.reviewerAgent, s.request.id, { decision: "REJECT", reason: `  ${reason}  ` });
+    const body = { decision: "REJECT", reason: `  ${reason}  `, category: "BUDGET" };
+    const res = await decide(s.reviewerAgent, s.request.id, body);
     expect(res.status, res.text).toBe(200);
     expect((await row(s.request.id)).decisionReason).toBe(reason);
     expect((await events(s.request.id))[1].reason).toBe(reason);
@@ -265,7 +268,8 @@ describe("after a decision", () => {
   it("TEST-F04-13 / AC-F04-13: the requester sees the decision, the reason, and the history", async () => {
     const s = await scenario();
     const reason = "Please get a second quotation.";
-    expect((await decide(s.reviewerAgent, s.request.id, { decision: "REJECT", reason })).status).toBe(200);
+    const rejection = { decision: "REJECT", reason, category: "INCOMPLETE" };
+    expect((await decide(s.reviewerAgent, s.request.id, rejection)).status).toBe(200);
 
     const detail = await s.requesterAgent.get(`/api/requests/${s.request.id}`);
     expect(detail.status, detail.text).toBe(200);
@@ -278,5 +282,130 @@ describe("after a decision", () => {
 
     const mine = await s.requesterAgent.get("/api/requests/mine");
     expect(mine.body.requests.find((r: { id: number }) => r.id === s.request.id)?.status).toBe("REJECTED");
+  });
+});
+
+// Change request #65 (Lab 7): a rejection needs a category and a reason of at least 10 characters.
+describe("rejection reason and category", () => {
+  const TOO_SHORT = "Reason must be at least 10 characters.";
+  const CHOOSE_CATEGORY = "Choose a rejection category.";
+  const CATEGORIES = ["BUDGET", "INCOMPLETE", "DUPLICATE", "POLICY", "OTHER"] as const;
+
+  const expectUndecided = async (id: number, label: string) => {
+    expect((await row(id)).status, label).toBe("SUBMITTED");
+    expect(await events(id), label).toHaveLength(1);
+  };
+
+  it("TEST-F04-24 / AC-F04-24: a rejection reason under 10 characters is refused, counted in code points", async () => {
+    const s = await scenario();
+    const approved = await submit(s.requesterAgent, s.reviewer.id);
+    expect((await decide(s.reviewerAgent, approved.id, { decision: "APPROVE" })).status).toBe(200);
+    const before = await row(approved.id);
+
+    // Five emoji are 5 code points and 10 UTF-16 units.
+    for (const reason of ["No", "123456789", "  123456789  ", "\u{1F600}".repeat(5)]) {
+      const request = await submit(s.requesterAgent, s.reviewer.id);
+      const res = await decide(s.reviewerAgent, request.id, { decision: "REJECT", reason, category: "BUDGET" });
+      expect(res.status, JSON.stringify(reason)).toBe(400);
+      expect(res.body.error?.fields, JSON.stringify(reason)).toEqual({ reason: TOO_SHORT });
+      await expectUndecided(request.id, JSON.stringify(reason));
+    }
+
+    const again = await decide(s.reviewerAgent, approved.id, { decision: "REJECT", reason: "No", category: "BUDGET" });
+    expect(again.status, again.text).toBe(400);
+    expect(again.body.error?.fields).toEqual({ reason: TOO_SHORT });
+    expect(await row(approved.id)).toEqual(before);
+    expect(await events(approved.id)).toHaveLength(2);
+  });
+
+  it("TEST-F04-25 / AC-F04-25: ten characters after trimming are accepted and stored with the category", async () => {
+    const s = await scenario();
+    for (const reason of ["1234567890", "  1234567890  "]) {
+      const request = await submit(s.requesterAgent, s.reviewer.id);
+      const res = await decide(s.reviewerAgent, request.id, { decision: "REJECT", reason, category: "POLICY" });
+      expect(res.status, res.text).toBe(200);
+      expect(await row(request.id)).toMatchObject({ decisionReason: "1234567890", decisionCategory: "POLICY" });
+      expect((await events(request.id))[1]).toMatchObject({ type: "REJECTED", reason: "1234567890", category: "POLICY" });
+    }
+  });
+
+  it("TEST-F04-26 / AC-F04-26: an approval reason has no minimum", async () => {
+    const s = await scenario();
+    const cases: Array<[string | undefined, string | null]> = [[undefined, null], ["ok", "ok"], ["123456789", "123456789"]];
+    for (const [reason, stored] of cases) {
+      const request = await submit(s.requesterAgent, s.reviewer.id);
+      const res = await decide(s.reviewerAgent, request.id, { decision: "APPROVE", reason });
+      expect(res.status, res.text).toBe(200);
+      expect((await row(request.id)).decisionReason).toBe(stored);
+    }
+  });
+
+  it("TEST-F04-27 / AC-F04-27: who may decide is checked before the reason and the category", async () => {
+    const s = await scenario();
+    const own = await submit(s.reviewerAgent, s.other.id);
+    const body = { decision: "REJECT", reason: "No" };
+    const attempts = [
+      { agent: s.reviewerAgent, id: own.id, status: 403, code: "SELF_APPROVAL_FORBIDDEN" },
+      { agent: s.otherAgent, id: s.request.id, status: 404, code: "NOT_FOUND" },
+      { agent: s.requesterAgent, id: s.request.id, status: 403, code: "FORBIDDEN" },
+    ];
+    for (const attempt of attempts) {
+      const res = await decide(attempt.agent, attempt.id, body);
+      expect(res.status, attempt.code).toBe(attempt.status);
+      expect(res.body.error?.code).toBe(attempt.code);
+    }
+    await expectUndecided(own.id, "own request");
+    await expectUndecided(s.request.id, "assigned to another reviewer");
+  });
+
+  it("TEST-F04-30 / AC-F04-30: a missing or unknown category is refused, together with a short reason", async () => {
+    const s = await scenario();
+    const reason = "Please get a second quotation.";
+    const cases: Array<[string, Record<string, unknown>, Record<string, string>]> = [
+      ["a missing category", { reason }, { category: CHOOSE_CATEGORY }],
+      ["a null category", { reason, category: null }, { category: CHOOSE_CATEGORY }],
+      ["an empty category", { reason, category: "" }, { category: CHOOSE_CATEGORY }],
+      ["a lower-case category", { reason, category: "budget" }, { category: CHOOSE_CATEGORY }],
+      ["an unknown category", { reason, category: "REFUND" }, { category: CHOOSE_CATEGORY }],
+      ["a number", { reason, category: 3 }, { category: CHOOSE_CATEGORY }],
+      ["a short reason and no category", { reason: "No" }, { category: CHOOSE_CATEGORY, reason: TOO_SHORT }],
+    ];
+    for (const [label, input, fields] of cases) {
+      const request = await submit(s.requesterAgent, s.reviewer.id);
+      const res = await decide(s.reviewerAgent, request.id, { decision: "REJECT", ...input });
+      expect(res.status, label).toBe(400);
+      expect(res.body.error?.fields, label).toEqual(fields);
+      await expectUndecided(request.id, label);
+    }
+  });
+
+  it("TEST-F04-31 / AC-F04-31: an approval takes no category", async () => {
+    const s = await scenario();
+    const refused = await decide(s.reviewerAgent, s.request.id, { decision: "APPROVE", category: "BUDGET" });
+    expect(refused.status, refused.text).toBe(400);
+    expect(refused.body.error?.fields).toEqual({ category: "A category applies to a rejection only." });
+    await expectUndecided(s.request.id, "approval with a category");
+
+    const ok = await decide(s.reviewerAgent, s.request.id, { decision: "APPROVE", category: null });
+    expect(ok.status, ok.text).toBe(200);
+    expect(ok.body.request.decisionCategory).toBeNull();
+  });
+
+  it("TEST-F04-32 / AC-F04-32: every category is stored and returned to the requester", async () => {
+    const s = await scenario();
+    for (const category of CATEGORIES) {
+      const request = await submit(s.requesterAgent, s.reviewer.id);
+      const reason = `Rejected as ${category}.`;
+      const res = await decide(s.reviewerAgent, request.id, { decision: "REJECT", reason, category });
+      expect(res.status, res.text).toBe(200);
+      expect((await row(request.id)).decisionCategory, category).toBe(category);
+      expect((await events(request.id))[1], category).toMatchObject({ type: "REJECTED", category });
+
+      const detail = await s.requesterAgent.get(`/api/requests/${request.id}`);
+      expect(detail.status, detail.text).toBe(200);
+      expect(detail.body.request.decisionCategory, category).toBe(category);
+      expect(detail.body.request.history[1].category, category).toBe(category);
+      expect(detail.body.request.history[0].category, category).toBeNull();
+    }
   });
 });
