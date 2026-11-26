@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-03 |
 | Sprint | 1 |
-| Status | v0.5 behaviour implemented; v0.6 (rejection category, #65) Draft, awaiting review (Draft → Agreed → Implemented → Verified) |
+| Status | v0.6 behaviour implemented (rejection category, #65; evidence in F-04 section 6); the review of PR #66 is open (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-04, FR-05, FR-06; BR-03, BR-04, BR-05, BR-06, BR-07, BR-08, BR-13 (submission entry), BR-15; NFR-02, NFR-07, NFR-11 |
 | GitHub Issue | #7 (contract), #10 (implementation), #65 (v0.6 change) |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -24,6 +24,7 @@
 | 0.4 | 2026-11-15 | Menelaus122 | The data change is applied as **two additive migrations**: `add_requests` (the enums, the two tables, their indexes and foreign keys) and `add_request_rules` (the number sequence and default, the four named `CHECK` constraints, and the append-only trigger). The split lets the constraint tests (TEST-F03-09) fail first, against tables that exist but have no rules, instead of failing on a missing table. | Found while planning the red tests for #10 | #10 |
 | 0.5 | 2026-11-15 | Menelaus122 | `assignedReviewerId` above 2,147,483,647 is refused with "Choose a reviewer.", as the detail route already treats ids above the column's maximum; AC-F03-07 and TEST-F03-07 add `2147483648` and `1e20`. | Review of PR #29: such a value would reach the database lookup and fail with a `500` | #11 |
 | 0.6 | 2026-11-26 | Menelaus122 | `RequestDetail` gains `decisionCategory` and each history entry gains `category` (both `null` unless a rejection recorded one); Request Detail shows it (F-04 v0.9). The exact key list asserted by TEST-F03-01 and TEST-F03-12 gains `decisionCategory`. No other AC or test changes. | Change request #65 (Lab 7) | #65 |
+| 0.7 | 2026-11-26 | Menelaus122 | Status: the v0.6 behaviour is implemented. No change to any AC, behaviour, or test. | Implementation of #65: green `5890f39` | #65 |
 
 ---
 

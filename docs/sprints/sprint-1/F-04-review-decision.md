@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-04 |
 | Sprint | 1 |
-| Status | v0.7 behaviour implemented; v0.8 to v0.10 (BR-12 change) Draft, awaiting review (Draft → Agreed → Implemented → Verified) |
+| Status | Implemented, including the BR-12 change of v0.8 to v0.10 (agreed in the review of PR #66 at `71c102d`); the review of the implementation is open (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-07, FR-08, FR-09; BR-08, BR-09, BR-10, BR-11, BR-12, BR-13, BR-14; NFR-02, NFR-07 |
 | GitHub Issue | #7 (contract), #11 (implementation), #65 (v0.8 to v0.10 change) |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -28,6 +28,7 @@
 | 0.8 | 2026-11-26 | Menelaus122 | **BR-12 changed:** a rejection reason needs at least 10 characters after trimming; an approval reason is unchanged. Sections 1.1, 1.3, 1.4, 1.5, 2.1, and 2.3 follow. AC-F04-24 to AC-F04-29 and TEST-F04-24 to TEST-F04-29 added. TEST-F04-19 changes only the reason it types, from `"No."` to at least 10 characters, because the panel would no longer send it; its assertions stay. AC-F04-01 to AC-F04-23 keep their wording. | Change request #65 (Lab 7). A reason such as "No" satisfied the old rule and gave the requester nothing to act on. | #65 |
 | 0.9 | 2026-11-26 | Menelaus122 | **BR-12 widened:** a rejection also needs one category from a fixed list, and an approval takes none. Sections 1.1 to 1.5, 1.7, and 2.1 to 2.3 follow; one additive migration. AC-F04-24, -25, -27, -28, and -29, never implemented, now include the category; AC-F04-30 to AC-F04-34 added. In earlier tests a rejection now has to send a category: the inputs of AC-F04-05, -06, -11, -12, -13, -21, and -22 and of TEST-F04-18 and -19 gain one, and the body that TEST-F04-18 expects gains it. Their other expected results stay. | Change request #65. The course announcement asks for a change that is more than trivial, and a category gives the requester a consistent answer to act on. | #65 |
 | 0.10 | 2026-11-26 | Menelaus122 | AC-F04-24 adds a reason of five emoji (5 code points). AC-F04-28 adds (e) Approve sends no category, (f) a `fields.category` error from the API, and (g) the five-emoji reason in the panel; §2.1 says that focus moves to the select for that error. AC-F04-29 sets the category with the keyboard (NFR-11). The data change is two additive migrations, so that TEST-F04-33 can fail on missing rules. TEST-F04-24, -28, -29, and -33 follow. None of the changed criteria was implemented. | Review of PR #66: two behaviours of §2.1 and the code-point rule had no test, no test used the keyboard on the new select, and the constraint test could only fail on missing columns. | #65 |
+| 0.11 | 2026-11-26 | Menelaus122 | Status: Implemented; section 6 and the Definition of Done filled in for #65. No change to any AC, behaviour, or test. | Evidence of the implementation of #65 | #65 |
 
 ---
 
@@ -292,8 +293,8 @@ The full cross-user journey (submit, decide, requester sees the result) is #12's
 The [Product Definition of Done](README.md#product-definition-of-done) applies, plus:
 
 - [x] AC-F04-01 to AC-F04-23 have a passing automated test
-- [ ] AC-F04-24 to AC-F04-34 (v0.8 to v0.10) have a passing automated test
-- [ ] The two migrations of §2.3 are additive and run on a database that already holds decisions
+- [x] AC-F04-24 to AC-F04-34 (v0.8 to v0.10) have a passing automated test
+- [x] The two migrations of §2.3 are additive and run on a database that already holds decisions
 - [x] TDD evidence recorded for each rule (BR-09 to BR-14): failing test commit, then passing implementation commit
 - [x] TEST-F04-12 passes in 20 of 20 iterations on a fresh database, and the run is recorded
 
@@ -308,3 +309,4 @@ The [Product Definition of Done](README.md#product-definition-of-done) applies, 
 | Test run (command, commit, pass / fail / skip) | At `546027b`: `cd server && npm test`: 13 files, **124 passed, 0 failed, 0 skipped** (142 s; 29 are F-04: 19 API-DB cases including the race, and 10 database-rule cases). `cd client && npm test`: 8 files, **36 passed**. `cd client && npm run e2e` against an API built from this commit on port 3100: **4 passed** (Chromium). Type-check and build: exit 0 on both sides. TEST-F04-12: in each of the 20 rounds exactly one answer was `200` and one `409`, with one decision event. After the server run there were 0 leftover throwaway schemas. Node 24.14.0, PostgreSQL 16. |
 | Known limitations | Return and resubmission (FR-13, FR-14) and the second approval (FR-15) are Sprint 2 (F-06, F-07). A decision cannot be undone. `TRUNCATE` bypasses the append-only trigger (§1.5). The inbox is not paginated in Sprint 1 (SRS A-04). The decision time comes from the application clock, like every other time in the system, so it is not corrected if that clock is wrong. |
 | Follow-up evidence (v0.7, one timestamp, PR #36) | Contract `ef8e31b`; red `48d38e9`: TEST-F04-03 failed because `decided_at` and the event's `created_at` were 1.3 s apart (7 of 7 decided rows in the development database differed, up to 0.85 s); green `da6ca6b`: one `Date` taken once feeds `decided_at`, `updated_at`, and the event, through `updateMany` with the same conditional `WHERE`. The race test still reaches the 0-row branch in 20 of 20 rounds (a temporary log, not committed). Release-candidate run at `7f8cf54`: `cd server && npm test`: 14 files, **131 passed, 0 failed, 0 skipped**; `cd client && npm test`: 8 files, **36 passed**; `cd client && npm run e2e`: **8 passed**. |
+| Change request #65 evidence (v0.10, PR #66) | Contract `10bbcf2`, `349b7ff`, `71c102d`. Schema step `cb5f327` (migration `add_rejection_category`; server 132 passed). Red `2aeec6e`: server `npm test` **11 failed, 134 passed** (TEST-F04-24, -25, -30, -31, -32, -33 cases (a) to (d), and the response keys of TEST-F03-01 and -12); client `npm test` **11 failed, 43 passed** (the rejection case of TEST-F04-18, TEST-F04-19, TEST-F04-28 (a) to (g), two cases of TEST-F04-34); e2e **1 failed, 8 passed** (TEST-F04-29). Passing already before the implementation, as guards and not red evidence: TEST-F04-26, -27, the approval case of TEST-F04-34, and the controls and case (e) of TEST-F04-33. Green `5890f39`: server **145 passed**, client **54 passed**, e2e **9 passed** against an API from the same commit on a local database, none failed or skipped; type check and build exit 0. Both migrations were applied to a local database that already held 25 decided requests. Not verified: the previous image against the new columns, and the deployed service. |

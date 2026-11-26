@@ -6,7 +6,7 @@
 > when their contract is written.
 > Status: Sprint 1 requirements verified at the commit named in section 4; later sprints planned. Section 5 lists the
 > acceptance criteria added after the Sprint 1 release, for Lab 5, and the results of the Lab 5 checks for NFR-08, NFR-10,
-> NFR-15, and NFR-16.
+> NFR-15, and NFR-16. Section 6 lists the results of change request #65 (Lab 7).
 
 ## Version history
 
@@ -21,6 +21,7 @@
 | 0.7 | 2026-11-26 | Menelaus122 | The BR-12 row follows the revised rule and lists AC-F04-24 to AC-F04-29, which are specified and not yet implemented. The Sprint 1 figures in section 4 are unchanged. | Change request #65 (Lab 7) |
 | 0.8 | 2026-11-26 | Menelaus122 | FR-09, BR-12, and NFR-07 list the acceptance criteria of the rejection category (AC-F04-30 to AC-F04-34), specified and not yet implemented. | Change request #65 (Lab 7) |
 | 0.9 | 2026-11-26 | Menelaus122 | FR-06, FR-08, BR-09, BR-10, BR-11, BR-13, NFR-02, and NFR-11 list the acceptance criteria of #65 that link to them (AC-F04-24, -26 to -29, -31, -32, and -34), specified and not yet implemented. | Review of PR #66 |
+| 0.10 | 2026-11-26 | Menelaus122 | Change request #65 is implemented: the rows of section 1 that it revised are Verified at `5890f39`, and the new section 6 lists AC-F04-24 to AC-F04-34 with their tests and results. Sections 3 to 5 are unchanged. | Implementation of #65 (PR #66) |
 
 ---
 
@@ -38,10 +39,10 @@ How to read it:
 | FR-03 Stay signed in | F-01 | 1 | AC-F01-09, AC-F01-17, AC-F01-19 | Verified |
 | FR-04 Submit a request | F-03 | 1 | AC-F03-01, AC-F03-02, AC-F03-10, AC-F03-15, AC-F03-16, AC-F03-17, AC-F03-20 | Verified |
 | FR-05 List own requests | F-03 | 1 | AC-F03-11, AC-F03-18, AC-F03-20, AC-F03-21 | Verified |
-| FR-06 Request detail and history | F-03, F-04 | 1 | AC-F03-12, AC-F03-19, AC-F03-21, AC-F04-13; revised (#65): AC-F04-32, AC-F04-34 | Earlier ACs verified at the Sprint 1 release; AC-F04-32 and AC-F04-34 specified, not yet implemented |
+| FR-06 Request detail and history | F-03, F-04 | 1 | AC-F03-12, AC-F03-19, AC-F03-21, AC-F04-13; revised (#65): AC-F04-32, AC-F04-34 | Verified; the ACs of #65 at `5890f39` (section 6) |
 | FR-07 Review inbox | F-04 | 1 | AC-F04-01, AC-F04-02, AC-F04-15, AC-F04-16, AC-F04-20, AC-F04-23 | Verified |
-| FR-08 Approve | F-04 | 1 | AC-F04-03, AC-F04-04, AC-F04-18, AC-F04-20; revised (#65): AC-F04-26, AC-F04-31 | Earlier ACs verified at the Sprint 1 release; AC-F04-26 and AC-F04-31 specified, not yet implemented |
-| FR-09 Reject with a category and a reason | F-04 | 1 | AC-F04-05, AC-F04-13; revised (#65): AC-F04-25, AC-F04-29, AC-F04-32, AC-F04-34 | Earlier ACs verified at the Sprint 1 release; the revised requirement is specified, not yet implemented |
+| FR-08 Approve | F-04 | 1 | AC-F04-03, AC-F04-04, AC-F04-18, AC-F04-20; revised (#65): AC-F04-26, AC-F04-31 | Verified; the ACs of #65 at `5890f39` (section 6) |
+| FR-09 Reject with a category and a reason | F-04 | 1 | AC-F04-05, AC-F04-13; revised (#65): AC-F04-25, AC-F04-29, AC-F04-32, AC-F04-34 | Verified; the ACs of #65 at `5890f39` (section 6) |
 | FR-10 Navigation by role | F-02 | 1 | AC-F02-11, AC-F02-12 | Verified |
 | FR-11 Seeded accounts | F-05 | 1 | AC-F05-02, AC-F05-03, AC-F05-19 | Verified |
 | FR-12 Health and readiness | F-02, F-05 | 1 | AC-F02-13, AC-F05-08, AC-F05-09, AC-F05-10 | Verified |
@@ -59,27 +60,27 @@ How to read it:
 | BR-06 Reviewer rule | F-03 | 1 | AC-F03-07, AC-F03-08, AC-F03-09, AC-F03-10 | Verified |
 | BR-07 Number and first status | F-03 | 1 | AC-F03-01, AC-F03-03, AC-F03-04, AC-F03-09 | Verified |
 | BR-08 Who can see a request | F-03, F-04 (SYS-07) | 1 | AC-F03-11, AC-F03-12, AC-F03-13, AC-F04-01, AC-F04-09 | Verified |
-| BR-09 Only the assigned reviewer decides | F-02, F-04 | 1 | AC-F02-03, AC-F04-09, AC-F04-10, AC-F04-16; revised (#65): AC-F04-27 | Earlier ACs verified at the Sprint 1 release; AC-F04-27 specified, not yet implemented |
-| BR-10 No self-approval | F-04 | 1 | AC-F04-08, AC-F04-23; revised (#65): AC-F04-27 | Earlier ACs verified at the Sprint 1 release; AC-F04-27 specified, not yet implemented |
-| BR-11 Only SUBMITTED is decided | F-04 | 1 | AC-F04-07, AC-F04-11, AC-F04-19; revised (#65): AC-F04-24 | Earlier ACs verified at the Sprint 1 release; AC-F04-24 specified, not yet implemented |
-| BR-12 Rejection reason | F-04 | 1 | AC-F04-04, AC-F04-05, AC-F04-06, AC-F04-14, AC-F04-17, AC-F04-21, AC-F04-22; revised rule (#65): AC-F04-24, AC-F04-25, AC-F04-26, AC-F04-27, AC-F04-28, AC-F04-29, AC-F04-30, AC-F04-31, AC-F04-32, AC-F04-33, AC-F04-34 | Earlier ACs verified at the Sprint 1 release; the revised rule is specified, not yet implemented |
-| BR-13 Append-only history | F-03, F-04 | 1 | AC-F03-01, AC-F04-03, AC-F04-05, AC-F04-14; revised (#65): AC-F04-32 | Earlier ACs verified at the Sprint 1 release; AC-F04-32 specified, not yet implemented |
+| BR-09 Only the assigned reviewer decides | F-02, F-04 | 1 | AC-F02-03, AC-F04-09, AC-F04-10, AC-F04-16; revised (#65): AC-F04-27 | Verified; the ACs of #65 at `5890f39` (section 6) |
+| BR-10 No self-approval | F-04 | 1 | AC-F04-08, AC-F04-23; revised (#65): AC-F04-27 | Verified; the ACs of #65 at `5890f39` (section 6) |
+| BR-11 Only SUBMITTED is decided | F-04 | 1 | AC-F04-07, AC-F04-11, AC-F04-19; revised (#65): AC-F04-24 | Verified; the ACs of #65 at `5890f39` (section 6) |
+| BR-12 Rejection reason | F-04 | 1 | AC-F04-04, AC-F04-05, AC-F04-06, AC-F04-14, AC-F04-17, AC-F04-21, AC-F04-22; revised rule (#65): AC-F04-24, AC-F04-25, AC-F04-26, AC-F04-27, AC-F04-28, AC-F04-29, AC-F04-30, AC-F04-31, AC-F04-32, AC-F04-33, AC-F04-34 | Verified; the ACs of #65 at `5890f39` (section 6) |
+| BR-13 Append-only history | F-03, F-04 | 1 | AC-F03-01, AC-F04-03, AC-F04-05, AC-F04-14; revised (#65): AC-F04-32 | Verified; the ACs of #65 at `5890f39` (section 6) |
 | BR-14 Competing decisions | F-04 | 1 | AC-F04-12, AC-F04-19 | Verified |
 | BR-15 No edit after submission | F-03 | 1 | AC-F03-14 | Verified |
 | BR-16 Return rules | F-06 | 2 | AC and TEST IDs are defined in the F-06 contract at the start of Sprint 2 | Planned |
 | BR-17 Multi-stage threshold | F-07 | 2 | AC and TEST IDs are defined in the F-07 contract at the start of Sprint 2; the threshold and status name are provisional (Q-06) | Planned |
 | BR-18 Scope of lists and reports | F-08, F-09 (SYS-07) | 3 | AC and TEST IDs are defined in the F-08 contract, written in Sprint 2 (plan.md section 3); Sprint 1 applies it to the two lists that exist (TEST-F03-11, TEST-F04-01) | Planned |
 | NFR-01 Authentication enforced | F-01, F-02, F-05 (SYS-03) | 1 | AC-F01-09, AC-F02-01, AC-F02-02, AC-F02-09, AC-F05-24 | Verified |
-| NFR-02 Authorization in the backend | F-02, F-03, F-04 (SYS-03) | 1 | AC-F02-03, AC-F02-04, AC-F02-05, AC-F02-06, AC-F02-07, AC-F02-08, AC-F02-09, AC-F02-12, AC-F02-14, AC-F03-13, AC-F04-09, AC-F04-10; revised (#65): AC-F04-27 | Earlier ACs verified at the Sprint 1 release; AC-F04-27 specified, not yet implemented |
+| NFR-02 Authorization in the backend | F-02, F-03, F-04 (SYS-03) | 1 | AC-F02-03, AC-F02-04, AC-F02-05, AC-F02-06, AC-F02-07, AC-F02-08, AC-F02-09, AC-F02-12, AC-F02-14, AC-F03-13, AC-F04-09, AC-F04-10; revised (#65): AC-F04-27 | Verified; the ACs of #65 at `5890f39` (section 6) |
 | NFR-03 Password hashing | F-01, F-05 | 1 | AC-F01-01, AC-F05-05, AC-F05-07 | Verified |
 | NFR-04 Session protection | F-01 | 1 | AC-F01-01, AC-F01-06, AC-F01-10, AC-F01-11, AC-F01-12, AC-F01-19, AC-F01-21 | Verified |
 | NFR-05 Sign-in throttle | F-01 | 1 | AC-F01-05, AC-F01-07, AC-F01-08, AC-F01-16, AC-F01-20 | Verified |
 | NFR-06 Safe errors | F-01, F-02, F-05 (SYS-01) | 1 | AC-F01-04, AC-F02-05, AC-F02-10, AC-F02-13, AC-F02-15, AC-F05-10, AC-F05-24, AC-F05-25 | Verified |
-| NFR-07 Database integrity | F-03, F-04 (SYS-04) | 1 | AC-F03-09, AC-F04-14; revised (#65): AC-F04-33 | Earlier ACs verified; AC-F04-33 specified, not yet implemented |
+| NFR-07 Database integrity | F-03, F-04 (SYS-04) | 1 | AC-F03-09, AC-F04-14; revised (#65): AC-F04-33 | Verified; the ACs of #65 at `5890f39` (section 6) |
 | NFR-08 Persistence | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-05: a request created before a restart and a redeploy is still there afterwards, with before and after evidence on the deployed service | Verified (Lab 5 check C-05, section 5) |
 | NFR-09 Configuration and secrets | F-05 (SYS-02) | 1 | AC-F05-03, AC-F05-04, AC-F05-05, AC-F05-06, AC-F05-18, AC-F05-20, AC-F05-21, AC-F05-22, AC-F05-27 | Verified |
 | NFR-10 Reproducible build | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-03: a fresh clone builds, migrates, seeds, and answers 200 on `/api/ready` | Verified (Lab 5 check C-03, section 5) |
-| NFR-11 Basic usability | F-01, F-03, F-04 (SYS-06) | 1 | AC-F01-15, AC-F03-16, AC-F03-18, AC-F04-17; revised (#65): AC-F04-28, AC-F04-29 | Verified (automated, including the keyboard-only journey TEST-REL-04); the pass by a person (RD-7) was done by hand on 15 Nov 2026 (section 2); AC-F04-28 and AC-F04-29 specified, not yet implemented |
+| NFR-11 Basic usability | F-01, F-03, F-04 (SYS-06) | 1 | AC-F01-15, AC-F03-16, AC-F03-18, AC-F04-17; revised (#65): AC-F04-28, AC-F04-29 | Verified (automated, including the keyboard-only journey TEST-REL-04); the pass by a person (RD-7) was done by hand on 15 Nov 2026 (section 2); AC-F04-28 and AC-F04-29 verified at `5890f39` (section 6) |
 | NFR-12 Accessibility (WCAG 2.1 AA) | F-10, SYS-06 | 3 | Playwright with axe on every main screen; TEST IDs in the F-10 contract | Planned |
 | NFR-13 Responsiveness | F-10, SYS-06 | 3 | Playwright screenshots and layout checks at 390 × 844, 820 × 1180, and 1440 × 900; TEST IDs in the F-10 contract | Planned |
 | NFR-14 Performance | F-10 | 3 | A scripted timing run of 50 requests per operation on the deployed service; TEST IDs in the F-10 contract | Planned |
@@ -269,3 +270,31 @@ NFR-08, NFR-10, NFR-15, and NFR-16 had no automated Sprint 1 test (section 2). T
 | NFR-08 Persistence | C-05 | REQ-000004 was created on 16 Nov at 22:28 on revision `approval-flow-00003-l98` and left Submitted. Run 43899764286 deployed the new revision `approval-flow-00004-rq6`. At 23:18 the same four requests were listed and REQ-000004 was still Submitted; it was decided at 23:19 on the new revision | Verified. A restart without a new revision was not run separately: each revision starts new containers |
 | NFR-15 Operability | C-06 | Run 43899764286, started by the merge of release PR #59 (commit `21b7135`, tag `v1.1.0-lab5`): the tests, the image tagged with the full commit, the migration job `approval-flow-migrate-zlb8p` before the service changed, the deploy by digest, and the smoke test of `/api/health`, `/api/ready`, and `/`. The serving revision has the digest of the image tagged `21b7135…`, and the Login page shows `Build 21b7135` | Verified. The smoke test does not sign in (`SMOKE_EMAIL` and `SMOKE_PASSWORD` are not set) |
 | NFR-16 Cost | Console | The budget `CPE334-TH044-P5-alert` (alerts only, at 10, 20, 50, and 90 percent) and the Cloud SQL instance `approval-flow-pg` (PostgreSQL 16, 1 vCPU, single zone) are shown in the Lab 5 report (Figures 19 and 6). The Cloud Run limits (minimum 0, maximum 3 instances) and the storage setting (10 GB, auto-increase off) are set in `deploy/deploy.sh` and are not shown in a Console screenshot | Partly verified |
+
+## 6. Change request #65 (Lab 7)
+
+BR-12 and FR-09 were revised after the Sprint 1 release: a rejection needs a category and a reason of at least 10
+characters ([F-04](sprints/sprint-1/F-04-review-decision.md) v0.8 to v0.10). The Sprint 1 figures in sections 1 to 4 stay as
+they were when that release was verified.
+
+| Item | Value |
+|---|---|
+| Code commit tested | `5890f39` (branch `feat/65-rejection-reason-min-length`, PR #66) |
+| Server | `cd server && npm test`: 14 files, **145 passed, 0 failed, 0 skipped** |
+| Client | `cd client && npm test`: 9 files, **54 passed, 0 failed, 0 skipped** |
+| End-to-end | `cd client && npm run e2e` against an API from the same commit on a local database: **9 passed** |
+| Not run | The previous image against the new columns, the deployed service, and a keyboard pass by a person on the new select |
+
+| AC | TEST | Level | File | Test title (first case) | Tests | Result |
+|---|---|---|---|---|---|---|
+| AC-F04-24 | TEST-F04-24 | API-DB | `server/tests/sprint-1/reviews.api.test.ts` | TEST-F04-24 / AC-F04-24: a rejection reason under 10 characters is refused, counted in code points | 1 | pass |
+| AC-F04-25 | TEST-F04-25 | API-DB | `server/tests/sprint-1/reviews.api.test.ts` | TEST-F04-25 / AC-F04-25: ten characters after trimming are accepted and stored with the category | 1 | pass |
+| AC-F04-26 | TEST-F04-26 | API-DB | `server/tests/sprint-1/reviews.api.test.ts` | TEST-F04-26 / AC-F04-26: an approval reason has no minimum | 1 | pass |
+| AC-F04-27 | TEST-F04-27 | API-DB | `server/tests/sprint-1/reviews.api.test.ts` | TEST-F04-27 / AC-F04-27: who may decide is checked before the reason and the category | 1 | pass |
+| AC-F04-28 | TEST-F04-28 | component | `client/tests/sprint-1/DecisionPanel.test.tsx` | TEST-F04-28 / AC-F04-28 (a): a short reason and no category show both messages, with focus on the reason | 7 | pass |
+| AC-F04-29 | TEST-F04-29 | e2e | `client/e2e/sprint-1/reviews.spec.ts` | TEST-F04-29 / AC-F04-29: Mint rejects with a category chosen by keyboard, and Ploy sees both after a reload | 1 | pass |
+| AC-F04-30 | TEST-F04-30 | API-DB | `server/tests/sprint-1/reviews.api.test.ts` | TEST-F04-30 / AC-F04-30: a missing or unknown category is refused, together with a short reason | 1 | pass |
+| AC-F04-31 | TEST-F04-31 | API-DB | `server/tests/sprint-1/reviews.api.test.ts` | TEST-F04-31 / AC-F04-31: an approval takes no category | 1 | pass |
+| AC-F04-32 | TEST-F04-32 | API-DB | `server/tests/sprint-1/reviews.api.test.ts` | TEST-F04-32 / AC-F04-32: every category is stored and returned to the requester | 1 | pass |
+| AC-F04-33 | TEST-F04-33 | DB integration | `server/tests/sprint-1/request-constraints.db.test.ts` | TEST-F04-33 (controls): rejected rows with and without a category are accepted | 6 | pass |
+| AC-F04-34 | TEST-F04-34 | component | `client/tests/sprint-1/RequestDetail.test.tsx` | TEST-F04-34 / AC-F04-34: a rejection shows its category in the Decision section and the history | 3 | pass |
