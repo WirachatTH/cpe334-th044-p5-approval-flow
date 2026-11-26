@@ -132,6 +132,25 @@ describe("submitting a request", () => {
     expect(await countRequests()).toBe(before);
   });
 
+  // Regression for #64, reported by the UAT team: the maximum itself was refused.
+  it("TEST-F03-05 / AC-F03-05: exactly 1,000,000.00 THB is accepted and stored, 0.01 more is not (#64)", async () => {
+    const agent = await signedIn(t, ACCOUNTS.ploy);
+    const before = await countRequests();
+
+    for (const typed of ["1000000.00", "1000000.0", "1000000"]) {
+      const res = await agent.post("/api/requests").send(body({ amount: typed }));
+      expect(res.status, `${typed}: ${res.text}`).toBe(201);
+      expect(res.body.request).toMatchObject({ amount: "1000000.00", status: "SUBMITTED" });
+      const stored = await t.prisma.approvalRequest.findUniqueOrThrow({ where: { id: res.body.request.id } });
+      expect(stored.amount.toFixed(2), typed).toBe("1000000.00");
+    }
+
+    const above = await agent.post("/api/requests").send(body({ amount: "1000000.01" }));
+    expect(above.status, above.text).toBe(400);
+    expect(above.body.error?.fields).toEqual({ amount: "Enter an amount of at most 1,000,000.00 THB." });
+    expect(await countRequests()).toBe(before + 3);
+  });
+
   it("TEST-F03-06 / AC-F03-06: title and description lengths are checked after trimming", async () => {
     const agent = await signedIn(t, ACCOUNTS.ploy);
     const ok = await agent.post("/api/requests").send(body({ title: "t".repeat(120), description: "d".repeat(2000) }));
