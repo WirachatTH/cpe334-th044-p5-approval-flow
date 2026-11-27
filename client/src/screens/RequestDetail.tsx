@@ -3,7 +3,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { DecisionPanel } from "../components/DecisionPanel.js";
 import { StatusBadge } from "../components/StatusBadge.js";
 import { useApi, useAuth } from "../context/AuthContext.js";
-import { STATUS_LABEL, formatAmount, formatDateTime, type RequestDetail as Detail } from "../format.js";
+import { CATEGORY_LABEL, STATUS_LABEL, formatAmount, formatDateTime, type RequestDetail as Detail } from "../format.js";
 
 // Request Detail (F-03 contract §2.1): the fields, the decision when there is one, and the history, oldest first.
 // For the assigned reviewer of a SUBMITTED request it also shows the decision panel (F-04 contract §2.1).
@@ -114,6 +114,10 @@ export function RequestDetail() {
         <div className="decision" role="group" aria-labelledby="decision-title">
           <h2 id="decision-title">Decision</h2>
           <p>{`${STATUS_LABEL[request.status]} by ${request.decidedBy?.name ?? ""} · ${formatDateTime(request.decidedAt)}`}</p>
+          {/* A rejection made before the category existed has none, and says so (F-04 contract section 2.1). */}
+          {request.status === "REJECTED" && (
+            <p>{`Category: ${request.decisionCategory ? CATEGORY_LABEL[request.decisionCategory] : "Not recorded"}`}</p>
+          )}
           {request.decisionReason && <p className="multiline">{request.decisionReason}</p>}
         </div>
       )}
@@ -123,6 +127,7 @@ export function RequestDetail() {
         {request.history.map((entry) => (
           <li key={entry.id}>
             <span>{`${STATUS_LABEL[entry.type]} by ${entry.actor.name} · ${formatDateTime(entry.createdAt)}`}</span>
+            {entry.category && <p>{`Category: ${CATEGORY_LABEL[entry.category]}`}</p>}
             {entry.reason && <p className="multiline">{entry.reason}</p>}
           </li>
         ))}

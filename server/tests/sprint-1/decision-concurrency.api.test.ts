@@ -31,7 +31,7 @@ describe("competing decisions", () => {
 
       const [approve, reject] = await Promise.all([
         reviewerAgent.post(`/api/requests/${id}/decision`).send({ decision: "APPROVE" }),
-        reviewerAgent.post(`/api/requests/${id}/decision`).send({ decision: "REJECT", reason: "Over budget." }),
+        reviewerAgent.post(`/api/requests/${id}/decision`).send({ decision: "REJECT", reason: "Over budget.", category: "BUDGET" }),
       ]);
 
       const statuses = [approve.status, reject.status].sort();

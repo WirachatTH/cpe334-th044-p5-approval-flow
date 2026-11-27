@@ -82,6 +82,7 @@ export function toDetail(row: DetailRow) {
     requester: row.requester,
     assignedReviewer: row.assignedReviewer,
     decidedBy: row.decidedBy,
+    decisionCategory: row.decisionCategory,
     decisionReason: row.decisionReason,
     decidedAt: row.decidedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
@@ -93,6 +94,7 @@ export function toDetail(row: DetailRow) {
       toStatus: event.toStatus,
       actor: event.actor,
       reason: event.reason,
+      category: event.category,
       createdAt: event.createdAt.toISOString(),
     })),
   };

@@ -8,9 +8,9 @@
 |---|---|
 | Feature ID | F-03 |
 | Sprint | 1 |
-| Status | Implemented (Draft → Agreed → Implemented → Verified) |
+| Status | v0.6 behaviour implemented (rejection category, #65; evidence in F-04 section 6); the review of PR #66 is open (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-04, FR-05, FR-06; BR-03, BR-04, BR-05, BR-06, BR-07, BR-08, BR-13 (submission entry), BR-15; NFR-02, NFR-07, NFR-11 |
-| GitHub Issue | #7 (contract), #10 (implementation) |
+| GitHub Issue | #7 (contract), #10 (implementation), #65 (v0.6 change) |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
 | Depends on | F-01 (session), F-02 (route policies for every route below), F-05 (schema baseline, seed, `createApp`). F-04 depends on this feature. SDS §3, §4, §5. |
 
@@ -23,6 +23,8 @@
 | 0.3 | 2026-11-14 | Menelaus122 | Constraints are named, and AC-F03-09 uses a valid base row, a control insert, and one changed column per case, asserting the constraint name. The decision-fields `CHECK` is stricter. FKs point to `app_user`. AC-F03-05 lists the message per input. AC-F03-21 added (markup shown as text). AC-F03-20 relinked. Status: Agreed. | Review of PR #24 | #26 |
 | 0.4 | 2026-11-15 | Menelaus122 | The data change is applied as **two additive migrations**: `add_requests` (the enums, the two tables, their indexes and foreign keys) and `add_request_rules` (the number sequence and default, the four named `CHECK` constraints, and the append-only trigger). The split lets the constraint tests (TEST-F03-09) fail first, against tables that exist but have no rules, instead of failing on a missing table. | Found while planning the red tests for #10 | #10 |
 | 0.5 | 2026-11-15 | Menelaus122 | `assignedReviewerId` above 2,147,483,647 is refused with "Choose a reviewer.", as the detail route already treats ids above the column's maximum; AC-F03-07 and TEST-F03-07 add `2147483648` and `1e20`. | Review of PR #29: such a value would reach the database lookup and fail with a `500` | #11 |
+| 0.6 | 2026-11-26 | Menelaus122 | `RequestDetail` gains `decisionCategory` and each history entry gains `category` (both `null` unless a rejection recorded one); Request Detail shows it (F-04 v0.9). The exact key list asserted by TEST-F03-01 and TEST-F03-12 gains `decisionCategory`. No other AC or test changes. | Change request #65 (Lab 7) | #65 |
+| 0.7 | 2026-11-26 | Menelaus122 | Status: the v0.6 behaviour is implemented. No change to any AC, behaviour, or test. | Implementation of #65: green `5890f39` | #65 |
 
 ---
 
@@ -133,7 +135,7 @@ checks need the database, so they run inside the transaction (§1.2 step 3).
 | New Request: success | It navigates to `/requests/:id` and shows a success banner: "Request REQ-000123 submitted." |
 | My Requests (`/requests`) | One row per request, newest first: **Number**, **Title**, **Amount** (THB, with grouping and two decimals, for example `1,250.50`), **Status** (a badge with text), **Reviewer**, **Submitted** (date, Asia/Bangkok). Each row links to the detail. |
 | My Requests: states | Loading: a spinner with "Loading your requests…". Empty: "You have not submitted any requests yet." with a link to New Request. Error: a message with **Try again**. |
-| Request Detail (`/requests/:id`) | A heading with the number and status badge. Then title, description, amount, requester, reviewer, and submitted date. If decided: **Decision** (status, decided by, date, reason). **History**, oldest first, one line per entry: "Submitted by Ploy Srisawat · 14 Nov 2026 16:05", with the reason on its own line when there is one. |
+| Request Detail (`/requests/:id`) | A heading with the number and status badge. Then title, description, amount, requester, reviewer, and submitted date. If decided: **Decision** (status, decided by, date, reason, and for a rejection the category, F-04 §2.1). **History**, oldest first, one line per entry: "Submitted by Ploy Srisawat · 14 Nov 2026 16:05", with the reason on its own line when there is one. |
 | Request Detail: states | Loading: a spinner. `404`: a page with "This request is not available to you." and no request data, plus a link back to My Requests. Error: a message with **Try again**. |
 
 ### 2.2 API
@@ -157,10 +159,10 @@ checks need the database, so they run inside the transaction (§1.2 step 3).
 { "id": 12, "requestNumber": "REQ-000012", "title": "Oscilloscope for the electronics lab",
   "description": "Replace the broken unit in room 401.", "amount": "18500.00", "status": "SUBMITTED",
   "requester": { "id": 1, "name": "Ploy Srisawat" }, "assignedReviewer": { "id": 3, "name": "Mint Chaiyaporn" },
-  "decidedBy": null, "decisionReason": null, "decidedAt": null,
+  "decidedBy": null, "decisionReason": null, "decisionCategory": null, "decidedAt": null,
   "createdAt": "2026-11-14T09:05:00.000Z", "updatedAt": "2026-11-14T09:05:00.000Z",
   "history": [ { "id": 31, "type": "SUBMITTED", "fromStatus": null, "toStatus": "SUBMITTED",
-                 "actor": { "id": 1, "name": "Ploy Srisawat" }, "reason": null,
+                 "actor": { "id": 1, "name": "Ploy Srisawat" }, "reason": null, "category": null,
                  "createdAt": "2026-11-14T09:05:00.000Z" } ] }
 
 // 400
@@ -185,6 +187,8 @@ Two additive migrations. **`add_requests`** creates the enums, the two tables, t
 | `request` indexes | `(requester_id, created_at)`, `(assigned_reviewer_id, status)` |
 | `request_event` (Prisma `RequestEvent`) | `id` serial PK; `request_id` → `request`, `actor_id` → `app_user`, both int not null `ON DELETE RESTRICT`; `type` RequestEventType not null; `from_status` RequestStatus null; `to_status` RequestStatus not null; `reason` varchar(1000) null; `created_at` timestamptz not null default now(); index `(request_id, created_at, id)` |
 | Trigger `request_event_append_only` | `BEFORE UPDATE OR DELETE ON request_event FOR EACH ROW` raises the exception `request_event is append-only` |
+
+**v0.6:** F-04 v0.9 adds the nullable columns `request.decision_category` and `request_event.category` in its own migration (F-04 §2.3). This feature's two migrations are unchanged.
 
 This feature tests the request-level constraints. F-04 tests the decision constraints and the append-only trigger.
 `updated_at` has no database default (Prisma's `@updatedAt` sets it), so raw-SQL tests build rows with a helper
