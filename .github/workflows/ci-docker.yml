@@ -7,7 +7,7 @@
 #
 # What it checks: the deployment scripts (syntax and offline tests), the server (type-check, migrate, seed, all tests
 # against a real PostgreSQL), the client (type-check, tests, production build), that the production image builds, and
-# that the image starts, reaches its database, and serves the UI.
+# that the image starts, reaches its database, and serves the UI. A second job, `e2e`, runs the Playwright journeys.
 #
 # Adapted from the Lab 5 Starter Kit. The database credentials below are throw-away values for a database that
 # exists only inside this job: they are not secrets.
@@ -124,3 +124,75 @@ jobs:
       - name: Show the container log when a step failed
         if: failure()
         run: docker logs approval-flow-ci || true
+
+  # The browser journeys through the real UI, API, and database (Issue #75). A separate job with its own empty
+  # database, so that the journeys never see rows written by the server tests.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci-throwaway-password
+          POSTGRES_DB: ci_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci_user -d ci_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # A synthetic password: the seed sets it and the journeys sign in with it. It protects nothing.
+      DEMO_USER_PASSWORD: Ci-Throwaway-1
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Install, build, migrate, and seed the server
+        working-directory: ./server
+        env:
+          DATABASE_URL: ${{ env.CI_DATABASE_URL }}
+        run: |
+          npm ci
+          npm run build
+          npm run db:deploy
+          npm run db:seed
+
+      - name: Install the client and the browser
+        working-directory: ./client
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      # Playwright starts its own UI server on port 5174, which passes /api on to this API.
+      - name: Start the API
+        working-directory: ./server
+        env:
+          DATABASE_URL: ${{ env.CI_DATABASE_URL }}
+          CLIENT_ORIGINS: http://localhost:5174
+          PORT: 3000
+        run: |
+          nohup npm start > "$RUNNER_TEMP/api.log" 2>&1 &
+          curl --retry 30 --retry-delay 2 --retry-connrefused --fail --silent --show-error http://localhost:3000/api/ready
+          echo
+
+      - name: Run the end-to-end tests
+        working-directory: ./client
+        run: npm run e2e
+
+      - name: Show the API log when a step failed
+        if: failure()
+        run: cat "$RUNNER_TEMP/api.log" || true
