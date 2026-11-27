@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { RejectionCategory, type PrismaClient } from "@prisma/client";
+import { Prisma, RejectionCategory, type PrismaClient, type RequestEventType, type RequestStatus } from "@prisma/client";
 import type { AuthLocals } from "./authorization.js";
 import { sendError } from "./errors.js";
 import {
@@ -13,6 +13,8 @@ import { detailInclude, toDetail } from "./requests.js";
 
 const REJECTION_REASON_MIN = 10;
 const REASON_MAX = 1000;
+// An approval of a higher amount needs a second one (BR-17).
+const SECOND_APPROVAL_ABOVE = new Prisma.Decimal("100000.00");
 const CATEGORIES: readonly string[] = Object.values(RejectionCategory);
 
 const CHOOSE_DECISION = "Choose approve or reject.";
@@ -25,6 +27,7 @@ const CATEGORY_NOT_ALLOWED = "A category applies to a rejection only.";
 const COMMENT_REQUIRED = "Enter a comment to return this request.";
 const COMMENT_TEXT = "Enter the comment as text.";
 const COMMENT_TOO_LONG = "Comment must be 1,000 characters or fewer.";
+const SAME_APPROVER = "A different reviewer must give the second approval.";
 
 interface Decision {
   decision: "APPROVE" | "REJECT";
@@ -106,12 +109,21 @@ const person = { select: { id: true, name: true } } as const;
 export function registerReviewRoutes(app: Express, { prisma }: { prisma: PrismaClient }): void {
   const me = (locals: unknown) => (locals as AuthLocals).auth!.user;
 
-  // The SUBMITTED requests assigned to the caller, oldest first (F-04 section 1.2). A request the caller submitted is
-  // never here: the database does not let a requester also be the assigned reviewer.
+  // What the caller may decide next, oldest first: the SUBMITTED requests assigned to them (F-04 section 1.2), and the
+  // waiting requests they neither submitted nor approved first (F-07 section 2.2).
   app.get("/api/reviews/inbox", async (_req, res, next) => {
     try {
       const rows = await prisma.approvalRequest.findMany({
-        where: { assignedReviewerId: me(res.locals).id, status: "SUBMITTED" },
+        where: {
+          OR: [
+            { status: "SUBMITTED", assignedReviewerId: me(res.locals).id },
+            {
+              status: "AWAITING_SECOND_APPROVAL",
+              requesterId: { not: me(res.locals).id },
+              firstApprovedById: { not: me(res.locals).id },
+            },
+          ],
+        },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         include: { requester: person },
       });
@@ -122,6 +134,7 @@ export function registerReviewRoutes(app: Express, { prisma }: { prisma: PrismaC
           title: row.title,
           amount: row.amount.toFixed(2),
           requester: row.requester,
+          status: row.status,
           createdAt: row.createdAt.toISOString(),
         })),
       });
@@ -143,28 +156,45 @@ export function registerReviewRoutes(app: Express, { prisma }: { prisma: PrismaC
       if (found.requesterId === user.id) {
         return sendError(res, 403, "SELF_APPROVAL_FORBIDDEN", "You cannot decide a request you submitted.");
       }
-      // Step 4 (BR-09, BR-08): anyone else who is not the assigned reviewer gets the same 404 as a missing id.
-      if (found.assignedReviewerId !== user.id) return sendError(res, 404, "NOT_FOUND", "Not found.");
+      // Step 4 (BR-09, BR-08): the assigned reviewer, any other reviewer while the request waits for the second
+      // approval, and the reviewer who gave the second decision. Anyone else gets the same 404 as a missing id.
+      const waiting = found.status === "AWAITING_SECOND_APPROVAL";
+      const gaveSecond = !waiting && found.firstApprovedById !== null && found.decidedById === user.id;
+      if (found.assignedReviewerId !== user.id && !waiting && !gaveSecond) {
+        return sendError(res, 404, "NOT_FOUND", "Not found.");
+      }
 
       // Step 5.
       const parsed = parseDecision(req.body);
       if (!parsed.ok) return sendError(res, 400, "VALIDATION_ERROR", "Some fields need attention.", parsed.fields);
 
-      // Step 6 (BR-11).
-      if (found.status !== "SUBMITTED") return refuseStatus(res, found.status);
+      // Step 6 (BR-11, BR-17).
+      if (waiting && found.firstApprovedById === user.id) {
+        return sendError(res, 403, "SAME_APPROVER_FORBIDDEN", SAME_APPROVER);
+      }
+      if (found.status !== "SUBMITTED" && !waiting) return refuseStatus(res, found.status);
       // The content the reviewer saw is the content that is decided (BR-16, F-06 section 1.2).
       if (isStale(parsed.value.revision, found.revision)) return refuseStale(res);
 
-      // Step 7 (BR-13, BR-14). The UPDATE matches only while the request is still SUBMITTED and assigned to the
-      // caller, so of two simultaneous decisions only one changes a row. The other changes none, and nothing is
-      // written for it. One timestamp, from the application clock like every other time in the system, is used for
-      // the decision and for its history entry, so the two always show the same time.
+      // Step 7 (BR-13, BR-14). The UPDATE matches only while the request still has the status and the revision that
+      // were read, and the caller may still act on it, so of two simultaneous operations only one changes a row. The
+      // other changes none, and nothing is written for it. One timestamp, from the application clock like every other
+      // time in the system, is used for the decision and for its history entry, so the two always show the same time.
       const { decision, reason, category } = parsed.value;
-      const status = decision === "APPROVE" ? "APPROVED" : "REJECTED";
+      // A first approval above the threshold leaves the request waiting for a second one (BR-17).
+      const first = !waiting && decision === "APPROVE" && found.amount.greaterThan(SECOND_APPROVAL_ABOVE);
+      const final = decision === "APPROVE" ? "APPROVED" : "REJECTED";
+      const status: RequestStatus = first ? "AWAITING_SECOND_APPROVAL" : final;
+      const type: RequestEventType = first ? "FIRST_APPROVED" : final;
       const now = new Date();
       const decided = await prisma.$transaction(async (tx) => {
         const changed = await tx.approvalRequest.updateMany({
-          where: { id, status: "SUBMITTED", assignedReviewerId: user.id, revision: found.revision },
+          where: {
+            id,
+            status: found.status,
+            revision: found.revision,
+            ...(waiting ? { firstApprovedById: { not: user.id } } : { assignedReviewerId: user.id }),
+          },
           data: {
             status,
             decidedById: user.id,
@@ -172,6 +202,7 @@ export function registerReviewRoutes(app: Express, { prisma }: { prisma: PrismaC
             decisionReason: reason,
             decisionCategory: category,
             updatedAt: now,
+            ...(first ? { firstApprovedById: user.id, firstApprovedAt: now } : {}),
           },
         });
         if (changed.count === 0) return null;
@@ -180,8 +211,8 @@ export function registerReviewRoutes(app: Express, { prisma }: { prisma: PrismaC
           data: {
             requestId: id,
             actorId: user.id,
-            type: status,
-            fromStatus: "SUBMITTED",
+            type,
+            fromStatus: found.status,
             toStatus: status,
             reason,
             category,
@@ -191,7 +222,7 @@ export function registerReviewRoutes(app: Express, { prisma }: { prisma: PrismaC
         return tx.approvalRequest.findUniqueOrThrow({ where: { id }, include: detailInclude });
       });
 
-      if (!decided) return refuseLostWrite(res, prisma, id);
+      if (!decided) return refuseLostWrite(res, prisma, id, found.status);
       res.json({ request: toDetail(decided) });
     } catch (error) {
       next(error);
@@ -239,7 +270,7 @@ export function registerReviewRoutes(app: Express, { prisma }: { prisma: PrismaC
         return tx.approvalRequest.findUniqueOrThrow({ where: { id }, include: detailInclude });
       });
 
-      if (!returned) return refuseLostWrite(res, prisma, id);
+      if (!returned) return refuseLostWrite(res, prisma, id, "SUBMITTED");
       res.json({ request: toDetail(returned) });
     } catch (error) {
       next(error);

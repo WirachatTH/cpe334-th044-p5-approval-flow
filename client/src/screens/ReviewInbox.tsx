@@ -3,8 +3,8 @@ import { Link } from "react-router-dom";
 import { useApi } from "../context/AuthContext.js";
 import { formatAmount, formatDate, type InboxItem } from "../format.js";
 
-// Review Inbox (F-04 contract §2.1): the requests assigned to me that wait for a decision, oldest first, with
-// loading, empty, and error states. Each row opens Request Detail, where the decision is made.
+// Review Inbox (F-04 contract §2.1, changed by F-07): the requests I may decide next, oldest first, with loading,
+// empty, and error states. Each row opens Request Detail, where the decision is made.
 export function ReviewInbox() {
   const api = useApi();
   const [state, setState] = useState<{ kind: "loading" } | { kind: "error" } | { kind: "ready"; requests: InboxItem[] }>({
@@ -63,7 +63,15 @@ export function ReviewInbox() {
                 <td>
                   <Link to={`/requests/${request.id}`}>{request.requestNumber}</Link>
                 </td>
-                <td>{request.title}</td>
+                <td>
+                  {request.title}
+                  {request.status === "AWAITING_SECOND_APPROVAL" && (
+                    <>
+                      {" "}
+                      <span className="status status-awaiting_second_approval">Second approval</span>
+                    </>
+                  )}
+                </td>
                 <td>{request.requester.name}</td>
                 <td className="amount">{formatAmount(request.amount)}</td>
                 <td>{formatDate(request.createdAt)}</td>
