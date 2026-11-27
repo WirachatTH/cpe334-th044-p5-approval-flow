@@ -92,7 +92,14 @@ export function DecisionPanel({ requestId, revision, onDecided, onConflict, onUn
         setBusy(null);
         return onConflict(answer?.error?.message ?? "Something went wrong. Please try again.");
       }
-      if (res.status === 403 || res.status === 404) return onUnavailable();
+      if (res.status === 403) {
+        const refusal = await res.json().catch(() => null);
+        // The first approver, acting from a page loaded before their approval (F-07 contract §2.1).
+        if (refusal?.error?.code !== "SAME_APPROVER_FORBIDDEN") return onUnavailable();
+        setBusy(null);
+        return onConflict(refusal.error.message);
+      }
+      if (res.status === 404) return onUnavailable();
       const data = await res.json().catch(() => null);
       const fields = res.status === 400 ? data?.error?.fields : undefined;
       const refused: Problems = {

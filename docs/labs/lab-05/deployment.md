@@ -46,7 +46,7 @@
 | Variable | Read by | Purpose | Secret? | Local value comes from | Cloud value comes from |
 |---|---|---|---|---|---|
 | `DATABASE_URL` | server, seed, `prisma migrate` | PostgreSQL connection string; required in every environment | **Yes** | `server/.env` (git-ignored) | Secret Manager |
-| `DEMO_USER_PASSWORD` | seed; Playwright config and the e2e specs (the config reads it from `server/.env` when it is not set) | Password of the four demo accounts; 10 to 128 characters with a letter and a digit; required, no default; never printed | **Yes** | `server/.env` (git-ignored) | Secret Manager |
+| `DEMO_USER_PASSWORD` | seed; Playwright config and the e2e specs (the config reads it from `server/.env` when it is not set) | Password of the five demo accounts; 10 to 128 characters with a letter and a digit; required, no default; never printed | **Yes** | `server/.env` (git-ignored) | Secret Manager |
 | `NODE_ENV` | server | `development`, `test`, or `production` (default `development`); `production` turns on the cookie `Secure` flag (F-01) and requires `CLIENT_ORIGINS` | No | `server/.env`; the test runner sets `test` | Cloud Run environment variable (`production`) |
 | `PORT` | server | HTTP port, 1 to 65535 (default 3000) | No | `server/.env` or the default | Set by Cloud Run |
 | `CLIENT_ORIGINS` | server | Comma-separated browser origins allowed to `POST` (F-02); required in production, default `http://localhost:5173` otherwise | No | `server/.env` or the default | Cloud Run environment variable; set **before** the first deploy (SDS §8) |

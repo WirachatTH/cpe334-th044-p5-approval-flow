@@ -16,6 +16,8 @@ const DEMO_ACCOUNTS = [
   { name: "Nattapong Kaewdee", email: "nattapong.requester@example.com", role: Role.REQUESTER },
   { name: "Mint Chaiyaporn", email: "mint.reviewer@example.com", role: Role.REVIEWER },
   { name: "Korn Thanakit", email: "korn.reviewer@example.com", role: Role.REVIEWER },
+  // A third reviewer, so that a reviewer's own request above the threshold has a second approver (BR-17).
+  { name: "Anan Wongsawat", email: "anan.reviewer@example.com", role: Role.REVIEWER },
 ] as const;
 
 function fail(lines: string[]): void {

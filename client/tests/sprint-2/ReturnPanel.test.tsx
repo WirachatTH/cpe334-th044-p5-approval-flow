@@ -78,6 +78,32 @@ describe("return panel", () => {
     await waitFor(() => expect(loads()).toHaveLength(2));
   });
 
+  it("TEST-F06-22 / AC-F06-22: after a stale answer both panels work again, with the new revision", async () => {
+    const stale = failure(409, "STALE_REVISION", "This request was changed after you opened it. Check it again.");
+    const { typing, posts, loads } = await openDetail(
+      MINT,
+      [ok(resubmittedDetail()), ok(resubmittedDetail({ revision: 2 })), ok(resubmittedDetail({ revision: 3 }))],
+      { "POST /api/requests/12/decision": stale, [RETURN]: stale },
+    );
+    await typing.click(screen.getByRole("button", { name: "Approve" }));
+    await waitFor(() => expect(loads()).toHaveLength(2));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Approve" })).toBeEnabled());
+    await typing.click(screen.getByRole("button", { name: "Approve" }));
+    await waitFor(() => expect(loads()).toHaveLength(3));
+    expect(posts().map((c) => c.body)).toEqual([
+      { decision: "APPROVE", revision: 1 },
+      { decision: "APPROVE", revision: 2 },
+    ]);
+
+    await typing.type(comment(), COMMENT);
+    await typing.click(returnButton());
+    await waitFor(() => expect(posts()).toHaveLength(3));
+    await waitFor(() => expect(returnButton()).toBeEnabled());
+    await typing.click(returnButton());
+    await waitFor(() => expect(posts()).toHaveLength(4));
+    expect(posts()[3].body).toEqual({ comment: COMMENT, revision: 3 });
+  });
+
   it("TEST-F06-25 / AC-F06-25: a field message, a server error, and a network failure keep the typed comment", async () => {
     const field = "Comment must be 1,000 characters or fewer.";
     const { typing, posts } = await openDetail(MINT, submitted(), {

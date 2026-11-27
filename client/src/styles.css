@@ -229,6 +229,11 @@ td.amount {
   color: #1d416f;
 }
 
+.status-awaiting_second_approval {
+  color: #5b2a86;
+  background: #f0e6fa;
+}
+
 .details {
   display: grid;
   grid-template-columns: max-content 1fr;

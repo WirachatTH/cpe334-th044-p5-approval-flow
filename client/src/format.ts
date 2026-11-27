@@ -17,19 +17,25 @@ export function formatDateTime(iso: string): string {
   return `${DATE.format(new Date(iso))} ${TIME.format(new Date(iso))}`;
 }
 
-export type RequestStatus = "SUBMITTED" | "APPROVED" | "REJECTED" | "RETURNED";
+export type RequestStatus = "SUBMITTED" | "APPROVED" | "REJECTED" | "RETURNED" | "AWAITING_SECOND_APPROVAL";
 
 export const STATUS_LABEL: Record<RequestStatus, string> = {
   SUBMITTED: "Submitted",
   APPROVED: "Approved",
   REJECTED: "Rejected",
   RETURNED: "Returned",
+  AWAITING_SECOND_APPROVAL: "Awaiting second approval",
 };
 
-// A history entry is named after the status it led to, except a resubmission, which leads back to SUBMITTED.
-export type EventType = RequestStatus | "RESUBMITTED";
+// A history entry is named after the status it led to, except a resubmission, which leads back to SUBMITTED, and the
+// first of two approvals.
+export type EventType = RequestStatus | "RESUBMITTED" | "FIRST_APPROVED";
 
-export const EVENT_LABEL: Record<EventType, string> = { ...STATUS_LABEL, RESUBMITTED: "Resubmitted" };
+export const EVENT_LABEL: Record<EventType, string> = {
+  ...STATUS_LABEL,
+  RESUBMITTED: "Resubmitted",
+  FIRST_APPROVED: "First approval",
+};
 
 // Why a request was rejected (F-04 contract section 2.1). The select offers them in this order.
 export type RejectionCategory = "BUDGET" | "INCOMPLETE" | "DUPLICATE" | "POLICY" | "OTHER";
@@ -64,6 +70,8 @@ export interface InboxItem {
   title: string;
   amount: string;
   requester: PersonRef;
+  // SUBMITTED, or waiting for the second approval (BR-17).
+  status: RequestStatus;
   createdAt: string;
 }
 
@@ -86,6 +94,8 @@ export interface RequestDetail extends RequestSummary {
   decisionCategory: RejectionCategory | null;
   decisionReason: string | null;
   decidedAt: string | null;
+  // Set by the first of two approvals (BR-17).
+  firstApproval: { by: PersonRef; at: string } | null;
   // One higher after each resubmission (BR-16).
   revision: number;
   updatedAt: string;

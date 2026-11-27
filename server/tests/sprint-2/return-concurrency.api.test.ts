@@ -1,8 +1,11 @@
+import type { PrismaClient } from "@prisma/client";
+import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { startTestApp, type TestApp } from "../sprint-1/helpers/app.js";
+import { createApp } from "../../src/app.js";
+import { PASSWORD, startTestApp, type TestApp } from "../sprint-1/helpers/app.js";
 import {
-  DECIDED_MESSAGE, NOT_RETURNED_MESSAGE, RETURNED_MESSAGE, decide, events, resubmit, returnedScenario, row, scenario,
-  sendReturn,
+  COMMENT, DECIDED_MESSAGE, NOT_RETURNED_MESSAGE, RETURNED_MESSAGE, STALE_MESSAGE, decide, events, resubmit,
+  returnedScenario, row, scenario, sendReturn, snapshot,
 } from "./helpers.js";
 
 // TEST-F06-17 / AC-F06-17: two operations on one request at the same moment. The conditional UPDATE lets only one of
@@ -53,4 +56,44 @@ describe("competing operations", () => {
       expect((await events(t, s.request.id)).map((e) => e.type), `round ${round}`).toEqual(["SUBMITTED", "RETURNED", "RESUBMITTED"]);
     }
   }, 120_000);
+});
+
+// The same app, except that the revision of the request changes right after a handler has read it, as when its
+// requester resubmits between the read and the write.
+function appWithResubmissionAfterTheRead() {
+  const prisma = t.prisma.$extends({
+    query: {
+      approvalRequest: {
+        async findUnique({ args, query }) {
+          const found = await query(args);
+          await t.prisma.approvalRequest.update({ where: { id: args.where.id }, data: { revision: { increment: 1 } } });
+          return found;
+        },
+      },
+    },
+  });
+  return createApp({ prisma: prisma as unknown as PrismaClient, config: t.config, throttle: t.throttle });
+}
+
+describe("a resubmission between the read and the write", () => {
+  it("TEST-F06-17 / AC-F06-17: a decision and a return then change nothing and say the request changed", async () => {
+    for (const action of [
+      { path: "decision", body: { decision: "APPROVE" } },
+      { path: "return", body: { comment: COMMENT } },
+    ]) {
+      const s = await scenario(t);
+      const agent = request.agent(appWithResubmissionAfterTheRead());
+      const login = await agent.post("/api/auth/login").send({ email: s.reviewer.email, password: PASSWORD });
+      expect(login.status, login.text).toBe(200);
+      const before = await snapshot(t, s.request.id);
+
+      const res = await agent.post(`/api/requests/${s.request.id}/${action.path}`).send(action.body);
+
+      expect(res.status, `${action.path}: ${res.text}`).toBe(409);
+      expect(res.body.error, action.path).toMatchObject({ code: "STALE_REVISION", message: STALE_MESSAGE });
+      const after = await snapshot(t, s.request.id);
+      expect(after.history, action.path).toEqual(before.history);
+      expect(after.request.status, action.path).toBe("SUBMITTED");
+    }
+  });
 });
