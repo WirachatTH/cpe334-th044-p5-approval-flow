@@ -17,13 +17,19 @@ export function formatDateTime(iso: string): string {
   return `${DATE.format(new Date(iso))} ${TIME.format(new Date(iso))}`;
 }
 
-export type RequestStatus = "SUBMITTED" | "APPROVED" | "REJECTED";
+export type RequestStatus = "SUBMITTED" | "APPROVED" | "REJECTED" | "RETURNED";
 
 export const STATUS_LABEL: Record<RequestStatus, string> = {
   SUBMITTED: "Submitted",
   APPROVED: "Approved",
   REJECTED: "Rejected",
+  RETURNED: "Returned",
 };
+
+// A history entry is named after the status it led to, except a resubmission, which leads back to SUBMITTED.
+export type EventType = RequestStatus | "RESUBMITTED";
+
+export const EVENT_LABEL: Record<EventType, string> = { ...STATUS_LABEL, RESUBMITTED: "Resubmitted" };
 
 // Why a request was rejected (F-04 contract section 2.1). The select offers them in this order.
 export type RejectionCategory = "BUDGET" | "INCOMPLETE" | "DUPLICATE" | "POLICY" | "OTHER";
@@ -63,7 +69,7 @@ export interface InboxItem {
 
 export interface HistoryEntry {
   id: number;
-  type: RequestStatus;
+  type: EventType;
   fromStatus: RequestStatus | null;
   toStatus: RequestStatus;
   actor: PersonRef;
@@ -80,6 +86,8 @@ export interface RequestDetail extends RequestSummary {
   decisionCategory: RejectionCategory | null;
   decisionReason: string | null;
   decidedAt: string | null;
+  // One higher after each resubmission (BR-16).
+  revision: number;
   updatedAt: string;
   history: HistoryEntry[];
 }
