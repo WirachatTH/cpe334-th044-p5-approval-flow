@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import type { PrismaClient } from "@prisma/client";
+import { RejectionCategory, type PrismaClient } from "@prisma/client";
 import type { AuthLocals } from "./authorization.js";
 import { sendError } from "./errors.js";
 import { detailInclude, toDetail } from "./requests.js";
@@ -7,21 +7,28 @@ import { detailInclude, toDetail } from "./requests.js";
 // The review inbox and the decision (F-04 contract). The caller is always the signed-in user. The rules are checked
 // in the order of contract section 1.2, and the first one that fails answers.
 
+const REJECTION_REASON_MIN = 10;
 const REASON_MAX = 1000;
 const MAX_INT4 = 2_147_483_647;
+const CATEGORIES: readonly string[] = Object.values(RejectionCategory);
 
 const CHOOSE_DECISION = "Choose approve or reject.";
 const REASON_REQUIRED = "Enter a reason to reject this request.";
 const REASON_TEXT = "Enter the reason as text.";
+const REASON_TOO_SHORT = "Reason must be at least 10 characters.";
 const REASON_TOO_LONG = "Reason must be 1,000 characters or fewer.";
+const CHOOSE_CATEGORY = "Choose a rejection category.";
+const CATEGORY_NOT_ALLOWED = "A category applies to a rejection only.";
 const ALREADY_DECIDED = "This request has already been decided.";
 
 interface Decision {
   decision: "APPROVE" | "REJECT";
   reason: string | null;
+  category: RejectionCategory | null;
 }
 
-// F-04 section 1.4. Every problem is reported at once; the reason is stored trimmed.
+// F-04 section 1.4. Every problem is reported at once; the reason is stored trimmed. Both reason limits count Unicode
+// code points.
 function parseDecision(body: unknown): { ok: true; value: Decision } | { ok: false; fields: Record<string, string> } {
   const input = (typeof body === "object" && body !== null && !Array.isArray(body) ? body : {}) as Record<string, unknown>;
   const fields: Record<string, string> = {};
@@ -36,12 +43,26 @@ function parseDecision(body: unknown): { ok: true; value: Decision } | { ok: fal
   } else {
     const trimmed = typeof input.reason === "string" ? input.reason.trim() : "";
     if (trimmed !== "") reason = trimmed;
+    const length = [...trimmed].length;
     if (reason === null && decision === "REJECT") fields.reason = REASON_REQUIRED;
-    else if (reason !== null && [...reason].length > REASON_MAX) fields.reason = REASON_TOO_LONG;
+    else if (decision === "REJECT" && length < REJECTION_REASON_MIN) fields.reason = REASON_TOO_SHORT;
+    else if (length > REASON_MAX) fields.reason = REASON_TOO_LONG;
+  }
+
+  // A rejection needs one category from the list and an approval takes none (BR-12).
+  let category: RejectionCategory | null = null;
+  if (decision === "REJECT") {
+    if (typeof input.category === "string" && CATEGORIES.includes(input.category)) {
+      category = input.category as RejectionCategory;
+    } else {
+      fields.category = CHOOSE_CATEGORY;
+    }
+  } else if (decision === "APPROVE" && input.category !== undefined && input.category !== null) {
+    fields.category = CATEGORY_NOT_ALLOWED;
   }
 
   if (Object.keys(fields).length > 0) return { ok: false, fields };
-  return { ok: true, value: { decision: decision as Decision["decision"], reason } };
+  return { ok: true, value: { decision: decision as Decision["decision"], reason, category } };
 }
 
 const person = { select: { id: true, name: true } } as const;
@@ -106,18 +127,34 @@ export function registerReviewRoutes(app: Express, { prisma }: { prisma: PrismaC
       // caller, so of two simultaneous decisions only one changes a row. The other changes none, and nothing is
       // written for it. One timestamp, from the application clock like every other time in the system, is used for
       // the decision and for its history entry, so the two always show the same time.
-      const { decision, reason } = parsed.value;
+      const { decision, reason, category } = parsed.value;
       const status = decision === "APPROVE" ? "APPROVED" : "REJECTED";
       const now = new Date();
       const decided = await prisma.$transaction(async (tx) => {
         const changed = await tx.approvalRequest.updateMany({
           where: { id, status: "SUBMITTED", assignedReviewerId: user.id },
-          data: { status, decidedById: user.id, decidedAt: now, decisionReason: reason, updatedAt: now },
+          data: {
+            status,
+            decidedById: user.id,
+            decidedAt: now,
+            decisionReason: reason,
+            decisionCategory: category,
+            updatedAt: now,
+          },
         });
         if (changed.count === 0) return null;
 
         await tx.requestEvent.create({
-          data: { requestId: id, actorId: user.id, type: status, fromStatus: "SUBMITTED", toStatus: status, reason, createdAt: now },
+          data: {
+            requestId: id,
+            actorId: user.id,
+            type: status,
+            fromStatus: "SUBMITTED",
+            toStatus: status,
+            reason,
+            category,
+            createdAt: now,
+          },
         });
         return tx.approvalRequest.findUniqueOrThrow({ where: { id }, include: detailInclude });
       });

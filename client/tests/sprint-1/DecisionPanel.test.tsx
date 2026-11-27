@@ -3,11 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MINT, PLOY, decidedDetail, mockApi, renderApp, requestDetail, type Handler, type Reply } from "./helpers.js";
 
-// F-04 decision panel on Request Detail (contract §2.1, AC-F04-16 to 19).
+// F-04 decision panel on Request Detail (contract §2.1, AC-F04-16 to 19 and AC-F04-28).
 
 afterEach(() => vi.unstubAllGlobals());
 
 const REASON_LABEL = "Reason (required to reject)";
+const CATEGORY_LABEL = "Rejection category (required to reject)";
 const panel = () => screen.queryByRole("region", { name: "Decision" });
 
 function open(
@@ -107,13 +108,15 @@ describe("decision panel", () => {
 
   it("TEST-F04-18 / AC-F04-18: a rejection sends its reason", async () => {
     const reason = "Please get a second quotation.";
-    const { api, typing } = open(MINT, submitted(), { status: 200, body: { request: decidedDetail("REJECTED", reason) } });
+    const answer = { status: 200, body: { request: decidedDetail("REJECTED", reason, "INCOMPLETE") } };
+    const { api, typing } = open(MINT, submitted(), answer);
     await screen.findByRole("heading", { level: 1, name: /REQ-000012/ });
     await typing.type(screen.getByLabelText(REASON_LABEL), reason);
+    await typing.selectOptions(screen.getByLabelText(CATEGORY_LABEL), "Information missing or unclear");
     await typing.click(screen.getByRole("button", { name: "Reject" }));
 
     expect(await screen.findByText("Request rejected.")).toBeInTheDocument();
-    expect(posts(api)[0].body).toEqual({ decision: "REJECT", reason });
+    expect(posts(api)[0].body).toEqual({ decision: "REJECT", reason, category: "INCOMPLETE" });
     expect(within(screen.getByRole("group", { name: "Decision" })).getByText(reason)).toBeInTheDocument();
   });
 
@@ -124,12 +127,99 @@ describe("decision panel", () => {
       { status: 409, body: { error: { code: "INVALID_TRANSITION", message: "This request has already been decided." } } },
     );
     await screen.findByRole("heading", { level: 1, name: /REQ-000012/ });
-    await typing.type(screen.getByLabelText(REASON_LABEL), "No.");
+    await typing.type(screen.getByLabelText(REASON_LABEL), "Not this time.");
+    await typing.selectOptions(screen.getByLabelText(CATEGORY_LABEL), "Budget not available");
     await typing.click(screen.getByRole("button", { name: "Reject" }));
 
     expect(await screen.findByText("This request has already been decided.")).toBeInTheDocument();
     await waitFor(() => expect(api.calls.filter((c) => c.method === "GET" && c.path === "/api/requests/12")).toHaveLength(2));
     await waitFor(() => expect(panel()).not.toBeInTheDocument());
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Rejected");
+  });
+});
+
+// Change request #65 (Lab 7): the reason needs 10 characters and a rejection needs a category.
+describe("decision panel: rejection reason and category", () => {
+  const SHORT = "Reason must be at least 10 characters.";
+  const NO_CATEGORY = "Choose a rejection category.";
+  const rejected = (): Reply => ({ status: 200, body: { request: decidedDetail("REJECTED", "1234567890", "BUDGET") } });
+
+  // Opens the panel, optionally chooses "Budget not available", types the reason, and presses a button.
+  async function attempt(reason: string, withCategory: boolean, button: "Approve" | "Reject", answer: Reply = rejected()) {
+    const opened = open(MINT, submitted(), answer);
+    await screen.findByRole("heading", { level: 1, name: /REQ-000012/ });
+    if (withCategory) {
+      await opened.typing.selectOptions(screen.getByLabelText(CATEGORY_LABEL), "Budget not available");
+    }
+    await opened.typing.click(screen.getByLabelText(REASON_LABEL));
+    await opened.typing.paste(reason);
+    await opened.typing.click(screen.getByRole("button", { name: button }));
+    return opened;
+  }
+
+  async function expectOnlyReasonProblem(api: ReturnType<typeof open>["api"]) {
+    expect(await screen.findByText(SHORT)).toBeInTheDocument();
+    expect(screen.queryByText(NO_CATEGORY)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(REASON_LABEL)).toHaveAccessibleDescription(SHORT);
+    expect(screen.getByLabelText(REASON_LABEL)).toHaveFocus();
+    expect(posts(api)).toHaveLength(0);
+  }
+
+  it("TEST-F04-28 / AC-F04-28 (a): a short reason and no category show both messages, with focus on the reason", async () => {
+    const { api } = await attempt("No", false, "Reject");
+
+    expect(await screen.findByText(SHORT)).toBeInTheDocument();
+    expect(screen.getByLabelText(REASON_LABEL)).toHaveAccessibleDescription(SHORT);
+    expect(screen.getByLabelText(CATEGORY_LABEL)).toHaveAccessibleDescription(NO_CATEGORY);
+    expect(screen.getByLabelText(REASON_LABEL)).toHaveFocus();
+    expect(posts(api)).toHaveLength(0);
+  });
+
+  it("TEST-F04-28 / AC-F04-28 (b): nine characters inside spaces show only the reason message", async () => {
+    const { api } = await attempt("  123456789  ", true, "Reject");
+    await expectOnlyReasonProblem(api);
+  });
+
+  it("TEST-F04-28 / AC-F04-28 (c): a missing category shows its message beneath the select and focuses it", async () => {
+    const { api } = await attempt("1234567890", false, "Reject");
+
+    expect(await screen.findByText(NO_CATEGORY)).toBeInTheDocument();
+    expect(screen.queryByText(SHORT)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(CATEGORY_LABEL)).toHaveAccessibleDescription(NO_CATEGORY);
+    expect(screen.getByLabelText(CATEGORY_LABEL)).toHaveFocus();
+    expect(posts(api)).toHaveLength(0);
+  });
+
+  it("TEST-F04-28 / AC-F04-28 (d): a valid rejection sends the reason and the category", async () => {
+    const { api } = await attempt("1234567890", true, "Reject");
+
+    expect(await screen.findByText("Request rejected.")).toBeInTheDocument();
+    expect(posts(api)[0].body).toEqual({ decision: "REJECT", reason: "1234567890", category: "BUDGET" });
+  });
+
+  it("TEST-F04-28 / AC-F04-28 (e): an approval sends no category, whatever the select holds", async () => {
+    const approved: Reply = { status: 200, body: { request: decidedDetail("APPROVED", "ok") } };
+    const { api } = await attempt("ok", true, "Approve", approved);
+
+    expect(await screen.findByText("Request approved.")).toBeInTheDocument();
+    expect(posts(api)[0].body).toEqual({ decision: "APPROVE", reason: "ok" });
+  });
+
+  it("TEST-F04-28 / AC-F04-28 (f): a category message from the API appears beneath the select and focuses it", async () => {
+    const refused: Reply = {
+      status: 400,
+      body: { error: { code: "VALIDATION_ERROR", message: "Some fields need attention.", fields: { category: NO_CATEGORY } } },
+    };
+    const { api } = await attempt("1234567890", true, "Reject", refused);
+
+    expect(await screen.findByText(NO_CATEGORY)).toBeInTheDocument();
+    expect(screen.getByLabelText(CATEGORY_LABEL)).toHaveAccessibleDescription(NO_CATEGORY);
+    await waitFor(() => expect(screen.getByLabelText(CATEGORY_LABEL)).toHaveFocus());
+    expect(posts(api)).toHaveLength(1);
+  });
+
+  it("TEST-F04-28 / AC-F04-28 (g): five emoji are five characters, so the reason is too short", async () => {
+    const { api } = await attempt("\u{1F600}".repeat(5), true, "Reject");
+    await expectOnlyReasonProblem(api);
   });
 });

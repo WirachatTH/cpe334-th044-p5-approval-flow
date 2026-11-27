@@ -1,6 +1,6 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PLOY, mockApi, renderApp, requestDetail } from "./helpers.js";
+import { PLOY, decidedDetail, mockApi, renderApp, requestDetail } from "./helpers.js";
 
 // F-03 Request Detail screen (contract §2.1, AC-F03-19, and the detail part of AC-F03-21).
 
@@ -46,5 +46,38 @@ describe("Request Detail screen", () => {
     expect(await screen.findByText(title)).toBeInTheDocument();
     expect(screen.getByText(description)).toBeInTheDocument();
     expect(container.querySelector("script, img")).toBeNull();
+  });
+});
+
+// F-04 / AC-F04-34: what Request Detail says about the category of a decision.
+describe("Request Detail screen: rejection category", () => {
+  async function show(request: ReturnType<typeof decidedDetail>) {
+    mockApi({ ...SIGNED_IN, "GET /api/requests/12": { status: 200, body: { request } } });
+    const { container } = renderApp("/requests/12");
+    await screen.findByRole("heading", { level: 1, name: /REQ-000012/ });
+    return {
+      decision: within(screen.getByRole("group", { name: "Decision" })),
+      history: within(container.querySelector<HTMLElement>("ol.history")!),
+    };
+  }
+
+  it("TEST-F04-34 / AC-F04-34: a rejection shows its category in the Decision section and the history", async () => {
+    const { decision, history } = await show(decidedDetail("REJECTED", "Already ordered last week.", "DUPLICATE"));
+
+    expect(decision.getByText("Category: Duplicate request")).toBeInTheDocument();
+    expect(history.getByText("Category: Duplicate request")).toBeInTheDocument();
+  });
+
+  it("TEST-F04-34 / AC-F04-34: an earlier rejection shows Not recorded in the Decision section only", async () => {
+    const { decision, history } = await show(decidedDetail("REJECTED", "Over budget."));
+
+    expect(decision.getByText("Category: Not recorded")).toBeInTheDocument();
+    expect(history.queryByText(/^Category:/)).not.toBeInTheDocument();
+  });
+
+  it("TEST-F04-34 / AC-F04-34: an approval shows no category", async () => {
+    await show(decidedDetail("APPROVED"));
+
+    expect(screen.queryByText(/^Category:/)).not.toBeInTheDocument();
   });
 });

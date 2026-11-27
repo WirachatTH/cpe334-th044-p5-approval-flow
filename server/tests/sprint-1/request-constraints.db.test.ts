@@ -193,3 +193,66 @@ describe("decision constraints and append-only history", () => {
     expect(counts.rows[0]).toEqual({ requests: 0, events: 0 });
   });
 });
+
+// F-04 / AC-F04-33: only a rejection may have a category. The columns come from add_rejection_category and the two
+// CHECK constraints from add_rejection_category_rules.
+describe("rejection category constraints", () => {
+  type Status = "SUBMITTED" | "APPROVED" | "REJECTED";
+
+  const insertRequest = (row: Decided, category: string | null) =>
+    client.query(
+      `INSERT INTO request
+         (request_number, requester_id, assigned_reviewer_id, title, description, amount, status,
+          decided_by_id, decided_at, decision_reason, decision_category, created_at, updated_at)
+       VALUES ($1, $2, $3, 'Title', 'Description', 100, $4::"RequestStatus", $5, $6, $7,
+          $8::rejection_category, now(), now())
+       RETURNING id`,
+      [row.requestNumber, ids.ploy, ids.mint, row.status, row.decidedById, row.decidedAt, row.decisionReason, category],
+    );
+
+  const insertHistory = (requestId: number, type: Status, category: string | null) =>
+    client.query(
+      `INSERT INTO request_event (request_id, actor_id, type, from_status, to_status, reason, category, created_at)
+       VALUES ($1, $2, $3::"RequestEventType", $4::"RequestStatus", $5::"RequestStatus", NULL,
+          $6::rejection_category, now())`,
+      [requestId, ids.mint, type, type === "SUBMITTED" ? null : "SUBMITTED", type, category],
+    );
+
+  const rejected = (requestNumber: string): Decided => ({ ...validRejected(), requestNumber });
+
+  it("TEST-F04-33 (controls): rejected rows with and without a category are accepted", async () => {
+    await expect(
+      inRolledBackTransaction(async () => {
+        const withCategory = await insertRequest(rejected("REQ-900201"), "BUDGET");
+        await insertHistory(withCategory.rows[0].id, "REJECTED", "BUDGET");
+        const without = await insertRequest(rejected("REQ-900202"), null);
+        await insertHistory(without.rows[0].id, "REJECTED", null);
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  const onRequest = { code: "23514", constraint: "request_category_only_on_rejection" };
+  const onEvent = { code: "23514", constraint: "request_event_category_only_on_rejection" };
+
+  it.each([
+    ["(a) a category on a submitted request", () => insertRequest(validSubmitted(), "BUDGET"), onRequest],
+    [
+      "(b) a category on an approved request",
+      () => insertRequest({ ...validRejected(), status: "APPROVED" }, "BUDGET"),
+      onRequest,
+    ],
+    [
+      "(c) a category on a SUBMITTED history row",
+      async () => insertHistory((await insertRequest(validSubmitted(), null)).rows[0].id, "SUBMITTED", "BUDGET"),
+      onEvent,
+    ],
+    [
+      "(d) a category on an APPROVED history row",
+      async () => insertHistory((await insertRequest(validSubmitted(), null)).rows[0].id, "APPROVED", "BUDGET"),
+      onEvent,
+    ],
+    ["(e) a value outside the list", () => insertRequest(validRejected(), "REFUND"), { code: "22P02" }],
+  ])("TEST-F04-33 / AC-F04-33: %s is refused by the database", async (_label, run, expected) => {
+    expect(await refusal(run)).toMatchObject(expected);
+  });
+});

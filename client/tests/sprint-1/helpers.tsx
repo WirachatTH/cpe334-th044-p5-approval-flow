@@ -38,6 +38,7 @@ export function requestDetail(overrides: Record<string, unknown> = {}) {
     description: "Replace the broken unit in room 401.",
     requester: { id: 1, name: "Ploy Srisawat" },
     decidedBy: null,
+    decisionCategory: null,
     decisionReason: null,
     decidedAt: null,
     updatedAt: CREATED,
@@ -49,6 +50,7 @@ export function requestDetail(overrides: Record<string, unknown> = {}) {
         toStatus: "SUBMITTED",
         actor: { id: 1, name: "Ploy Srisawat" },
         reason: null,
+        category: null,
         createdAt: CREATED,
       },
     ],
@@ -72,15 +74,29 @@ export function inboxItem(overrides: Record<string, unknown> = {}) {
 export const DECIDED_AT = "2026-11-14T10:00:00.000Z";
 
 // A request that the reviewer with id 3 (Mint) has decided.
-export function decidedDetail(status: "APPROVED" | "REJECTED", reason: string | null = null) {
+export function decidedDetail(
+  status: "APPROVED" | "REJECTED",
+  reason: string | null = null,
+  category: string | null = null,
+) {
   return requestDetail({
     status,
     decidedBy: REVIEWERS[0],
+    decisionCategory: category,
     decisionReason: reason,
     decidedAt: DECIDED_AT,
     history: [
       ...requestDetail().history,
-      { id: 32, type: status, fromStatus: "SUBMITTED", toStatus: status, actor: REVIEWERS[0], reason, createdAt: DECIDED_AT },
+      {
+        id: 32,
+        type: status,
+        fromStatus: "SUBMITTED",
+        toStatus: status,
+        actor: REVIEWERS[0],
+        reason,
+        category,
+        createdAt: DECIDED_AT,
+      },
     ],
   });
 }

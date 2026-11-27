@@ -25,6 +25,17 @@ export const STATUS_LABEL: Record<RequestStatus, string> = {
   REJECTED: "Rejected",
 };
 
+// Why a request was rejected (F-04 contract section 2.1). The select offers them in this order.
+export type RejectionCategory = "BUDGET" | "INCOMPLETE" | "DUPLICATE" | "POLICY" | "OTHER";
+
+export const CATEGORY_LABEL: Record<RejectionCategory, string> = {
+  BUDGET: "Budget not available",
+  INCOMPLETE: "Information missing or unclear",
+  DUPLICATE: "Duplicate request",
+  POLICY: "Not allowed by policy",
+  OTHER: "Other",
+};
+
 export interface PersonRef {
   id: number;
   name: string;
@@ -57,6 +68,8 @@ export interface HistoryEntry {
   toStatus: RequestStatus;
   actor: PersonRef;
   reason: string | null;
+  // Set only on a rejection that recorded one.
+  category: RejectionCategory | null;
   createdAt: string;
 }
 
@@ -64,6 +77,7 @@ export interface RequestDetail extends RequestSummary {
   description: string;
   requester: PersonRef;
   decidedBy: PersonRef | null;
+  decisionCategory: RejectionCategory | null;
   decisionReason: string | null;
   decidedAt: string | null;
   updatedAt: string;
