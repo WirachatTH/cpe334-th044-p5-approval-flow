@@ -19,6 +19,8 @@
 | 0.5 | 2026-11-16 | Menelaus122 | The project ID, the public URL, and the status line, from the first successful deploy run. New section 6.3 records that run, what was checked on the live URL, and what C-04 to C-06 still need. | Issue #35 |
 | 0.6 | 2026-11-16 | Menelaus122 | Section 1 no longer says "planned" for what the run deployed; the introduction of section 4 no longer says the project values wait for the project; section 6.3 says why the first run failed; section 6.1 says the `gcloud` commands have not been run yet. | Review of PR #58 |
 | 0.7 | 2026-11-16 | WirachatTH | Section 6.3 records the second deployment (release PR #59, tag `v1.1.0-lab5`) and what C-04, C-05, and C-06 showed; the status line and the "not done yet" list are replaced by it. Section 6.1 gives the commands that were run against the deployed service. | Issue #35; review of PR #59, comment 2 |
+| 0.8 | 2026-11-27 | Menelaus122 | Section 5: the CI workflow gains the job `e2e`, which runs the Playwright journeys on every pull request and before a deployment. | Issue #75 (Lab 7 retrospective action) |
+| 0.9 | 2026-11-27 | Menelaus122 | Section 6.2: the rollback exception of the Sprint 2 request states (SRS D-15). | Review of PR #73 |
 
 ---
 
@@ -132,7 +134,7 @@ member** (AGENTS.md section 7). Run it from the repository root, in Cloud Shell 
 
 | Workflow | Trigger | Jobs | Required check name |
 |---|---|---|---|
-| `.github/workflows/ci-docker.yml` ("CI & Docker Build") | Pull request into `staging` or `main`; manual; `workflow_call` from `deploy.yml` | `test-and-docker`: deployment-script checks (offline), server (type-check, build, migrate, seed, tests, against PostgreSQL 16), client (type-check, tests, build), production image build, and a start of the image that must answer `/api/ready`, `/`, a deep link, and the JSON `404` | `test-and-docker` |
+| `.github/workflows/ci-docker.yml` ("CI & Docker Build") | Pull request into `staging` or `main`; manual; `workflow_call` from `deploy.yml` | `test-and-docker`: deployment-script checks (offline), server (type-check, build, migrate, seed, tests, against PostgreSQL 16), client (type-check, tests, build), production image build, and a start of the image that must answer `/api/ready`, `/`, a deep link, and the JSON `404`. `e2e`: its own PostgreSQL 16, migrate and seed with a synthetic password, the built API on port 3000, and `npm run e2e` (Playwright, Chromium); on a failure the test output and the API log stay in the run log | `test-and-docker`; `e2e` is not required until a team member adds it to the ruleset |
 | `.github/workflows/deploy.yml` ("Deploy demo") | Push to `main`; manual run with `image_tag` for a rollback | `test` (reuses the CI workflow), then `deploy`: validate settings, keyless Google login (Workload Identity Federation), build and push the image tagged with the full commit SHA (the same SHA is the build argument `GIT_SHA`, shown in the UI footer), `deploy/release.sh` (resolve the digest, run the migration job to completion, update the service to the digest), the smoke test (`deploy/smoke_test.py`), and a summary of the tag, digest, and URL | none (it is not a pull-request check) |
 
 ## 6. Release procedure
@@ -158,6 +160,11 @@ member** (AGENTS.md section 7). Run it from the repository root, in Cloud Shell 
 3. To go forward again, run it again with the SHA of the newer release (an empty `image_tag` would test and rebuild the current `main` instead).
 
 A rollback changes only the application image, never the database. It is safe only while the schema is compatible with the older image, which is why migrations are additive (AGENTS.md section 5). Sprint 1 has no destructive migration.
+
+**Exception from Sprint 2 (SRS D-15).** After the first return (F-06), or the first of two approvals (F-07), an image
+from before those features cannot read the affected rows: the My Requests list of an affected requester and the detail
+of an affected request fail on it. Roll back to such an image only while no request holds a new status or history
+value; otherwise correct the release by rolling forward.
 
 ### 6.3 Deployment record
 

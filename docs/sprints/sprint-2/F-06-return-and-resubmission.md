@@ -19,6 +19,7 @@
 | Version | Date | Author | Change | Reason | Commit / PR |
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-27 | Menelaus122 | First complete draft | Issue #71 | |
+| 0.2 | 2026-11-27 | Menelaus122 | AC-F06-22 covers the revision sent by all three panel actions. AC-F06-25 to -28 added: failed calls on the screens, a refused caller, the disabled buttons, and a database error. The answer of a write that changes no row, and the messages of `SELF_REVIEW_FORBIDDEN` and `NOT_REQUESTER`, are defined (AC-F06-04, -12, -17). The rollback limitation is a decided exception (D-15). `revision: null` counts as missing; a limitation of resubmission is listed. | Review of PR #73 | #73 |
 
 ---
 
@@ -64,7 +65,7 @@ Every other transition is refused with `409` and changes nothing. `APPROVED` and
 7. The revision does not match (§1.4) → `409 STALE_REVISION`.
 8. In one transaction: update the request where `id`, `status = 'SUBMITTED'`, `assigned_reviewer_id` = caller, and
    `revision` = the value read when the request was found, setting `status = 'RETURNED'`, `decided_by_id` = caller, `decided_at = $now`,
-   `decision_reason = $comment`, `updated_at = $now`. If 0 rows change, roll back and answer `409 INVALID_TRANSITION`.
+   `decision_reason = $comment`, `updated_at = $now`. If 0 rows change, roll back and answer as §1.4 says for a write that changes no row.
    Otherwise insert one `request_event` (`RETURNED`, `SUBMITTED → RETURNED`, the caller, the comment, `$now`) and
    answer `200 { "request": RequestDetail }`.
 
@@ -80,12 +81,12 @@ comment. This keeps the existing `request_decision_fields` constraint.
 5. The request is not `RETURNED` → `409 INVALID_TRANSITION`.
 6. In one transaction: update the request where `id`, `status = 'RETURNED'`, and `requester_id` = caller, setting the
    title, description, and amount, `status = 'SUBMITTED'`, the four decision columns to `NULL`,
-   `revision = revision + 1`, and `updated_at = $now`. If 0 rows change, roll back and answer `409`. Otherwise insert
+   `revision = revision + 1`, and `updated_at = $now`. If 0 rows change, roll back and answer as §1.4 says. Otherwise insert
    one `request_event` (`RESUBMITTED`, `RETURNED → SUBMITTED`, the caller, no reason, `$now`) and answer
    `200 { "request": RequestDetail }`.
 
 **Decide** (F-04, changed): after F-04's step 6 and before its step 7, the revision is checked (§1.4), and the
-conditional update of step 7 also matches the revision. Deciding a `RETURNED` request answers
+conditional update of step 7 also matches the revision. A write that changes no row is answered as §1.4 says. Deciding a `RETURNED` request answers
 `409 INVALID_TRANSITION` at step 6 with its own message.
 
 ### 1.3 Business rules enforced
@@ -108,10 +109,13 @@ conditional update of step 7 also matches the revision. Deciding a `RETURNED` re
 | `comment` (return) | A string; after trimming, 1 to 1000 characters, counted in code points; stored trimmed | `400`, `fields.comment`: "Enter a comment to return this request." (missing, `null`, empty, or only spaces) / "Enter the comment as text." (not a string) / "Comment must be 1,000 characters or fewer." |
 | `title`, `description`, `amount` (resubmit) | The rules of F-03 §1.4, including 1,000,000.00 THB inclusive; every problem is reported at once | `400`, the messages of F-03 §1.4 |
 | `assignedReviewerId`, `requesterId`, `status`, `requestNumber`, `revision` in a resubmission | Ignored | None |
-| `revision` (decide and return) | Optional while the request's revision is 0; otherwise required. When present, a whole number from 0 | Not a whole number: `400`, `fields.revision`: "Reload the request and try again." Missing when required, or different from the request's: `409 STALE_REVISION`, "This request was changed after you opened it. Check it again." |
+| `revision` (decide and return) | Optional while the request's revision is 0; otherwise required. `null` counts as missing. When present, a whole number from 0 | Not a whole number: `400`, `fields.revision`: "Reload the request and try again." Missing when required, or different from the request's: `409 STALE_REVISION`, "This request was changed after you opened it. Check it again." |
 | Status for return | `SUBMITTED` | `409 INVALID_TRANSITION`: "This request was returned to the requester for changes." (`RETURNED`) / "This request has already been decided." (`APPROVED`, `REJECTED`) |
 | Status for decide | `SUBMITTED` | The same two messages |
 | Status for resubmit | `RETURNED` | `409 INVALID_TRANSITION`: "Only a returned request can be resubmitted." |
+| A write that changes no row (decide, return, resubmit) | The request is read again | `409`. Decide and return: `INVALID_TRANSITION` with the status message above for the status it now holds, or `STALE_REVISION` when it is `SUBMITTED` and only the revision differs. Resubmit: `INVALID_TRANSITION`, "Only a returned request can be resubmitted." |
+| Caller of a return | Not the requester | `403 SELF_REVIEW_FORBIDDEN`, "You cannot return a request you submitted." |
+| Caller of a resubmission | Not the assigned reviewer | `403 NOT_REQUESTER`, "Only the requester can resubmit this request." |
 
 ### 1.5 Failure and boundary cases
 
@@ -127,9 +131,12 @@ conditional update of step 7 also matches the revision. Deciding a `RETURNED` re
 - **Database error mid-transaction:** everything rolls back and the answer is `500 INTERNAL_ERROR`.
 - **Known limitation:** the earlier title, description, and amount of a resubmitted request are not kept. The history
   shows who changed the state and when, not what the content was.
-- **Known limitation (rollback):** the migrations are additive, but the previous image does not know the new status and
-  event values and cannot read a request that has them. After the first return, rolling back to an image without F-06
-  breaks the screens that load such a request; the correction then has to go forward.
+- **Known limitation:** a resubmission names no revision. An old tab of the requester can overwrite a newer
+  resubmission if the request has been returned again in between.
+- **Rollback (decided exception, D-15):** the migrations are additive, but the previous image does not know the new
+  status and history values. Once a request holds one, that image cannot read it: the whole My Requests list of its
+  requester fails (the list loads every row), and so does the detail of any request whose status or history holds a
+  new value. Such a release is corrected by rolling forward (`deployment.md` section 6.2).
 
 ### 1.6 Permissions
 
@@ -155,7 +162,7 @@ conditional update of step 7 also matches the revision. Deciding a `RETURNED` re
 |---|---|
 | Return panel (Request Detail, assigned reviewer of a `SUBMITTED` request, below the decision panel) | Heading "Return for changes", a multi-line field "Comment for the requester (required to return)" with a counter, and the button **Return for changes**. A blank comment shows "Enter a comment to return this request." beneath the field and 1001 characters "Comment must be 1,000 characters or fewer."; the message is linked with `aria-describedby`, focus moves to the field, and nothing is sent. The button is disabled while sending |
 | After a return | The page shows the updated request without reloading: status "Returned", a Decision section "Returned by <name> · <time>" with the comment, the new history entry, no panels, and the banner "Request returned." |
-| Resubmit form (Request Detail, requester of a `RETURNED` request) | Heading "Edit and resubmit", the fields Title, Description, and Amount (THB) filled with the current values, the line "Reviewer: <name> (cannot be changed)", and the button **Resubmit**. The checks and messages of New Request (F-03 §2.1); nothing is sent while a field is invalid; focus moves to the first invalid field; typed values are kept on a failure |
+| Resubmit form (Request Detail, requester of a `RETURNED` request) | Heading "Edit and resubmit", the fields Title, Description, and Amount (THB) filled with the current values, the line "Reviewer: <name> (cannot be changed)", and the button **Resubmit**. The checks and messages of New Request (F-03 §2.1); nothing is sent while a field is invalid; focus moves to the first invalid field; typed values are kept on a failure. The button is disabled and reads "Saving…" while sending |
 | After a resubmission | Status "Submitted", no Decision section, no form, the new history entry, and the banner "Request resubmitted." |
 | Errors in these panels and the decision panel | `409` shows the message of the answer and loads the request again; `403` and `404` show "not available"; a `400` shows the field message; anything else "Something went wrong. Please try again." |
 | Revision | The decision and return panels send `revision` when the request's revision is above 0 |
@@ -212,7 +219,7 @@ revision 0.
 | AC-F06-01 | A `SUBMITTED` request assigned to Mint | Mint returns it with a comment that has spaces around it | `200`; status `RETURNED`; Mint, the time, and the trimmed comment are stored; no category; exactly one new `RETURNED` history entry with the same actor, comment, and time | normal | FR-13, BR-13, BR-16 |
 | AC-F06-02 | `SUBMITTED` requests assigned to Mint | Mint returns with the comment missing, `null`, `""`, spaces, a number, and 1001 characters | `400` with the matching `fields.comment`; nothing changes | negative | BR-16 |
 | AC-F06-03 | `SUBMITTED` requests assigned to Mint | Mint returns with a comment of 1 character, of 1000 characters inside outer spaces, and of 1000 emoji | Each `200`, stored trimmed | boundary | BR-16 |
-| AC-F06-04 | A request Mint is assigned to, and a request Mint submitted to Korn | A requester, no session, Korn on the first, and Mint on the second try to return | `403 FORBIDDEN`, `401`, `404` identical to a missing id, and `403 SELF_REVIEW_FORBIDDEN` (also with an invalid body); nothing changes | role | BR-08, BR-10, BR-16, NFR-02 |
+| AC-F06-04 | A request Mint is assigned to, and a request Mint submitted to Korn | A requester, no session, Korn on the first, and Mint on the second try to return | `403 FORBIDDEN`, `401`, `404` identical to a missing id, and `403 SELF_REVIEW_FORBIDDEN` with its message (also with an invalid body); nothing changes | role | BR-08, BR-10, BR-16, NFR-02 |
 | AC-F06-05 | An approved, a rejected, and a returned request | Mint returns each | `409 INVALID_TRANSITION` with the matching message; nothing changes | negative | BR-11, BR-16 |
 | AC-F06-06 | A returned request | Mint approves it, and rejects it with valid input | `409 INVALID_TRANSITION`, "This request was returned to the requester for changes."; nothing changes | negative | BR-11 |
 | AC-F06-07 | A request Mint returned | Mint opens the inbox before and after Ploy resubmits | Absent, then present | normal | FR-07, FR-14 |
@@ -220,19 +227,23 @@ revision 0.
 | AC-F06-09 | A returned request | Ploy resubmits the same values, and the body also names another reviewer, requester, status, number, and revision | `200`; the extra values change nothing | boundary | BR-15, BR-16, NFR-02 |
 | AC-F06-10 | A returned request | Ploy resubmits with each invalid title, description, and amount of F-03 §1.4, including `1000000.01` | `400` with the fields; the request stays `RETURNED` and unchanged | negative | BR-04, BR-05 |
 | AC-F06-11 | Returned requests | Ploy resubmits with amounts `0.01` and `1000000.00`, a 120-character title, and a 2000-character description | Each `200` | boundary | BR-04, BR-05 |
-| AC-F06-12 | A returned request of Ploy assigned to Mint | Mint, Nattapong, Korn, and no session try to resubmit it | `403 NOT_REQUESTER`, `404`, `404`, `401`; nothing changes | role | BR-08, BR-16, NFR-02 |
+| AC-F06-12 | A returned request of Ploy assigned to Mint | Mint, Nattapong, Korn, and no session try to resubmit it | `403 NOT_REQUESTER` with its message, `404`, `404`, `401`; nothing changes | role | BR-08, BR-16, NFR-02 |
 | AC-F06-13 | A submitted, an approved, and a rejected request of Ploy | Ploy resubmits each | `409 INVALID_TRANSITION`, "Only a returned request can be resubmitted."; nothing changes | negative | BR-11, BR-15 |
 | AC-F06-14 | A request resubmitted once | Mint approves, rejects, and returns it without `revision` and with 0; then approves with 1 | `409 STALE_REVISION` for each of the first six; nothing changes; then `200` | negative | BR-16 |
 | AC-F06-15 | A submitted request | Mint decides and returns with `revision` `"0"`, `-1`, and `1.5`, then with a different whole number, then approves with 0 | `400` with `fields.revision`; `409 STALE_REVISION`; `200` | boundary | BR-16 |
 | AC-F06-16 | A request | It is returned, resubmitted, returned, resubmitted, and approved | The history lists `SUBMITTED`, `RETURNED`, `RESUBMITTED`, `RETURNED`, `RESUBMITTED`, `APPROVED` in order, each with its actor and comment; revision 2 | normal | FR-14, BR-13 |
-| AC-F06-17 | A submitted request, and a returned one | A return and an approval arrive at the same time; two resubmissions arrive at the same time | Each pair: one `200`, one `409`; one new history entry; the request matches the winner | boundary | BR-14 |
+| AC-F06-17 | A submitted request, and a returned one | A return and an approval arrive at the same time; two resubmissions arrive at the same time | Each pair: one `200`, one `409`; one new history entry; the request matches the winner. A losing approval says "This request was returned to the requester for changes.", a losing return "This request has already been decided.", and a losing resubmission "Only a returned request can be resubmitted." | boundary | BR-14 |
 | AC-F06-18 | Direct SQL | A returned request or history row with a missing or blank comment, a returned request without a decider, a category on a returned request or entry, and a negative revision are written; an existing entry is updated | Each refused by the named constraint or the trigger; valid control rows are accepted | negative | BR-13, NFR-07 |
 | AC-F06-19 | The Return panel | A blank comment, 1001 characters, then a valid comment | The messages beneath the field with focus and nothing sent; then one request `{comment}`, the banner "Request returned.", and no panels | normal | FR-13, NFR-11 |
 | AC-F06-20 | Request Detail as the requester, the assigned reviewer, and another state | It is opened | The Return panel shows only for the assigned reviewer of a `SUBMITTED` request; the resubmit form only for the requester of a `RETURNED` request | role | BR-16, FR-10 |
 | AC-F06-21 | The resubmit form | It opens; an invalid value is submitted; then valid values | Filled with the current values; messages beside the fields with focus and nothing sent; then status "Submitted", the banner "Request resubmitted.", and no form | normal | FR-14, NFR-11 |
-| AC-F06-22 | A request with revision 1, open for Mint | Mint approves; the API answers `409 STALE_REVISION` to a later action | The approval sends `revision: 1`; the stale answer shows its message and loads the request again | negative | BR-16 |
+| AC-F06-22 | A request with revision 1, open for Mint | Mint approves; on other loads of the page she rejects and returns; then an action is answered `409 STALE_REVISION` | The three bodies are `{ decision: "APPROVE", revision: 1 }`, a rejection with its reason, category, and `revision: 1`, and `{ comment, revision: 1 }`; the stale answer shows its message and loads the request again | negative | BR-16 |
 | AC-F06-23 | A returned request | Ploy opens My Requests and the request | Status "Returned", the comment in the Decision section, and the history entries by label | normal | FR-06, FR-13 |
 | AC-F06-24 | The running stack | Mint returns Ploy's request, Ploy edits and resubmits it, and Mint approves, using the keyboard for the new controls | Each screen shows the expected status; after a reload the history shows all four entries | normal | FR-13, FR-14, NFR-11 |
+| AC-F06-25 | The resubmit form and the return panel with typed values | The API answers `400` with a field message, then `500`, then the network fails | The field message beneath its field with focus; then "Something went wrong. Please try again." for the other two; the typed values are kept | negative | FR-14, NFR-11 |
+| AC-F06-26 | The return panel and the resubmit form | The API answers `403`, and `404` | The page says the request is not available, as in F-04, and shows none of its fields | role | BR-08, FR-10 |
+| AC-F06-27 | The return panel and the resubmit form | The button is pressed while the call is on its way | The button is disabled and reads "Saving…"; one call is sent | boundary | NFR-11 |
+| AC-F06-28 | A database in which writing the history entry fails | A return and a resubmission are sent | `500 INTERNAL_ERROR`; the request and its history are unchanged | negative | BR-13 |
 
 ## 4. Software Test Specification (STS)
 
@@ -258,14 +269,18 @@ Each test starts from requests it creates itself; Ploy submits to Mint unless th
 | TEST-F06-14 | AC-F06-14 | API-DB | Resubmitted once | The six stale calls, then approve with 1 | As the AC | `revision.api.test.ts` |
 | TEST-F06-15 | AC-F06-15 | API-DB | New request | Invalid, different, and correct revisions | As the AC | `revision.api.test.ts` |
 | TEST-F06-16 | AC-F06-16 | API-DB | New request | Two rounds and approve | Order, actors, comments, revision 2 | `resubmission.api.test.ts` |
-| TEST-F06-17 | AC-F06-17 | API-DB | Repeated several times | `Promise.all` of the competing calls | One winner each time | `return-concurrency.api.test.ts` |
+| TEST-F06-17 | AC-F06-17 | API-DB | Repeated several times | `Promise.all` of the competing calls | One winner each time; the loser's message | `return-concurrency.api.test.ts` |
 | TEST-F06-18 | AC-F06-18 | API-DB | Direct SQL in a rolled-back transaction, after the control rows | Each refused statement | SQLSTATE and constraint name | `return-constraints.db.test.ts` |
 | TEST-F06-19 | AC-F06-19 | component | Mocked API | The three attempts | Messages, focus, calls, banner | `ReturnPanel.test.tsx` |
 | TEST-F06-20 | AC-F06-20 | component | Mocked details for each case | Render | Which panels exist | `RequestDetailReturn.test.tsx` |
 | TEST-F06-21 | AC-F06-21 | component | Mocked API | Open, invalid, valid | As the AC | `ResubmitForm.test.tsx` |
-| TEST-F06-22 | AC-F06-22 | component | Mocked detail with revision 1 | Approve; then a `409 STALE_REVISION` | Body with revision; message and reload | `ReturnPanel.test.tsx` |
+| TEST-F06-22 | AC-F06-22 | component | Mocked detail with revision 1 | Approve, reject, return; then a `409 STALE_REVISION` | Bodies with the revision; message and reload | `ReturnPanel.test.tsx` |
 | TEST-F06-23 | AC-F06-23 | component | Mocked list and detail | Render | Labels and comment | `RequestDetailReturn.test.tsx` |
 | TEST-F06-24 | AC-F06-24 | e2e | Running stack, seeded; request created through the API | The journey | As the AC | `return.spec.ts` |
+| TEST-F06-25 | AC-F06-25 | component | Mocked `400`, `500`, and a rejected fetch | Submit | Messages, focus, kept values | `ResubmitForm.test.tsx` and `ReturnPanel.test.tsx` |
+| TEST-F06-26 | AC-F06-26 | component | Mocked `403` and `404` | Submit | Not available, no fields | `ResubmitForm.test.tsx` and `ReturnPanel.test.tsx` |
+| TEST-F06-27 | AC-F06-27 | component | A call that does not settle | Press twice | Disabled, one call | `ResubmitForm.test.tsx` and `ReturnPanel.test.tsx` |
+| TEST-F06-28 | AC-F06-28 | API-DB | A temporary trigger that refuses the new history row, removed after the test | Return, resubmit | `500`; rows unchanged | `return-rollback.api.test.ts` |
 
 **Coverage check:** every AC above maps to one TEST with the same number.
 

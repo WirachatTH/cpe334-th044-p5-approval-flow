@@ -20,6 +20,7 @@
 | 0.7 | 2026-11-26 | Menelaus122 | The rejection category of 0.6 is applied as two additive migrations, the columns first and the `CHECK` constraints second (F-04 v0.10). No table, column, or constraint changes. | Review of PR #66 |
 | 0.8 | 2026-11-27 | Menelaus122 | Return and resubmission (F-06): status `RETURNED`, history types `RETURNED` and `RESUBMITTED`, column `request.revision`, three `CHECK` constraints in two additive migrations, two routes, and the error codes `SELF_REVIEW_FORBIDDEN`, `NOT_REQUESTER`, and `STALE_REVISION`. The decision also checks the revision. | Issue #71 |
 | 0.9 | 2026-11-27 | Menelaus122 | Second approval (F-07): status `AWAITING_SECOND_APPROVAL`, history type `FIRST_APPROVED`, two first-approval columns, four `CHECK` constraints in two additive migrations, the error code `SAME_APPROVER_FORBIDDEN`, wider record scope for reviewers, and a third reviewer in the seed. | Issue #76 |
+| 0.10 | 2026-11-27 | Menelaus122 | Section 3.4: the new enum values of Sprint 2 are a decided exception to the rollback rule (SRS D-15). | Review of PR #73 |
 
 ---
 
@@ -176,7 +177,8 @@ The submission handler enforces it inside the same transaction as the insert.
   - After the first release, every migration is **backward-compatible with the previously deployed revision**.
     Lab 5 migrates before it deploys, so the old image must keep working against the new schema, and a rollback
     must stay possible. Additive changes (new tables, columns, enum values) are the default. A change such as
-    Sprint 2's widened `CHECK` for `RETURNED` must still accept every row the previous revision writes.
+    Sprint 2's widened `CHECK` for `RETURNED` must still accept every row the previous revision writes. The previous
+    revision cannot read a row that holds a new status or history value: a decided exception (SRS D-15).
   - An applied migration is never edited.
 - **Seed** (`prisma/seed.ts`) is idempotent. It reads each demo account by email, creates it if it is missing,
   and otherwise writes only the fields that differ. The hash is rewritten only when it no longer verifies against
