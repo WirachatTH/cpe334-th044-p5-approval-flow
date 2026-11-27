@@ -18,6 +18,8 @@
 | 0.5 | 2026-11-26 | Menelaus122 | BR-12 change: the 10-character minimum of a rejection reason is checked by the application only. No table, constraint, or migration changes. | Change request #65 (Lab 7) |
 | 0.6 | 2026-11-26 | Menelaus122 | Rejection category: enum `RejectionCategory`, nullable columns `request.decision_category` and `request_event.category`, two `CHECK` constraints, one additive migration. | Change request #65 (Lab 7) |
 | 0.7 | 2026-11-26 | Menelaus122 | The rejection category of 0.6 is applied as two additive migrations, the columns first and the `CHECK` constraints second (F-04 v0.10). No table, column, or constraint changes. | Review of PR #66 |
+| 0.8 | 2026-11-27 | Menelaus122 | Return and resubmission (F-06): status `RETURNED`, history types `RETURNED` and `RESUBMITTED`, column `request.revision`, three `CHECK` constraints in two additive migrations, two routes, and the error codes `SELF_REVIEW_FORBIDDEN`, `NOT_REQUESTER`, and `STALE_REVISION`. The decision also checks the revision. | Issue #71 |
+| 0.10 | 2026-11-27 | Menelaus122 | Section 3.4: the new enum values of Sprint 2 are a decided exception to the rollback rule (SRS D-15). | Review of PR #73 |
 
 ---
 
@@ -83,12 +85,13 @@ The client also hides controls a role cannot use, but that is feedback for peopl
 |---|---|---|---|---|
 | `User` | `id`, `name` (1–100), `email` (stored trimmed and lowercased), `passwordHash` (scrypt string), `role` (`REQUESTER` \| `REVIEWER`), `isActive`, `createdAt`, `updatedAt` | has many `Session`, requests as requester, requests as assigned reviewer, events as actor | `email` unique; users are deactivated, never deleted | Self |
 | `Session` | `id`, `tokenHash` (SHA-256 hex of the cookie token), `userId`, `createdAt`, `expiresAt` | belongs to `User` (`ON DELETE CASCADE`: a session is not history) | `tokenHash` unique; indexes on `userId`, `expiresAt` | The user it belongs to |
-| `Request` (Prisma model `ApprovalRequest`) | `id`, `requestNumber` (`REQ-######`), `requesterId`, `assignedReviewerId`, `title` (1–120), `description` (1–2000), `amount` (`DECIMAL(12,2)`, THB), `status`, `decidedById`, `decisionReason` (≤ 1000), `decisionCategory` (nullable `RejectionCategory`), `decidedAt`, `createdAt`, `updatedAt` | belongs to `User` (requester), `User` (assigned reviewer), `User` (decider, nullable); has many `RequestEvent` | see 3.3; FKs `ON DELETE RESTRICT`; indexes `(requesterId, createdAt)`, `(assignedReviewerId, status)` | The requester owns it; the assigned reviewer may decide it |
-| `RequestEvent` | `id`, `requestId`, `actorId`, `type` (`SUBMITTED` \| `APPROVED` \| `REJECTED`), `fromStatus` (nullable), `toStatus`, `reason` (nullable, ≤ 1000), `category` (nullable `RejectionCategory`), `createdAt` | belongs to `Request` and `User` (actor), both `ON DELETE RESTRICT` | append-only (trigger); index `(requestId, createdAt, id)` | Part of its request's history; visible to whoever may see the request |
+| `Request` (Prisma model `ApprovalRequest`) | `id`, `requestNumber` (`REQ-######`), `requesterId`, `assignedReviewerId`, `title` (1–120), `description` (1–2000), `amount` (`DECIMAL(12,2)`, THB), `status`, `decidedById`, `decisionReason` (≤ 1000), `decisionCategory` (nullable `RejectionCategory`), `decidedAt`, `revision` (from 0), `createdAt`, `updatedAt` | belongs to `User` (requester), `User` (assigned reviewer), `User` (decider, nullable); has many `RequestEvent` | see 3.3; FKs `ON DELETE RESTRICT`; indexes `(requesterId, createdAt)`, `(assignedReviewerId, status)` | The requester owns it; the assigned reviewer may decide it |
+| `RequestEvent` | `id`, `requestId`, `actorId`, `type` (`SUBMITTED` \| `APPROVED` \| `REJECTED` \| `RETURNED` \| `RESUBMITTED`), `fromStatus` (nullable), `toStatus`, `reason` (nullable, ≤ 1000), `category` (nullable `RejectionCategory`), `createdAt` | belongs to `Request` and `User` (actor), both `ON DELETE RESTRICT` | append-only (trigger); index `(requestId, createdAt, id)` | Part of its request's history; visible to whoever may see the request |
 
 **Enums.**
 - `Role`: `REQUESTER`, `REVIEWER`. One role per account in Sprint 1. A `REVIEWER` may also submit requests, which makes "no self-approval" a real, testable rule (SRS D-02, BR-10).
-- `RequestStatus`: `SUBMITTED`, `APPROVED`, `REJECTED`. Sprint 2 adds `RETURNED` with `ALTER TYPE ... ADD VALUE`, which is additive.
+- `RequestStatus`: `SUBMITTED`, `APPROVED`, `REJECTED`, and `RETURNED` (F-06, added with `ALTER TYPE ... ADD VALUE`, which is additive).
+- `RequestEventType`: the submission, each decision, each return (`RETURNED`), and each resubmission (`RESUBMITTED`).
 - `RejectionCategory`: `BUDGET`, `INCOMPLETE`, `DUPLICATE`, `POLICY`, `OTHER`. Set only on a rejection (BR-12). The list is fixed, so a new value is an additive migration.
 
 **Naming.**
@@ -97,9 +100,9 @@ The client also hides controls a role cannot use, but that is feedback for peopl
 - The request entity's model is **`ApprovalRequest`** (`@@map("request")`), so the Prisma type never clashes with Express's or the browser's global `Request` type. The history model is `RequestEvent` (`@@map("request_event")`).
 
 **Nullability.** Every column is `NOT NULL` except these:
-- `request.decided_by_id`, `request.decision_reason`, `request.decided_at`: empty until a decision is made.
+- `request.decided_by_id`, `request.decision_reason`, `request.decided_at`: empty while the request is `SUBMITTED`. On a `RETURNED` request they hold who returned it, when, and the comment.
 - `request_event.from_status`: empty on the `SUBMITTED` event.
-- `request_event.reason`: optional on approval.
+- `request_event.reason`: optional on approval, required on a return, empty on a resubmission.
 - `request.decision_category`, `request_event.category`: set only by a rejection made after the BR-12 change; empty on every other row, including earlier rejections.
 
 In particular `amount`, `title`, `description`, `requester_id`, `assigned_reviewer_id`, `status`, and `request_number` are `NOT NULL`.
@@ -121,12 +124,14 @@ stateDiagram-v2
   [*] --> SUBMITTED : requester submits (event SUBMITTED)
   SUBMITTED --> APPROVED : assigned reviewer approves (event APPROVED)
   SUBMITTED --> REJECTED : assigned reviewer rejects with a category and a reason (event REJECTED)
+  SUBMITTED --> RETURNED : assigned reviewer returns it with a comment (event RETURNED)
+  RETURNED --> SUBMITTED : requester edits and resubmits it (event RESUBMITTED)
   APPROVED --> [*]
   REJECTED --> [*]
 ```
 
-Every other transition is invalid and answers `409 INVALID_TRANSITION`. Sprint 2 adds
-`SUBMITTED → RETURNED → SUBMITTED` (return and resubmission).
+Every other transition is invalid and answers `409 INVALID_TRANSITION`. The return and resubmission loop is
+Sprint 2 (F-06).
 
 ### 3.3 Constraints that protect the business rules
 
@@ -138,6 +143,9 @@ Every other transition is invalid and answers `409 INVALID_TRANSITION`. Sprint 2
 | `request_rejection_reason`: `CHECK (status <> 'REJECTED' OR (decision_reason IS NOT NULL AND length(btrim(decision_reason)) > 0))`; `decision_reason` and `request_event.reason` are `varchar(1000)` | A rejection always has a reason that is not empty or blank, and no reason is longer than 1000 characters (BR-12). The 10-character minimum of BR-12 is checked by the application only, not by this constraint |
 | `request_category_only_on_rejection`: `CHECK (decision_category IS NULL OR status = 'REJECTED')` | Only a rejected request has a category (BR-12). It does not require one, so earlier rows and the previous image stay valid |
 | `request_event_category_only_on_rejection`: `CHECK (category IS NULL OR type = 'REJECTED')` | The same for the history (BR-12, BR-13) |
+| `request_return_comment`: `CHECK (status <> 'RETURNED' OR (decision_reason IS NOT NULL AND length(btrim(decision_reason)) > 0))` | A returned request always has a comment (BR-16) |
+| `request_event_return_comment`: the same for a `RETURNED` history row and its `reason` | Every return in the history has its comment (BR-13, BR-16) |
+| `request_revision_not_negative`: `CHECK (revision >= 0)` | The revision counts resubmissions (BR-16) |
 | `request_number_unique`: `UNIQUE (request_number)` | Request numbers are unique (BR-07) |
 | `request_number` default `'REQ-' \|\| lpad(nextval('request_number_seq')::text, 6, '0')` | The number is generated by the database, never by the client |
 | Trigger `request_event_append_only` (`BEFORE UPDATE OR DELETE ... RAISE EXCEPTION 'request_event is append-only'`) | History cannot be changed or removed, even by a bug (BR-13). Known gap: row triggers do not fire on `TRUNCATE`; the application never truncates, and F-10 can revoke it from the runtime role. |
@@ -160,7 +168,8 @@ The submission handler enforces it inside the same transaction as the insert.
   - After the first release, every migration is **backward-compatible with the previously deployed revision**.
     Lab 5 migrates before it deploys, so the old image must keep working against the new schema, and a rollback
     must stay possible. Additive changes (new tables, columns, enum values) are the default. A change such as
-    Sprint 2's widened `CHECK` for `RETURNED` must still accept every row the previous revision writes.
+    Sprint 2's widened `CHECK` for `RETURNED` must still accept every row the previous revision writes. The previous
+    revision cannot read a row that holds a new status or history value: a decided exception (SRS D-15).
   - An applied migration is never edited.
 - **Seed** (`prisma/seed.ts`) is idempotent. It reads each demo account by email, creates it if it is missing,
   and otherwise writes only the fields that differ. The hash is rewritten only when it no longer verifies against
@@ -180,7 +189,7 @@ The submission handler enforces it inside the same transaction as the insert.
 | Login | `/login` | unauthenticated | Email and password; one generic error for wrong credentials |
 | My Requests | `/requests` | `REQUESTER`, `REVIEWER` | The caller's own requests, newest first: number, title, amount, status, assigned reviewer |
 | New Request | `/requests/new` | `REQUESTER`, `REVIEWER` | Title, description, amount (THB), and reviewer (a list of active reviewers excluding the caller) |
-| Request Detail | `/requests/:id` | the requester, or the assigned reviewer | Fields, status, decision, and history. The assigned reviewer of a `SUBMITTED` request sees the decision panel. |
+| Request Detail | `/requests/:id` | the requester, or the assigned reviewer | Fields, status, decision, and history. The assigned reviewer of a `SUBMITTED` request sees the decision panel and the return panel; the requester of a `RETURNED` request sees the resubmit form. |
 | Review Inbox | `/reviews` | `REVIEWER` | `SUBMITTED` requests assigned to the caller, oldest first |
 
 The header shows the product name, the navigation for the caller's role, the caller's name and role, and
@@ -200,7 +209,7 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 | Error | `500` or a network failure: a message with a **Try again** action; values in a form are kept. |
 | Unauthenticated (`401`) | Back to Login, with "Your session has ended. Please log in again." |
 | Forbidden or not found (`403`/`404`) | "This page is not available to you", with no record data. A requester who types `/reviews` sees this. |
-| Status | A badge with text, not colour alone: `SUBMITTED` (amber), `APPROVED` (green), `REJECTED` (red). |
+| Status | A badge with text, not colour alone: `SUBMITTED` (amber), `APPROVED` (green), `REJECTED` (red), `RETURNED` (blue). |
 | Formats | Amounts as THB with two decimals; dates and times in Asia/Bangkok. |
 
 ## 5. API conventions
@@ -231,20 +240,25 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 | `GET /api/requests/:id` | `REQUESTER`, `REVIEWER`; record scope | F-03 |
 | `GET /api/reviews/inbox` | `REVIEWER` | F-04 |
 | `POST /api/requests/:id/decision` | `REVIEWER`; record scope and rules | F-04 |
+| `POST /api/requests/:id/return` | `REVIEWER`; record scope and rules | F-06 |
+| `POST /api/requests/:id/resubmission` | `REQUESTER`, `REVIEWER`; requester only | F-06 |
 
 **Error codes:**
 
 | Code | Status | Meaning |
 |---|---|---|
-| `VALIDATION_ERROR` | 400 | A field or parameter failed validation (see `fields`), including a rejection without a category, without a reason, or with a reason shorter than 10 characters |
+| `VALIDATION_ERROR` | 400 | A field or parameter failed validation (see `fields`), including a rejection without a category, without a reason, or with a reason shorter than 10 characters, and a return without a comment |
 | `UNAUTHENTICATED` | 401 | No session, an unknown token, or an expired session |
 | `INVALID_CREDENTIALS` | 401 | Login: unknown email or wrong password, with one message for both |
 | `ACCOUNT_INACTIVE` | 403 | Login: correct password for a deactivated account |
 | `FORBIDDEN` | 403 | The role may not call this route (for example a `REQUESTER` calling the inbox or a decision) |
 | `FORBIDDEN_ORIGIN` | 403 | A state-changing request from an origin not in `CLIENT_ORIGINS` |
 | `SELF_APPROVAL_FORBIDDEN` | 403 | A reviewer tried to decide a request they submitted |
+| `SELF_REVIEW_FORBIDDEN` | 403 | A reviewer tried to return a request they submitted |
+| `NOT_REQUESTER` | 403 | The assigned reviewer tried to resubmit a request |
 | `NOT_FOUND` | 404 | The record does not exist, or the caller is neither its requester nor its assigned reviewer |
-| `INVALID_TRANSITION` | 409 | The request is not `SUBMITTED` (already decided), including the loser of two competing decisions |
+| `INVALID_TRANSITION` | 409 | The request is not in the status the operation needs, including the loser of two competing operations |
+| `STALE_REVISION` | 409 | A reviewer acted on content that has since been resubmitted |
 | `PAYLOAD_TOO_LARGE` | 413 | The JSON body is over 100 KB |
 | `TOO_MANY_ATTEMPTS` | 429 | Login throttled for this email; a `Retry-After` header gives the seconds |
 | `INTERNAL_ERROR` | 500 | An unexpected failure; the message is always "Something went wrong. Please try again." |
@@ -253,7 +267,8 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 `... SET status = $new, decided_by_id = $me, decided_at = now(), decision_reason = $reason, decision_category = $category WHERE id = $id AND status = 'SUBMITTED' AND assigned_reviewer_id = $me`,
 then one `RequestEvent` insert. If the update touches no row, the handler re-reads the request to answer `404`,
 `403`, or `409`, and writes nothing. Two simultaneous decisions therefore give exactly one success, one `409`,
-and one event.
+and one event. Returns and resubmissions (F-06) work the same way, and the conditional update of a decision or a
+return also matches the revision.
 
 ## 6. Roles and permission matrix
 
@@ -269,7 +284,9 @@ and one event.
 | View request detail and history | ❌ 401 | ✅ own | ✅ own or assigned | Otherwise `404`, no data |
 | List review inbox | ❌ 401 | ❌ 403 | ✅ | `assignedReviewerId = caller`, `SUBMITTED` |
 | Approve or reject | ❌ 401 | ❌ 403 | ✅ assigned only | Own request → `403 SELF_APPROVAL_FORBIDDEN`; unrelated → `404`; decided → `409` |
-| Edit or delete a request or event | ❌ | ❌ | ❌ | No such endpoint in Sprint 1 (BR-15, D-06) |
+| Return a request | ❌ 401 | ❌ 403 | ✅ assigned only | Own request → `403 SELF_REVIEW_FORBIDDEN`; unrelated → `404`; not `SUBMITTED` → `409` |
+| Resubmit a returned request | ❌ 401 | ✅ own | ✅ own | Assigned reviewer → `403 NOT_REQUESTER`; unrelated → `404`; not `RETURNED` → `409` |
+| Edit or delete a request or event in any other way | ❌ | ❌ | ❌ | No such endpoint: content changes only through resubmission (BR-15, BR-16) |
 
 ## 7. Authentication and session
 

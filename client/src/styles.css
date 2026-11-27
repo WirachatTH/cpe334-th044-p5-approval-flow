@@ -223,6 +223,12 @@ td.amount {
   background: #fde8e6;
 }
 
+.status-returned {
+  background: #e3edf9;
+  border-color: #2b5c9e;
+  color: #1d416f;
+}
+
 .details {
   display: grid;
   grid-template-columns: max-content 1fr;
