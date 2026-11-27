@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-07 |
 | Sprint | 2 |
-| Status | Draft (Draft → Agreed → Implemented → Verified) |
+| Status | Implemented (the contract was agreed at v0.2 in the review of PR #77; the implementation is not yet reviewed) (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-15; FR-06, FR-07, FR-11; BR-08, BR-09, BR-10, BR-11, BR-12, BR-13, BR-14, BR-17; NFR-02, NFR-07, NFR-11 |
 | GitHub Issue | #76 |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -20,6 +20,7 @@
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-27 | Menelaus122 | First complete draft | Issue #76; Q-06 confirmed by WirachatTH on 27 November, with the two-reviewer gap | |
 | 0.2 | 2026-11-27 | Menelaus122 | AC-F07-17 covers `403 SAME_APPROVER_FORBIDDEN` on the screen and the revision sent by the second reviewer. A fifth constraint keeps the first approval off other states and off the requester (AC-F07-15). The answer of a write that changes no row is defined, and BR-14 follows. The F-05 contract and the feature inventory say five accounts; Q-06 is worded like BR-17; the live seed and the files that change with the implementation are named; rollback refers to D-15. Brings in F-06 v0.2. | Review of PR #77 | #77 |
+| 0.3 | 2026-11-28 | Menelaus122 | Status: Implemented; section 7 and the Definition of Done filled in; three cases added under TEST-F07-17. No change to any AC or behaviour. | Evidence of the implementation | #77 |
 
 ---
 
@@ -260,17 +261,17 @@ loosened.
 
 The [Product Definition of Done](../sprint-1/README.md#product-definition-of-done) applies, plus:
 
-- [ ] All AC in section 3 have a passing automated test
-- [ ] TDD evidence: a failing test commit, then a passing implementation commit
-- [ ] The whole regression of Sprint 1 and F-06 passes on the same commit
+- [x] All AC in section 3 have a passing automated test
+- [x] TDD evidence: a failing test commit, then a passing implementation commit
+- [x] The whole regression of Sprint 1 and F-06 passes on the same commit (end to end with one worker, see section 7)
 
 ## 7. Completion evidence (fill in after implementation)
 
 | Item | Value |
 |---|---|
-| Contract commit(s) | |
-| Red commit(s) and failing test | |
-| Green commit(s) | |
-| PR (author → reviewer) | |
-| Test run (command, commit, pass / fail / skip) | |
-| Known limitations | |
+| Contract commit(s) | `d32ed7b` v0.1, `5ff1d44` v0.2 (agreed in the review of PR #77), before any test |
+| Red commit(s) and failing test | Schema step `ef1caae` (values and columns without their rules; server 175 passed). Red `7e3a2c9`: server 31 failed and 172 passed (23 of the 28 new tests, and the 8 earlier tests that section 4 says must change); client 10 failed and 78 passed; end to end 1 failed (`TEST-F07-19`) and 10 passed; type check exit 0. The new tests that passed (`TEST-F07-08`, `TEST-F07-09`, and the three controls of `TEST-F07-15`) guard earlier rules and are not red evidence |
+| Green commit(s) | `2a268ad`. Then `84aee97` adds three cases to `TEST-F07-17`: a reviewer who submitted the request, and another requester, see no panel; the section shows the reason of the first approval. They passed when written, and each fails when the code it covers is broken on purpose |
+| PR (author → reviewer) | #77 (`Menelaus122` → `WirachatTH`) |
+| Test run (command, commit, pass / fail / skip) | At `84aee97`, local, 28 November: `cd server && npm test` 25 files, **203 passed, 0 failed, 0 skipped**; `cd client && npm test` 13 files, **91 passed**; `cd client && npm run e2e -- --workers=1` **11 passed**; type check and build exit 0 |
+| Known limitations | Those of section 1.5. The condition on who may act in the write of section 1.2 step 8 has no test of its own: no operation changes those columns between the read and the write, so removing it fails no test. No keyboard pass by a person on the new screens; not yet deployed |
