@@ -56,12 +56,15 @@ enum RequestStatus {
   SUBMITTED
   APPROVED
   REJECTED
+  RETURNED
 }
 
 enum RequestEventType {
   SUBMITTED
   APPROVED
   REJECTED
+  RETURNED
+  RESUBMITTED
 }
 
 // Why a request was rejected (BR-12, F-04 contract section 2.3). The list is fixed. The CHECK constraints that keep a
@@ -95,6 +98,8 @@ model ApprovalRequest {
   decisionReason     String?       @map("decision_reason") @db.VarChar(1000)
   decisionCategory   RejectionCategory? @map("decision_category")
   decidedAt          DateTime?     @map("decided_at") @db.Timestamptz
+  // 0 at submission, one higher after each resubmission (BR-16, F-06 contract section 1.1).
+  revision           Int           @default(0)
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
