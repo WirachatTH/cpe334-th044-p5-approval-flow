@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-06 |
 | Sprint | 2 |
-| Status | Draft (Draft → Agreed → Implemented → Verified) |
+| Status | Implemented (agreed in the second review of PR #73 at v0.2; the review of the implementation is open) (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-13, FR-14; FR-06, FR-07, FR-10; BR-04, BR-05, BR-08, BR-10, BR-11, BR-13, BR-14, BR-15, BR-16; NFR-02, NFR-07, NFR-11 |
 | GitHub Issue | #71 |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -20,6 +20,8 @@
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-27 | Menelaus122 | First complete draft | Issue #71 | |
 | 0.2 | 2026-11-27 | Menelaus122 | AC-F06-22 covers the revision sent by all three panel actions. AC-F06-25 to -28 added: failed calls on the screens, a refused caller, the disabled buttons, and a database error. The answer of a write that changes no row, and the messages of `SELF_REVIEW_FORBIDDEN` and `NOT_REQUESTER`, are defined (AC-F06-04, -12, -17). The rollback limitation is a decided exception (D-15). `revision: null` counts as missing; a limitation of resubmission is listed. | Review of PR #73 | #73 |
+| 0.3 | 2026-11-27 | Menelaus122 | AC-F06-29 and TEST-F06-29 added: a `409` on the resubmit form. The Return panel row of §2.1 says that the button reads "Saving…", as AC-F06-27 expects. | Second review of PR #73 (points a and b) | #73 |
+| 0.4 | 2026-11-27 | Menelaus122 | Status: Implemented; section 6 and the Definition of Done filled in. No change to any AC, behaviour, or test. | Evidence of the implementation | #73 |
 
 ---
 
@@ -160,7 +162,7 @@ conditional update of step 7 also matches the revision. A write that changes no 
 
 | Screen / element | Behaviour |
 |---|---|
-| Return panel (Request Detail, assigned reviewer of a `SUBMITTED` request, below the decision panel) | Heading "Return for changes", a multi-line field "Comment for the requester (required to return)" with a counter, and the button **Return for changes**. A blank comment shows "Enter a comment to return this request." beneath the field and 1001 characters "Comment must be 1,000 characters or fewer."; the message is linked with `aria-describedby`, focus moves to the field, and nothing is sent. The button is disabled while sending |
+| Return panel (Request Detail, assigned reviewer of a `SUBMITTED` request, below the decision panel) | Heading "Return for changes", a multi-line field "Comment for the requester (required to return)" with a counter, and the button **Return for changes**. A blank comment shows "Enter a comment to return this request." beneath the field and 1001 characters "Comment must be 1,000 characters or fewer."; the message is linked with `aria-describedby`, focus moves to the field, and nothing is sent. The button is disabled and reads "Saving…" while sending |
 | After a return | The page shows the updated request without reloading: status "Returned", a Decision section "Returned by <name> · <time>" with the comment, the new history entry, no panels, and the banner "Request returned." |
 | Resubmit form (Request Detail, requester of a `RETURNED` request) | Heading "Edit and resubmit", the fields Title, Description, and Amount (THB) filled with the current values, the line "Reviewer: <name> (cannot be changed)", and the button **Resubmit**. The checks and messages of New Request (F-03 §2.1); nothing is sent while a field is invalid; focus moves to the first invalid field; typed values are kept on a failure. The button is disabled and reads "Saving…" while sending |
 | After a resubmission | Status "Submitted", no Decision section, no form, the new history entry, and the banner "Request resubmitted." |
@@ -244,6 +246,7 @@ revision 0.
 | AC-F06-26 | The return panel and the resubmit form | The API answers `403`, and `404` | The page says the request is not available, as in F-04, and shows none of its fields | role | BR-08, FR-10 |
 | AC-F06-27 | The return panel and the resubmit form | The button is pressed while the call is on its way | The button is disabled and reads "Saving…"; one call is sent | boundary | NFR-11 |
 | AC-F06-28 | A database in which writing the history entry fails | A return and a resubmission are sent | `500 INTERNAL_ERROR`; the request and its history are unchanged | negative | BR-13 |
+| AC-F06-29 | The resubmit form, for a request that another action has changed | The API answers `409` | The message of the answer is shown, the request is loaded again, and the page follows its new state | negative | BR-11, FR-14 |
 
 ## 4. Software Test Specification (STS)
 
@@ -281,6 +284,7 @@ Each test starts from requests it creates itself; Ploy submits to Mint unless th
 | TEST-F06-26 | AC-F06-26 | component | Mocked `403` and `404` | Submit | Not available, no fields | `ResubmitForm.test.tsx` and `ReturnPanel.test.tsx` |
 | TEST-F06-27 | AC-F06-27 | component | A call that does not settle | Press twice | Disabled, one call | `ResubmitForm.test.tsx` and `ReturnPanel.test.tsx` |
 | TEST-F06-28 | AC-F06-28 | API-DB | A temporary trigger that refuses the new history row, removed after the test | Return, resubmit | `500`; rows unchanged | `return-rollback.api.test.ts` |
+| TEST-F06-29 | AC-F06-29 | component | Mocked `409`, then a detail in another state | Resubmit | Message, reload, no form | `ResubmitForm.test.tsx` |
 
 **Coverage check:** every AC above maps to one TEST with the same number.
 
@@ -291,17 +295,17 @@ gains `revision`, and the client fixtures of a request detail gain `revision: 0`
 
 The [Product Definition of Done](../sprint-1/README.md#product-definition-of-done) applies, plus:
 
-- [ ] All AC in section 3 have a passing automated test
-- [ ] TDD evidence: a failing test commit, then a passing implementation commit
-- [ ] The whole Sprint 1 regression (server, client, end to end) passes on the same commit
+- [x] All AC in section 3 have a passing automated test
+- [x] TDD evidence: a failing test commit, then a passing implementation commit
+- [x] The whole Sprint 1 regression (server, client, end to end) passes on the same commit (end to end with one worker, see section 6)
 
 ## 6. Completion evidence (fill in after implementation)
 
 | Item | Value |
 |---|---|
-| Contract commit(s) | |
-| Red commit(s) and failing test | |
-| Green commit(s) | |
-| PR (author → reviewer) | |
-| Test run (command, commit, pass / fail / skip) | |
-| Known limitations | |
+| Contract commit(s) | `dfbf13f` v0.1, `ef3220d` v0.2 (agreed in the second review), `76e37cf` v0.3 (its two small points), before any test |
+| Red commit(s) and failing test | Schema step `6c4fcc5` (values and column without rules; server 145 passed). Red `95d0ee8`: server 26 failed and 148 passed; client 19 failed and 58 passed; end to end 1 failed (`TEST-F06-24`) and 9 passed. The new tests that passed already guard earlier rules (the controls and four cases of `TEST-F06-18`) or the absence of a panel (four cases of `TEST-F06-20`) and are not red evidence |
+| Green commit(s) | `e6369bc` |
+| PR (author → reviewer) | #73 (`Menelaus122` → `WirachatTH`) |
+| Test run (command, commit, pass / fail / skip) | At `e6369bc`, local, 27 November: `cd server && npm test` 20 files, **174 passed, 0 failed, 0 skipped**; `cd client && npm test` 12 files, **77 passed**; `cd client && npm run e2e -- --workers=1` **10 passed**; type check and build exit 0. With the default parallel workers on the same machine, two runs gave 9 passed and 1 failed: `TEST-REL-04` exceeded its 30-second limit while all journeys ran slowly; it passed alone in 3.8 s |
+| Known limitations | Those of section 1.5. No keyboard pass by a person on the new controls; not yet deployed |

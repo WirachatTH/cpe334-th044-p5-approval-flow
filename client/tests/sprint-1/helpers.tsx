@@ -41,6 +41,7 @@ export function requestDetail(overrides: Record<string, unknown> = {}) {
     decisionCategory: null,
     decisionReason: null,
     decidedAt: null,
+    revision: 0,
     updatedAt: CREATED,
     history: [
       {

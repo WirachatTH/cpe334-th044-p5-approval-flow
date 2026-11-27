@@ -47,6 +47,8 @@ export const ROUTE_POLICIES: readonly RoutePolicy[] = [
   { method: "GET", path: "/api/requests/:id", access: roles(R, V) },
   { method: "GET", path: "/api/reviews/inbox", access: roles(V) },
   { method: "POST", path: "/api/requests/:id/decision", access: roles(V) },
+  { method: "POST", path: "/api/requests/:id/return", access: roles(V) },
+  { method: "POST", path: "/api/requests/:id/resubmission", access: roles(R, V) },
 ];
 
 // Matching is exact: case-sensitive, no trailing slash, no repeated slash. A `:name` segment matches any one

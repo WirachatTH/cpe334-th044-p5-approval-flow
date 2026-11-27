@@ -2,14 +2,17 @@ import type { Express } from "express";
 import { RejectionCategory, type PrismaClient } from "@prisma/client";
 import type { AuthLocals } from "./authorization.js";
 import { sendError } from "./errors.js";
+import {
+  REVISION_INVALID, findRequest, isStale, readRevision, refuseLostWrite, refuseStale, refuseStatus,
+} from "./requestActions.js";
 import { detailInclude, toDetail } from "./requests.js";
 
-// The review inbox and the decision (F-04 contract). The caller is always the signed-in user. The rules are checked
-// in the order of contract section 1.2, and the first one that fails answers.
+// The review inbox, the decision (F-04 contract), and the return of a request (F-06 contract). The caller is always
+// the signed-in user. The rules are checked in the order of section 1.2 of the contract, and the first one that fails
+// answers.
 
 const REJECTION_REASON_MIN = 10;
 const REASON_MAX = 1000;
-const MAX_INT4 = 2_147_483_647;
 const CATEGORIES: readonly string[] = Object.values(RejectionCategory);
 
 const CHOOSE_DECISION = "Choose approve or reject.";
@@ -19,12 +22,15 @@ const REASON_TOO_SHORT = "Reason must be at least 10 characters.";
 const REASON_TOO_LONG = "Reason must be 1,000 characters or fewer.";
 const CHOOSE_CATEGORY = "Choose a rejection category.";
 const CATEGORY_NOT_ALLOWED = "A category applies to a rejection only.";
-const ALREADY_DECIDED = "This request has already been decided.";
+const COMMENT_REQUIRED = "Enter a comment to return this request.";
+const COMMENT_TEXT = "Enter the comment as text.";
+const COMMENT_TOO_LONG = "Comment must be 1,000 characters or fewer.";
 
 interface Decision {
   decision: "APPROVE" | "REJECT";
   reason: string | null;
   category: RejectionCategory | null;
+  revision: number | null;
 }
 
 // F-04 section 1.4. Every problem is reported at once; the reason is stored trimmed. Both reason limits count Unicode
@@ -61,8 +67,38 @@ function parseDecision(body: unknown): { ok: true; value: Decision } | { ok: fal
     fields.category = CATEGORY_NOT_ALLOWED;
   }
 
-  if (Object.keys(fields).length > 0) return { ok: false, fields };
-  return { ok: true, value: { decision: decision as Decision["decision"], reason, category } };
+  const revision = readRevision(input.revision);
+  if (!revision.ok) fields.revision = REVISION_INVALID;
+
+  if (!revision.ok || Object.keys(fields).length > 0) return { ok: false, fields };
+  const value = { decision: decision as Decision["decision"], reason, category, revision: revision.revision };
+  return { ok: true, value };
+}
+
+interface Return {
+  comment: string;
+  revision: number | null;
+}
+
+// F-06 section 1.4. The comment is stored trimmed, and its limit counts Unicode code points.
+function parseReturn(body: unknown): { ok: true; value: Return } | { ok: false; fields: Record<string, string> } {
+  const input = (typeof body === "object" && body !== null && !Array.isArray(body) ? body : {}) as Record<string, unknown>;
+  const fields: Record<string, string> = {};
+
+  let comment = "";
+  if (input.comment !== undefined && input.comment !== null && typeof input.comment !== "string") {
+    fields.comment = COMMENT_TEXT;
+  } else {
+    comment = typeof input.comment === "string" ? input.comment.trim() : "";
+    if (comment === "") fields.comment = COMMENT_REQUIRED;
+    else if ([...comment].length > REASON_MAX) fields.comment = COMMENT_TOO_LONG;
+  }
+
+  const revision = readRevision(input.revision);
+  if (!revision.ok) fields.revision = REVISION_INVALID;
+
+  if (!revision.ok || Object.keys(fields).length > 0) return { ok: false, fields };
+  return { ok: true, value: { comment, revision: revision.revision } };
 }
 
 const person = { select: { id: true, name: true } } as const;
@@ -99,15 +135,9 @@ export function registerReviewRoutes(app: Express, { prisma }: { prisma: PrismaC
       const user = me(res.locals);
 
       // Step 2: a missing id, an id that is not a number, and an id that does not exist are the same 404.
-      const id = /^[1-9]\d*$/.test(req.params.id) ? Number(req.params.id) : NaN;
-      const found =
-        Number.isSafeInteger(id) && id <= MAX_INT4
-          ? await prisma.approvalRequest.findUnique({
-              where: { id },
-              select: { requesterId: true, assignedReviewerId: true, status: true },
-            })
-          : null;
+      const found = await findRequest(prisma, req.params.id);
       if (!found) return sendError(res, 404, "NOT_FOUND", "Not found.");
+      const { id } = found;
 
       // Step 3 (BR-10), before record scope, so a reviewer who submitted the request is told why.
       if (found.requesterId === user.id) {
@@ -121,7 +151,9 @@ export function registerReviewRoutes(app: Express, { prisma }: { prisma: PrismaC
       if (!parsed.ok) return sendError(res, 400, "VALIDATION_ERROR", "Some fields need attention.", parsed.fields);
 
       // Step 6 (BR-11).
-      if (found.status !== "SUBMITTED") return sendError(res, 409, "INVALID_TRANSITION", ALREADY_DECIDED);
+      if (found.status !== "SUBMITTED") return refuseStatus(res, found.status);
+      // The content the reviewer saw is the content that is decided (BR-16, F-06 section 1.2).
+      if (isStale(parsed.value.revision, found.revision)) return refuseStale(res);
 
       // Step 7 (BR-13, BR-14). The UPDATE matches only while the request is still SUBMITTED and assigned to the
       // caller, so of two simultaneous decisions only one changes a row. The other changes none, and nothing is
@@ -132,7 +164,7 @@ export function registerReviewRoutes(app: Express, { prisma }: { prisma: PrismaC
       const now = new Date();
       const decided = await prisma.$transaction(async (tx) => {
         const changed = await tx.approvalRequest.updateMany({
-          where: { id, status: "SUBMITTED", assignedReviewerId: user.id },
+          where: { id, status: "SUBMITTED", assignedReviewerId: user.id, revision: found.revision },
           data: {
             status,
             decidedById: user.id,
@@ -159,8 +191,56 @@ export function registerReviewRoutes(app: Express, { prisma }: { prisma: PrismaC
         return tx.approvalRequest.findUniqueOrThrow({ where: { id }, include: detailInclude });
       });
 
-      if (!decided) return sendError(res, 409, "INVALID_TRANSITION", ALREADY_DECIDED);
+      if (!decided) return refuseLostWrite(res, prisma, id);
       res.json({ request: toDetail(decided) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // F-06 section 1.2: the assigned reviewer returns a SUBMITTED request to its requester with a comment.
+  app.post("/api/requests/:id/return", async (req, res, next) => {
+    try {
+      const user = me(res.locals);
+      const found = await findRequest(prisma, req.params.id);
+      if (!found) return sendError(res, 404, "NOT_FOUND", "Not found.");
+      if (found.requesterId === user.id) {
+        return sendError(res, 403, "SELF_REVIEW_FORBIDDEN", "You cannot return a request you submitted.");
+      }
+      if (found.assignedReviewerId !== user.id) return sendError(res, 404, "NOT_FOUND", "Not found.");
+
+      const parsed = parseReturn(req.body);
+      if (!parsed.ok) return sendError(res, 400, "VALIDATION_ERROR", "Some fields need attention.", parsed.fields);
+      if (found.status !== "SUBMITTED") return refuseStatus(res, found.status);
+      if (isStale(parsed.value.revision, found.revision)) return refuseStale(res);
+
+      // While the request is RETURNED, the decision columns hold who returned it, when, and the comment.
+      const { id } = found;
+      const { comment } = parsed.value;
+      const now = new Date();
+      const returned = await prisma.$transaction(async (tx) => {
+        const changed = await tx.approvalRequest.updateMany({
+          where: { id, status: "SUBMITTED", assignedReviewerId: user.id, revision: found.revision },
+          data: { status: "RETURNED", decidedById: user.id, decidedAt: now, decisionReason: comment, updatedAt: now },
+        });
+        if (changed.count === 0) return null;
+
+        await tx.requestEvent.create({
+          data: {
+            requestId: id,
+            actorId: user.id,
+            type: "RETURNED",
+            fromStatus: "SUBMITTED",
+            toStatus: "RETURNED",
+            reason: comment,
+            createdAt: now,
+          },
+        });
+        return tx.approvalRequest.findUniqueOrThrow({ where: { id }, include: detailInclude });
+      });
+
+      if (!returned) return refuseLostWrite(res, prisma, id);
+      res.json({ request: toDetail(returned) });
     } catch (error) {
       next(error);
     }
