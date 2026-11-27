@@ -23,6 +23,7 @@
 | 0.9 | 2026-11-26 | Menelaus122 | FR-06, FR-08, BR-09, BR-10, BR-11, BR-13, NFR-02, and NFR-11 list the acceptance criteria of #65 that link to them (AC-F04-24, -26 to -29, -31, -32, and -34), specified and not yet implemented. | Review of PR #66 |
 | 0.10 | 2026-11-26 | Menelaus122 | Change request #65 is implemented: the rows of section 1 that it revised are Verified at `5890f39`, and the new section 6 lists AC-F04-24 to AC-F04-34 with their tests and results. Sections 3 to 5 are unchanged. | Implementation of #65 (PR #66) |
 | 0.11 | 2026-11-27 | Menelaus122 | The F-06 contract defines AC-F06-01 to AC-F06-24: the rows of FR-13, FR-14, and BR-16 are Specified, and the other rows that its ACs link to list them. Nothing of F-06 is implemented. | Issue #71 |
+| 0.13 | 2026-11-27 | Menelaus122 | AC-F06-25 to AC-F06-28 are listed in the rows they link to, specified and not implemented. | Review of PR #73 |
 
 ---
 
@@ -44,11 +45,11 @@ How to read it:
 | FR-07 Review inbox | F-04; F-06 | 1 | AC-F04-01, AC-F04-02, AC-F04-15, AC-F04-16, AC-F04-20, AC-F04-23; Sprint 2 (F-06): AC-F06-07 | Verified; the F-06 ACs are specified, not implemented |
 | FR-08 Approve | F-04 | 1 | AC-F04-03, AC-F04-04, AC-F04-18, AC-F04-20; revised (#65): AC-F04-26, AC-F04-31 | Verified; the ACs of #65 at `5890f39` (section 6) |
 | FR-09 Reject with a category and a reason | F-04 | 1 | AC-F04-05, AC-F04-13; revised (#65): AC-F04-25, AC-F04-29, AC-F04-32, AC-F04-34 | Verified; the ACs of #65 at `5890f39` (section 6) |
-| FR-10 Navigation by role | F-02; F-06 | 1 | AC-F02-11, AC-F02-12; Sprint 2 (F-06): AC-F06-20 | Verified; the F-06 ACs are specified, not implemented |
+| FR-10 Navigation by role | F-02; F-06 | 1 | AC-F02-11, AC-F02-12; Sprint 2 (F-06): AC-F06-20, AC-F06-26 | Verified; the F-06 ACs are specified, not implemented |
 | FR-11 Seeded accounts | F-05 | 1 | AC-F05-02, AC-F05-03, AC-F05-19 | Verified |
 | FR-12 Health and readiness | F-02, F-05 | 1 | AC-F02-13, AC-F05-08, AC-F05-09, AC-F05-10 | Verified |
 | FR-13 Return for changes | F-06 | 2 | AC-F06-01, AC-F06-19, AC-F06-23, AC-F06-24 | Specified |
-| FR-14 Edit and resubmit | F-06 | 2 | AC-F06-07, AC-F06-08, AC-F06-16, AC-F06-21, AC-F06-24 | Specified |
+| FR-14 Edit and resubmit | F-06 | 2 | AC-F06-07, AC-F06-08, AC-F06-16, AC-F06-21, AC-F06-24, AC-F06-25 | Specified |
 | FR-15 Second approval | F-07 | 2 | AC and TEST IDs are defined in the F-07 contract at the start of Sprint 2 | Planned |
 | FR-16 Filter and search | F-08 | 3 | AC and TEST IDs are defined in the F-08 contract, written in Sprint 2 (plan.md section 3) | Planned |
 | FR-17 Decided requests | F-08 | 3 | AC and TEST IDs are defined in the F-08 contract, written in Sprint 2 (plan.md section 3) | Planned |
@@ -60,12 +61,12 @@ How to read it:
 | BR-05 Title and description | F-03; F-06 | 1 | AC-F03-06; Sprint 2 (F-06): AC-F06-10, AC-F06-11 | Verified; the F-06 ACs are specified, not implemented |
 | BR-06 Reviewer rule | F-03 | 1 | AC-F03-07, AC-F03-08, AC-F03-09, AC-F03-10 | Verified |
 | BR-07 Number and first status | F-03 | 1 | AC-F03-01, AC-F03-03, AC-F03-04, AC-F03-09 | Verified |
-| BR-08 Who can see a request | F-03, F-04 (SYS-07); F-06 | 1 | AC-F03-11, AC-F03-12, AC-F03-13, AC-F04-01, AC-F04-09; Sprint 2 (F-06): AC-F06-04, AC-F06-12 | Verified; the F-06 ACs are specified, not implemented |
+| BR-08 Who can see a request | F-03, F-04 (SYS-07); F-06 | 1 | AC-F03-11, AC-F03-12, AC-F03-13, AC-F04-01, AC-F04-09; Sprint 2 (F-06): AC-F06-04, AC-F06-12, AC-F06-26 | Verified; the F-06 ACs are specified, not implemented |
 | BR-09 Only the assigned reviewer decides | F-02, F-04 | 1 | AC-F02-03, AC-F04-09, AC-F04-10, AC-F04-16; revised (#65): AC-F04-27 | Verified; the ACs of #65 at `5890f39` (section 6) |
 | BR-10 No self-approval | F-04; F-06 | 1 | AC-F04-08, AC-F04-23; revised (#65): AC-F04-27; Sprint 2 (F-06): AC-F06-04 | Verified; the ACs of #65 at `5890f39` (section 6); the F-06 ACs are specified, not implemented |
 | BR-11 Only SUBMITTED is decided | F-04; F-06 | 1 | AC-F04-07, AC-F04-11, AC-F04-19; revised (#65): AC-F04-24; Sprint 2 (F-06): AC-F06-05, AC-F06-06, AC-F06-13 | Verified; the ACs of #65 at `5890f39` (section 6); the F-06 ACs are specified, not implemented |
 | BR-12 Rejection reason | F-04 | 1 | AC-F04-04, AC-F04-05, AC-F04-06, AC-F04-14, AC-F04-17, AC-F04-21, AC-F04-22; revised rule (#65): AC-F04-24, AC-F04-25, AC-F04-26, AC-F04-27, AC-F04-28, AC-F04-29, AC-F04-30, AC-F04-31, AC-F04-32, AC-F04-33, AC-F04-34 | Verified; the ACs of #65 at `5890f39` (section 6) |
-| BR-13 Append-only history | F-03, F-04; F-06 | 1 | AC-F03-01, AC-F04-03, AC-F04-05, AC-F04-14; revised (#65): AC-F04-32; Sprint 2 (F-06): AC-F06-01, AC-F06-08, AC-F06-16, AC-F06-18 | Verified; the ACs of #65 at `5890f39` (section 6); the F-06 ACs are specified, not implemented |
+| BR-13 Append-only history | F-03, F-04; F-06 | 1 | AC-F03-01, AC-F04-03, AC-F04-05, AC-F04-14; revised (#65): AC-F04-32; Sprint 2 (F-06): AC-F06-01, AC-F06-08, AC-F06-16, AC-F06-18, AC-F06-28 | Verified; the ACs of #65 at `5890f39` (section 6); the F-06 ACs are specified, not implemented |
 | BR-14 Competing decisions | F-04; F-06 | 1 | AC-F04-12, AC-F04-19; Sprint 2 (F-06): AC-F06-17 | Verified; the F-06 ACs are specified, not implemented |
 | BR-15 No edit after submission | F-03; F-06 | 1 | AC-F03-14; Sprint 2 (F-06): AC-F06-09, AC-F06-13 | Verified; the F-06 ACs are specified, not implemented |
 | BR-16 Return rules | F-06 | 2 | AC-F06-01, AC-F06-02, AC-F06-03, AC-F06-04, AC-F06-05, AC-F06-08, AC-F06-09, AC-F06-12, AC-F06-14, AC-F06-15, AC-F06-20, AC-F06-22 | Specified |
@@ -81,7 +82,7 @@ How to read it:
 | NFR-08 Persistence | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-05: a request created before a restart and a redeploy is still there afterwards, with before and after evidence on the deployed service | Verified (Lab 5 check C-05, section 5) |
 | NFR-09 Configuration and secrets | F-05 (SYS-02) | 1 | AC-F05-03, AC-F05-04, AC-F05-05, AC-F05-06, AC-F05-18, AC-F05-20, AC-F05-21, AC-F05-22, AC-F05-27 | Verified |
 | NFR-10 Reproducible build | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-03: a fresh clone builds, migrates, seeds, and answers 200 on `/api/ready` | Verified (Lab 5 check C-03, section 5) |
-| NFR-11 Basic usability | F-01, F-03, F-04 (SYS-06); F-06 | 1 | AC-F01-15, AC-F03-16, AC-F03-18, AC-F04-17; revised (#65): AC-F04-28, AC-F04-29; Sprint 2 (F-06): AC-F06-19, AC-F06-21, AC-F06-24 | Verified (automated, including the keyboard-only journey TEST-REL-04); the pass by a person (RD-7) was done by hand on 15 Nov 2026 (section 2); AC-F04-28 and AC-F04-29 verified at `5890f39` (section 6); the F-06 ACs are specified, not implemented |
+| NFR-11 Basic usability | F-01, F-03, F-04 (SYS-06); F-06 | 1 | AC-F01-15, AC-F03-16, AC-F03-18, AC-F04-17; revised (#65): AC-F04-28, AC-F04-29; Sprint 2 (F-06): AC-F06-19, AC-F06-21, AC-F06-24, AC-F06-25, AC-F06-27 | Verified (automated, including the keyboard-only journey TEST-REL-04); the pass by a person (RD-7) was done by hand on 15 Nov 2026 (section 2); AC-F04-28 and AC-F04-29 verified at `5890f39` (section 6); the F-06 ACs are specified, not implemented |
 | NFR-12 Accessibility (WCAG 2.1 AA) | F-10, SYS-06 | 3 | Playwright with axe on every main screen; TEST IDs in the F-10 contract | Planned |
 | NFR-13 Responsiveness | F-10, SYS-06 | 3 | Playwright screenshots and layout checks at 390 × 844, 820 × 1180, and 1440 × 900; TEST IDs in the F-10 contract | Planned |
 | NFR-14 Performance | F-10 | 3 | A scripted timing run of 50 requests per operation on the deployed service; TEST IDs in the F-10 contract | Planned |
