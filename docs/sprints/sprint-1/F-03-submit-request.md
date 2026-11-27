@@ -25,6 +25,7 @@
 | 0.5 | 2026-11-15 | Menelaus122 | `assignedReviewerId` above 2,147,483,647 is refused with "Choose a reviewer.", as the detail route already treats ids above the column's maximum; AC-F03-07 and TEST-F03-07 add `2147483648` and `1e20`. | Review of PR #29: such a value would reach the database lookup and fail with a `500` | #11 |
 | 0.6 | 2026-11-26 | Menelaus122 | `RequestDetail` gains `decisionCategory` and each history entry gains `category` (both `null` unless a rejection recorded one); Request Detail shows it (F-04 v0.9). The exact key list asserted by TEST-F03-01 and TEST-F03-12 gains `decisionCategory`. No other AC or test changes. | Change request #65 (Lab 7) | #65 |
 | 0.7 | 2026-11-26 | Menelaus122 | Status: the v0.6 behaviour is implemented. No change to any AC, behaviour, or test. | Implementation of #65: green `5890f39` | #65 |
+| 0.8 | 2026-11-27 | Menelaus122 | `RequestDetail` gains `revision`, and the status and history values gain those of return and resubmission (F-06 contract §2.2). The exact key list of `TEST-F03-01` and `-12` gains `revision`. | Issue #71 (F-06) | #71 |
 
 ---
 
