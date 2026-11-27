@@ -29,6 +29,7 @@
 | 0.9 | 2026-11-15 | Menelaus122 | AC-F05-28 and TEST-F05-28: with the UI served, a path with a file extension that names no file answers the JSON `404`, not `index.html` (§2.2). | Review of PR #37: a stale cached page would try to run HTML as a script | #33 |
 | 0.10 | 2026-11-16 | WirachatTH | The UI shows the commit it was built from: every screen ends with a footer line `Build <first 7 characters of the commit>` (§2.1), taken from the new build-time setting `VITE_GIT_SHA` (§1.4). AC-F05-29 and AC-F05-30 with TEST-F05-29 and TEST-F05-30. No change to AC-F05-01 to AC-F05-28 and no API change. | Lab 5 R-08 and check C-06: a person must be able to see which commit a running release was built from, and the second release of Ep. 7 needs a change that users can see | #35 |
 | 0.11 | 2026-11-16 | WirachatTH | AC-F05-30 gets two more boundary cases, (f) 41 hexadecimal characters and (g) `"ABCDEF1"` (uppercase hexadecimal), so that both limits in §2.1 ("7 to 40 lowercase hexadecimal characters") have a test; TEST-F05-30 grows from five to seven cases. No change to behaviour, to any other AC, or to the API. | Review of PR #56, comment 1: a mutation check (upper limit 64 instead of 40, uppercase accepted) was not caught by any test | #35 |
+| 0.12 | 2026-11-27 | Menelaus122 | The seed gains a third reviewer, Anan Wongsawat (F-07 contract §2.3). The expected accounts and counts of `TEST-F05-01`, `-02`, `-03`, `-07`, and `-19` become five. | Issue #76 (F-07) | #76 |
 
 ---
 
