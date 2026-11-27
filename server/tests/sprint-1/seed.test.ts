@@ -12,6 +12,7 @@ const PASSWORD_A = "Synthetic-Pass-A1";
 const PASSWORD_B = "Synthetic-Pass-B2";
 
 const DEMO_ACCOUNTS = [
+  { name: "Anan Wongsawat", email: "anan.reviewer@example.com", role: "REVIEWER" },
   { name: "Korn Thanakit", email: "korn.reviewer@example.com", role: "REVIEWER" },
   { name: "Mint Chaiyaporn", email: "mint.reviewer@example.com", role: "REVIEWER" },
   { name: "Nattapong Kaewdee", email: "nattapong.requester@example.com", role: "REQUESTER" },
@@ -19,7 +20,7 @@ const DEMO_ACCOUNTS = [
 ] as const; // sorted by email, to match findMany({ orderBy: { email: "asc" } })
 
 const SEED_SUMMARY = (created: number, updated: number, unchanged: number) =>
-  `seed: 4 accounts (${created} created, ${updated} updated, ${unchanged} unchanged)`;
+  `seed: 5 accounts (${created} created, ${updated} updated, ${unchanged} unchanged)`;
 
 let seeded: ThrowawaySchema; // used by the tests that follow one another: 01, 02, 07, 19, 03, 06
 let empty: ThrowawaySchema; // migrated, never seeded: 04, 05
@@ -38,14 +39,14 @@ afterAll(async () => {
 });
 
 describe("the demo-account seed", () => {
-  it("TEST-F05-01 / AC-F05-01: migrate deploy then seed create the four demo accounts", async () => {
+  it("TEST-F05-01 / AC-F05-01: migrate deploy then seed create the five demo accounts", async () => {
     const migrated = await migrate(seeded.url);
     expect(migrated.code, migrated.stderr).toBe(0);
 
     const result = await seed({ DATABASE_URL: seeded.url, DEMO_USER_PASSWORD: PASSWORD_A });
     outputs.push(result);
     expect(result.code, result.stderr).toBe(0);
-    expect(result.stdout).toContain(SEED_SUMMARY(4, 0, 0));
+    expect(result.stdout).toContain(SEED_SUMMARY(5, 0, 0));
 
     const users = await seeded.prisma.user.findMany({ orderBy: { email: "asc" } });
     expect(users.map(({ name, email, role }) => ({ name, email, role }))).toEqual(DEMO_ACCOUNTS);
@@ -58,10 +59,10 @@ describe("the demo-account seed", () => {
     const result = await seed({ DATABASE_URL: seeded.url, DEMO_USER_PASSWORD: PASSWORD_A });
     outputs.push(result);
     expect(result.code, result.stderr).toBe(0);
-    expect(result.stdout).toContain(SEED_SUMMARY(0, 0, 4));
+    expect(result.stdout).toContain(SEED_SUMMARY(0, 0, 5));
 
     const after = await seeded.prisma.user.findMany({ orderBy: { email: "asc" } });
-    expect(after).toHaveLength(4);
+    expect(after).toHaveLength(5);
     expect(after.map((u) => [u.email, u.passwordHash, u.updatedAt.getTime()])).toEqual(
       before.map((u) => [u.email, u.passwordHash, u.updatedAt.getTime()]),
     );
@@ -69,7 +70,7 @@ describe("the demo-account seed", () => {
 
   it("TEST-F05-07 / AC-F05-07: every stored password_hash is an scrypt hash, not the password", async () => {
     const users = await seeded.prisma.user.findMany();
-    expect(users).toHaveLength(4);
+    expect(users).toHaveLength(5);
     for (const user of users) {
       expect(user.passwordHash).toMatch(/^scrypt\$16384\$8\$1\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/);
       expect(user.passwordHash).not.toBe(PASSWORD_A);
@@ -88,7 +89,7 @@ describe("the demo-account seed", () => {
     const result = await seed({ DATABASE_URL: seeded.url, DEMO_USER_PASSWORD: PASSWORD_A });
     outputs.push(result);
     expect(result.code, result.stderr).toBe(0);
-    expect(result.stdout).toContain(SEED_SUMMARY(0, 1, 3));
+    expect(result.stdout).toContain(SEED_SUMMARY(0, 1, 4));
 
     const after = await seeded.prisma.user.findMany({ orderBy: { email: "asc" } });
     const [ployBefore, ployAfter] = [before, after].map((rows) => rows.find((u) => u.email.startsWith("ploy"))!);
@@ -107,7 +108,7 @@ describe("the demo-account seed", () => {
     expect(result.code, result.stderr).toBe(0);
 
     const users = await seeded.prisma.user.findMany();
-    expect(users).toHaveLength(4);
+    expect(users).toHaveLength(5);
     for (const user of users) {
       expect(await verifyPassword(PASSWORD_B, user.passwordHash), `${user.email} accepts the new password`).toBe(true);
       expect(await verifyPassword(PASSWORD_A, user.passwordHash), `${user.email} rejects the old password`).toBe(false);
