@@ -75,6 +75,7 @@ const detailInclude = {
   requester: person,
   assignedReviewer: person,
   decidedBy: person,
+  firstApprovedBy: person,
   events: { orderBy: [{ createdAt: "asc" }, { id: "asc" }], include: { actor: person } },
 } satisfies Prisma.ApprovalRequestInclude;
 
@@ -96,6 +97,10 @@ export function toDetail(row: DetailRow) {
     decisionCategory: row.decisionCategory,
     decisionReason: row.decisionReason,
     decidedAt: row.decidedAt?.toISOString() ?? null,
+    firstApproval:
+      row.firstApprovedBy && row.firstApprovedAt
+        ? { by: row.firstApprovedBy, at: row.firstApprovedAt.toISOString() }
+        : null,
     revision: row.revision,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -255,8 +260,9 @@ export function registerRequestRoutes(app: Express, { prisma }: { prisma: Prisma
     }
   });
 
-  // Visible only to the requester and the assigned reviewer. Everything else (another user's request, a missing id,
-  // an id that is not a number) is the same 404, so existence is never revealed (BR-08).
+  // Visible only to the requester, the assigned reviewer, a reviewer while the request waits for the second approval,
+  // and the reviewer who decided it. Everything else (another user's request, a missing id, an id that is not a number)
+  // is the same 404, so existence is never revealed (BR-08).
   app.get("/api/requests/:id", async (req, res, next) => {
     try {
       const id = /^[1-9]\d*$/.test(req.params.id) ? Number(req.params.id) : NaN;
@@ -264,7 +270,15 @@ export function registerRequestRoutes(app: Express, { prisma }: { prisma: Prisma
       const row =
         Number.isSafeInteger(id) && id <= MAX_INT4
           ? await prisma.approvalRequest.findFirst({
-              where: { id, OR: [{ requesterId: user.id }, { assignedReviewerId: user.id }] },
+              where: {
+                id,
+                OR: [
+                  { requesterId: user.id },
+                  { assignedReviewerId: user.id },
+                  { decidedById: user.id },
+                  ...(user.role === "REVIEWER" ? [{ status: "AWAITING_SECOND_APPROVAL" as const }] : []),
+                ],
+              },
               include: detailInclude,
             })
           : null;

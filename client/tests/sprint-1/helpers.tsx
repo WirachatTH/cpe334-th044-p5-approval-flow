@@ -42,6 +42,7 @@ export function requestDetail(overrides: Record<string, unknown> = {}) {
     decisionReason: null,
     decidedAt: null,
     revision: 0,
+    firstApproval: null,
     updatedAt: CREATED,
     history: [
       {
@@ -65,6 +66,7 @@ export function inboxItem(overrides: Record<string, unknown> = {}) {
     requestNumber: "REQ-000005",
     title: "Projector bulbs",
     amount: "1250.50",
+    status: "SUBMITTED",
     requester: { id: 1, name: "Ploy Srisawat" },
     createdAt: CREATED,
     ...overrides,

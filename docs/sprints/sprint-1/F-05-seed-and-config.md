@@ -29,6 +29,8 @@
 | 0.9 | 2026-11-15 | Menelaus122 | AC-F05-28 and TEST-F05-28: with the UI served, a path with a file extension that names no file answers the JSON `404`, not `index.html` (§2.2). | Review of PR #37: a stale cached page would try to run HTML as a script | #33 |
 | 0.10 | 2026-11-16 | WirachatTH | The UI shows the commit it was built from: every screen ends with a footer line `Build <first 7 characters of the commit>` (§2.1), taken from the new build-time setting `VITE_GIT_SHA` (§1.4). AC-F05-29 and AC-F05-30 with TEST-F05-29 and TEST-F05-30. No change to AC-F05-01 to AC-F05-28 and no API change. | Lab 5 R-08 and check C-06: a person must be able to see which commit a running release was built from, and the second release of Ep. 7 needs a change that users can see | #35 |
 | 0.11 | 2026-11-16 | WirachatTH | AC-F05-30 gets two more boundary cases, (f) 41 hexadecimal characters and (g) `"ABCDEF1"` (uppercase hexadecimal), so that both limits in §2.1 ("7 to 40 lowercase hexadecimal characters") have a test; TEST-F05-30 grows from five to seven cases. No change to behaviour, to any other AC, or to the API. | Review of PR #56, comment 1: a mutation check (upper limit 64 instead of 40, uppercase accepted) was not caught by any test | #35 |
+| 0.12 | 2026-11-27 | Menelaus122 | The seed gains a third reviewer, Anan Wongsawat (F-07 contract §2.3). The expected accounts and counts of `TEST-F05-01`, `-02`, `-03`, `-07`, and `-19` become five. | Issue #76 (F-07) | #76 |
+| 0.13 | 2026-11-27 | Menelaus122 | The summary of §1.2, the notes of §1.5, the account table of §2.3, `AC-F05-01`, `-02`, `-19`, and their TEST rows follow the fifth account of v0.12. Specified, not implemented. | Review of PR #77 | #77 |
 
 ---
 
@@ -49,10 +51,10 @@ F-05 makes the application reproducible and safe to run anywhere: on a laptop, i
 1. **Migrate:** `prisma migrate deploy` applies every migration not yet applied. In Sprint 1 this is the initial identity migration: the `Role` enum, `User`, and `Session`.
 2. **Seed:** `prisma db seed` runs `prisma/seed.ts`:
    1. Reads and checks `DEMO_USER_PASSWORD`. If it is missing or breaks the password rules, the seed stops before any write and exits with code 1.
-   2. Inside one transaction, **reads** each of the four demo accounts by email, then writes only when needed. It never uses `upsert`: an update, even with identical values, would change Prisma's `@updatedAt`.
+   2. Inside one transaction, **reads** each of the five demo accounts by email, then writes only when needed. It never uses `upsert`: an update, even with identical values, would change Prisma's `@updatedAt`.
       - **Missing account:** created as active, with an scrypt hash of `DEMO_USER_PASSWORD`.
       - **Existing account:** the seed compares `name` and `role` with the seed values and checks whether `password_hash` verifies against `DEMO_USER_PASSWORD`. If everything matches, **no `UPDATE` is issued**. Otherwise one `UPDATE` sets only the fields that differ, and the hash is rewritten only when it no longer verifies. So a rerun with the same inputs writes nothing, and a rotated password takes effect on the next run.
-   3. Prints a summary (for example `seed: 4 accounts (0 created, 0 updated, 4 unchanged)`), never a password or hash.
+   3. Prints a summary (for example `seed: 5 accounts (0 created, 0 updated, 5 unchanged)`), never a password or hash.
 3. **Start:** `index.ts` calls `loadConfig(process.env)`, a pure function that returns the configuration or throws a `ConfigError` (1.4).
    - On a `ConfigError`, `index.ts` prints its message to stderr and exits with code 1, before creating the app or opening a port.
    - Otherwise it builds the app with `createApp({ prisma, config })`, listens on `0.0.0.0:$PORT`, and only then prints `server: listening on port <PORT>` to stdout.
@@ -94,10 +96,10 @@ never contain its value.
 - **`CLIENT_DIST_DIR` points at a directory without `index.html`:** the server refuses to start with the message above, instead of answering every page with an error later.
 - **Database unreachable at runtime:** `/api/health` still returns `200`, and `/api/ready` returns `503 { "status": "not_ready" }` with no error detail.
 - **Seed against an empty database that has not been migrated:** the seed fails with Prisma's error and exits with code 1. The documented order is migrate, then seed.
-- **Seed interrupted part-way:** all writes are in one transaction, so either all four accounts are in place or none of this run's changes are.
+- **Seed interrupted part-way:** all writes are in one transaction, so either all five accounts are in place or none of this run's changes are.
 - **Seed with an existing account whose role was changed in the database:** the seed sets it back to its seed role. Sprint 1 has no role administration, so the seed is the source of truth for demo accounts.
 - **Two seed runs at the same time** (not expected; the deploy job runs one at a time): both may read "missing" for the same email, but the unique `email` constraint lets only one insert succeed. The other run's transaction fails and rolls back, and it can simply be rerun.
-- **`DEMO_USER_PASSWORD` rotated:** the next seed run replaces the four hashes. Sessions created before the rotation stay valid until they expire. F-01 could clear them, but that is outside Sprint 1.
+- **`DEMO_USER_PASSWORD` rotated:** the next seed run replaces the five hashes. Sessions created before the rotation stay valid until they expire. F-01 could clear them, but that is outside Sprint 1.
 
 ### 1.6 Permissions
 
@@ -168,16 +170,17 @@ added by F-03's later, additive migration.
 | Nattapong Kaewdee | `nattapong.requester@example.com` | `REQUESTER` |
 | Mint Chaiyaporn | `mint.reviewer@example.com` | `REVIEWER` |
 | Korn Thanakit | `korn.reviewer@example.com` | `REVIEWER` |
+| Anan Wongsawat | `anan.reviewer@example.com` | `REVIEWER` |
 
-Two of each role allow the Sprint 1 negative cases to be shown on the live app: a second requester for ownership
-isolation, and a second reviewer for unrelated-reviewer access.
+A second requester shows ownership isolation on the live app, and a second reviewer unrelated-reviewer access. The
+third reviewer (F-07) gives a reviewer's own request above the threshold a second approver.
 
 ## 3. Acceptance criteria
 
 | AC ID | Given | When | Then (observable result) | Kind | Linked req. |
 |---|---|---|---|---|---|
-| AC-F05-01 | An empty database and only the `.env.example` variables filled in | `migrate deploy`, then `seed`, are run | Both exit 0; there are exactly 4 active users (2 `REQUESTER`, 2 `REVIEWER`) with the emails in §2.3; the seed prints `seed: 4 accounts (4 created, 0 updated, 0 unchanged)` | normal | Lab 5 R-01, R-02 |
-| AC-F05-02 | The seed has run once | The seed runs again with the same `DEMO_USER_PASSWORD` | Exit 0; still 4 users, no duplicate email; every `password_hash` and `updated_at` is unchanged; the seed prints `seed: 4 accounts (0 created, 0 updated, 4 unchanged)` | boundary | FR-11 |
+| AC-F05-01 | An empty database and only the `.env.example` variables filled in | `migrate deploy`, then `seed`, are run | Both exit 0; there are exactly 5 active users (2 `REQUESTER`, 3 `REVIEWER`) with the emails in §2.3; the seed prints `seed: 5 accounts (5 created, 0 updated, 0 unchanged)` | normal | Lab 5 R-01, R-02 |
+| AC-F05-02 | The seed has run once | The seed runs again with the same `DEMO_USER_PASSWORD` | Exit 0; still 5 users, no duplicate email; every `password_hash` and `updated_at` is unchanged; the seed prints `seed: 5 accounts (0 created, 0 updated, 5 unchanged)` | boundary | FR-11 |
 | AC-F05-03 | The seed has run once | `DEMO_USER_PASSWORD` changes and the seed runs again | Exit 0; each demo account's hash verifies the new password and not the old one | normal | FR-11, NFR-09 |
 | AC-F05-04 | `DEMO_USER_PASSWORD` is not set | The seed runs | Exit 1; stderr names the variable; no user is created | negative | NFR-09 |
 | AC-F05-05 | `DEMO_USER_PASSWORD` breaks the password rules (for example 9 characters, or no digit) | The seed runs | Exit 1; stderr states the rule and does not contain the value; no user is created | negative | NFR-03, NFR-09 |
@@ -194,7 +197,7 @@ isolation, and a second reviewer for unrelated-reviewer access.
 | AC-F05-16 | `NODE_ENV` is `staging`, then unset | `loadConfig(env)` runs | `staging` throws `config: NODE_ENV must be development, test, or production`, without the value; unset gives `development` | negative | Lab 5 R-02 |
 | AC-F05-17 | `NODE_ENV=development` with `CLIENT_ORIGINS` unset, then set to `" https://a.example , https://b.example "` | `loadConfig(env)` runs | Unset gives `["http://localhost:5173"]`; the set value gives `["https://a.example", "https://b.example"]`, trimmed | normal | Lab 5 R-02 |
 | AC-F05-18 | `NODE_ENV=production` with (a) only `CLIENT_ORIGINS` missing, (b) only `DATABASE_URL` missing, (c) every variable valid | `loadConfig(env)` runs | (a) It throws naming `CLIENT_ORIGINS` only; (b) it throws naming `DATABASE_URL` only; (c) it returns the production configuration without throwing | negative / normal | NFR-09, Lab 5 R-02 |
-| AC-F05-19 | The seed has run, and one demo account's name and role were then changed directly in the database | The seed runs again with the same `DEMO_USER_PASSWORD` | Exit 0; that account's name and role are restored by one `UPDATE`; its `password_hash` is unchanged; only its `updated_at` changes; the seed prints `seed: 4 accounts (0 created, 1 updated, 3 unchanged)` | boundary | FR-11 |
+| AC-F05-19 | The seed has run, and one demo account's name and role were then changed directly in the database | The seed runs again with the same `DEMO_USER_PASSWORD` | Exit 0; that account's name and role are restored by one `UPDATE`; its `password_hash` is unchanged; only its `updated_at` changes; the seed prints `seed: 5 accounts (0 created, 1 updated, 4 unchanged)` | boundary | FR-11 |
 | AC-F05-20 | `DATABASE_URL` is not set (`DEMO_USER_PASSWORD` is valid) | The seed runs | Exit 1 with `seed: DATABASE_URL is not set` on stderr, before any connection attempt | negative | NFR-09 |
 | AC-F05-21 | The `DEMO_USER_PASSWORD` placeholder written in `server/.env.example` | The seed runs with exactly that value | Exit 1 with the password-rules message and no user created: an unedited copy of the example file cannot seed a public password | negative | NFR-09 |
 | AC-F05-22 | `loadConfig(env)` with a valid `DATABASE_URL` and (a) no `CLIENT_DIST_DIR`, (b) `CLIENT_DIST_DIR=""`, (c) `CLIENT_DIST_DIR="  /app/client/dist  "` | It runs | (a) and (b) `clientDistDir` is `null`; (c) it is `"/app/client/dist"` | boundary | NFR-09, Lab 5 R-01 |
@@ -211,8 +214,8 @@ isolation, and a second reviewer for unrelated-reviewer access.
 
 | TEST ID | Linked AC | Level | Preconditions / input | Action | Expected result | File / test name |
 |---|---|---|---|---|---|---|
-| TEST-F05-01 | AC-F05-01 | integration (DB) | A throwaway PostgreSQL schema; synthetic `DEMO_USER_PASSWORD` set by the test | Run `migrate deploy`, then the seed | Exit codes 0; query returns 4 active users with the §2.3 emails and roles | `server/tests/sprint-1/seed.test.ts` |
-| TEST-F05-02 | AC-F05-02 | integration (DB) | After TEST-F05-01's state | Record each user's `password_hash` and `updated_at`; run the seed again | Exit 0; 4 users; hashes and `updated_at` identical | `server/tests/sprint-1/seed.test.ts` |
+| TEST-F05-01 | AC-F05-01 | integration (DB) | A throwaway PostgreSQL schema; synthetic `DEMO_USER_PASSWORD` set by the test | Run `migrate deploy`, then the seed | Exit codes 0; query returns 5 active users with the §2.3 emails and roles | `server/tests/sprint-1/seed.test.ts` |
+| TEST-F05-02 | AC-F05-02 | integration (DB) | After TEST-F05-01's state | Record each user's `password_hash` and `updated_at`; run the seed again | Exit 0; 5 users; hashes and `updated_at` identical | `server/tests/sprint-1/seed.test.ts` |
 | TEST-F05-03 | AC-F05-03 | integration (DB) | Seeded with password A | Run the seed with password B | `verifyPassword(B, hash)` is true and `verifyPassword(A, hash)` is false for each account | `server/tests/sprint-1/seed.test.ts` |
 | TEST-F05-04 | AC-F05-04 | integration (DB) | Empty migrated schema; `DEMO_USER_PASSWORD` unset | Run the seed as a child process | Exit 1; stderr contains `DEMO_USER_PASSWORD is not set`; user count 0 | `server/tests/sprint-1/seed.test.ts` |
 | TEST-F05-05 | AC-F05-05 | integration (DB) | `DEMO_USER_PASSWORD` = a 9-character value, then a value with no digit | Run the seed as a child process for each | Exit 1 each time; stderr states the rule; stderr does not contain the value; user count 0 | `server/tests/sprint-1/seed.test.ts` |
@@ -229,7 +232,7 @@ isolation, and a second reviewer for unrelated-reviewer access.
 | TEST-F05-16 | AC-F05-16 | unit | `env` with a valid `DATABASE_URL` and `NODE_ENV` = `"staging"`, then unset | `loadConfig(env)` for each | `"staging"` throws `config: NODE_ENV must be development, test, or production`, and the message does not contain `staging`; unset → `nodeEnv === "development"` | `server/tests/sprint-1/config.test.ts` |
 | TEST-F05-17 | AC-F05-17 | unit | `env` with `NODE_ENV: "development"`, a valid `DATABASE_URL`, and `CLIENT_ORIGINS` unset, then `" https://a.example , https://b.example "` | `loadConfig(env)` for each | `clientOrigins` equals `["http://localhost:5173"]`, then `["https://a.example", "https://b.example"]` | `server/tests/sprint-1/config.test.ts` |
 | TEST-F05-18 | AC-F05-18 | unit | `NODE_ENV: "production"` envs: (a) valid `DATABASE_URL`, no `CLIENT_ORIGINS`; (b) `CLIENT_ORIGINS`, no `DATABASE_URL`; (c) all valid, with `PORT: "8080"` | `loadConfig(env)` for each | (a) throws, and the message names `CLIENT_ORIGINS` and not `DATABASE_URL`; (b) names `DATABASE_URL` and not `CLIENT_ORIGINS`; (c) returns `{ nodeEnv: "production", port: 8080, clientOrigins: ["https://a.example"] }` | `server/tests/sprint-1/config.test.ts` |
-| TEST-F05-19 | AC-F05-19 | integration (DB) | Seeded once; then Ploy's row updated in the test to `name = 'Changed'`, `role = 'REVIEWER'`; every row's `password_hash` and `updated_at` recorded | Run the seed again with the same password | Exit 0; Ploy's `name` and `role` are back to the §2.3 values; her `password_hash` is unchanged and her `updated_at` is newer; the other three `updated_at` values are unchanged; stdout contains `(0 created, 1 updated, 3 unchanged)` | `server/tests/sprint-1/seed.test.ts` |
+| TEST-F05-19 | AC-F05-19 | integration (DB) | Seeded once; then Ploy's row updated in the test to `name = 'Changed'`, `role = 'REVIEWER'`; every row's `password_hash` and `updated_at` recorded | Run the seed again with the same password | Exit 0; Ploy's `name` and `role` are back to the §2.3 values; her `password_hash` is unchanged and her `updated_at` is newer; the other four `updated_at` values are unchanged; stdout contains `(0 created, 1 updated, 4 unchanged)` | `server/tests/sprint-1/seed.test.ts` |
 | TEST-F05-20 | AC-F05-20 | integration (process) | `DATABASE_URL` removed from the child's environment; a valid `DEMO_USER_PASSWORD` | Spawn the seed command | It exits within 15 s with code 1; stderr contains `seed: DATABASE_URL is not set` | `server/tests/sprint-1/seed.test.ts` |
 | TEST-F05-21 | AC-F05-21 | integration (process) | The `DEMO_USER_PASSWORD=` value read from `server/.env.example`; the empty migrated schema | Spawn the seed with that value | Exit 1; stderr contains `does not meet the password rules`; user count 0 | `server/tests/sprint-1/seed.test.ts` |
 | TEST-F05-22 | AC-F05-22 | unit | The three environments | `loadConfig(env)` for each | As stated | `server/tests/sprint-1/config.test.ts` |

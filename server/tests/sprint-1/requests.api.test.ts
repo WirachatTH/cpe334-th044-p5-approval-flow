@@ -17,7 +17,7 @@ beforeEach(() => t.throttle.clear());
 
 const DETAIL_KEYS = [
   "id", "requestNumber", "title", "description", "amount", "status", "requester", "assignedReviewer",
-  "decidedBy", "decisionCategory", "decisionReason", "decidedAt", "revision", "createdAt", "updatedAt", "history",
+  "decidedBy", "decisionCategory", "decisionReason", "decidedAt", "firstApproval", "revision", "createdAt", "updatedAt", "history",
 ].sort();
 
 const body = (overrides: Record<string, unknown> = {}) => ({
