@@ -62,6 +62,22 @@ describe("Request Detail while a request waits for the second approval", () => {
     expect(decisionPanel()).not.toBeInTheDocument();
   });
 
+  it.each([
+    ["a reviewer who submitted the request", ANAN, { requester: { id: ANAN.id, name: ANAN.name } }],
+    ["a requester who did not submit it", { ...PLOY, id: 2 }, {}],
+  ])("TEST-F07-17 / AC-F07-17: %s sees no panel", async (_label, person, overrides) => {
+    await openDetail(person as unknown as typeof MINT, ok(waitingDetail(overrides)));
+    expect(screen.getByRole("group", { name: "Decision" })).toBeInTheDocument();
+    expect(decisionPanel()).not.toBeInTheDocument();
+    expect(returnPanel()).not.toBeInTheDocument();
+  });
+
+  it("TEST-F07-17 / AC-F07-17: the section of a waiting request shows the reason of the first approval", async () => {
+    await openDetail(PLOY, ok(waitingDetail({ decisionReason: "Within the yearly budget." })));
+    const section = within(screen.getByRole("group", { name: "Decision" }));
+    expect(section.getByText("Within the yearly budget.")).toBeInTheDocument();
+  });
+
   it("TEST-F07-17 / AC-F07-17: a first approval says that a second one is needed", async () => {
     const { typing } = await openDetail(MINT, ok(requestDetail({ amount: "250000.00" })), {
       [DECISION]: ok(waitingDetail()),
