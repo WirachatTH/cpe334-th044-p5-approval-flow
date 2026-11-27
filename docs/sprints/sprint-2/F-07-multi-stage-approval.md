@@ -19,6 +19,7 @@
 | Version | Date | Author | Change | Reason | Commit / PR |
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-27 | Menelaus122 | First complete draft | Issue #76; Q-06 confirmed by WirachatTH on 27 November, with the two-reviewer gap | |
+| 0.2 | 2026-11-27 | Menelaus122 | AC-F07-17 covers `403 SAME_APPROVER_FORBIDDEN` on the screen and the revision sent by the second reviewer. A fifth constraint keeps the first approval off other states and off the requester (AC-F07-15). The answer of a write that changes no row is defined, and BR-14 follows. The F-05 contract and the feature inventory say five accounts; Q-06 is worded like BR-17; the live seed and the files that change with the implementation are named; rollback refers to D-15. Brings in F-06 v0.2. | Review of PR #77 | #77 |
 
 ---
 
@@ -71,7 +72,7 @@ first approval. Every other transition answers `409` and changes nothing.
    of F-06 §1.4.
 7. Revision (F-06 §1.4) → `409 STALE_REVISION`.
 8. In one transaction, a conditional update on `id`, the status read, the revision, and either the assigned reviewer
-   (`SUBMITTED`) or `first_approved_by_id <> caller` (waiting). 0 rows → roll back, `409 INVALID_TRANSITION`.
+   (`SUBMITTED`) or `first_approved_by_id <> caller` (waiting). 0 rows → roll back and answer as §1.4 says.
    - First approval: `status = 'AWAITING_SECOND_APPROVAL'`; the decision columns and `first_approved_by_id`,
      `first_approved_at` record the caller and `$now`; one `FIRST_APPROVED` entry.
    - Any final decision: the decision columns record the caller and `$now`; the first-approval columns are not touched;
@@ -84,7 +85,7 @@ first approval. Every other transition answers `409` and changes nothing.
 | BR-17: above the threshold, two approvals | Step 8 compares the stored amount (server); the threshold is a constant of the application |
 | BR-17: two different reviewers | Step 6 and the conditional update (server); `request_second_approver_differs` (DB) |
 | BR-09 (changed): who may decide | Step 4 (server) |
-| BR-10: never the requester | Step 3 (server); `request_decider_not_requester` (DB) |
+| BR-10: never the requester | Step 3 (server); `request_decider_not_requester`, `request_first_approval_scope` (DB) |
 | BR-08 (changed): who may see | The queries of the detail and the inbox (server) |
 | BR-11: only the transitions of §1.2 | Status checks and conditional updates (server) |
 | BR-12: a rejection at either stage needs a category and a reason | The validation of F-04 (server) |
@@ -103,6 +104,7 @@ No new input. The decision body is that of F-04 and F-06.
 | The first approver decides a waiting request | `403 SAME_APPROVER_FORBIDDEN`, "A different reviewer must give the second approval." |
 | Return of a waiting request | `409 INVALID_TRANSITION`, "This request is waiting for a second approval." |
 | Resubmission of a waiting request | `409 INVALID_TRANSITION`, "Only a returned request can be resubmitted." (F-06) |
+| A write that changes no row | The request is read again: `409 INVALID_TRANSITION` with the message of the status it now holds ("This request is waiting for a second approval.", "This request has already been decided.", or that of a returned request, F-06 §1.4), or `409 STALE_REVISION` when only the revision differs |
 
 ### 1.5 Failure and boundary cases
 
@@ -115,7 +117,7 @@ No new input. The decision body is that of F-04 and F-06.
 - **A returned and resubmitted request** above the threshold starts again at the first approval, and both approvals
   name the current revision.
 - **Known limitation:** the first approver cannot withdraw an approval.
-- **Known limitation (rollback):** the previous image cannot read the new status and history values.
+- **Rollback (decided exception, D-15):** as in F-06 §1.5.
 
 ### 1.6 Permissions
 
@@ -171,13 +173,14 @@ No new input. The decision body is that of F-04 and F-06.
 | Migration | Change |
 |---|---|
 | `add_second_approval` (before the red tests) | `RequestStatus` gains `AWAITING_SECOND_APPROVAL`; `RequestEventType` gains `FIRST_APPROVED`; `request.first_approved_by_id` (nullable, foreign key to `app_user`, `ON DELETE RESTRICT`) and `request.first_approved_at` (nullable) |
-| `add_second_approval_rules` | `request_first_approval_fields`: `CHECK ((first_approved_by_id IS NULL) = (first_approved_at IS NULL))`; `request_awaiting_second_approval`: `CHECK (status <> 'AWAITING_SECOND_APPROVAL' OR (first_approved_by_id IS NOT NULL AND decided_by_id = first_approved_by_id))`; `request_second_approver_differs`: `CHECK (status NOT IN ('APPROVED', 'REJECTED') OR first_approved_by_id IS NULL OR decided_by_id <> first_approved_by_id)`; `request_decider_not_requester`: `CHECK (decided_by_id IS NULL OR decided_by_id <> requester_id)` |
+| `add_second_approval_rules` | `request_first_approval_fields`: `CHECK ((first_approved_by_id IS NULL) = (first_approved_at IS NULL))`; `request_awaiting_second_approval`: `CHECK (status <> 'AWAITING_SECOND_APPROVAL' OR (first_approved_by_id IS NOT NULL AND decided_by_id = first_approved_by_id))`; `request_second_approver_differs`: `CHECK (status NOT IN ('APPROVED', 'REJECTED') OR first_approved_by_id IS NULL OR decided_by_id <> first_approved_by_id)`; `request_decider_not_requester`: `CHECK (decided_by_id IS NULL OR decided_by_id <> requester_id)`; `request_first_approval_scope`: `CHECK (first_approved_by_id IS NULL OR (status IN ('AWAITING_SECOND_APPROVAL', 'APPROVED', 'REJECTED') AND first_approved_by_id <> requester_id))` |
 
 While a request waits, the decision columns hold the first approval, so `request_decision_fields` is unchanged. Existing
 rows satisfy every new constraint; nothing is backfilled.
 
 **Seed:** a fifth account, Anan Wongsawat, `anan.reviewer@example.com`, `REVIEWER`, with the same
-`DEMO_USER_PASSWORD`. The seed stays idempotent; its summary counts five accounts.
+`DEMO_USER_PASSWORD`. The seed stays idempotent; its summary counts five accounts. The migration job runs the seed, so the release also
+creates this account on the live database with the shared demo password; whoever holds that password is told.
 
 ## 3. Acceptance criteria
 
@@ -197,9 +200,9 @@ rows satisfy every new constraint; nothing is backfilled.
 | AC-F07-12 | A waiting request, and one approved by Mint and then Anan | Mint returns the first and Ploy resubmits it; Mint and Anan decide the second | `409` with the matching message; nothing changes | negative | BR-11 |
 | AC-F07-13 | A waiting request; a `SUBMITTED` one above the threshold | Korn and Anan decide the first at the same time; Mint sends two approvals of the second at the same time | One `200` each time and one new entry. The other call is refused: `409`, or, if it arrives after the winner is stored, `404` for the second reviewer and `403` for the first approver | boundary | BR-14 |
 | AC-F07-14 | A resubmitted request above the threshold | Each approval is sent without and with the current revision | `409 STALE_REVISION`; then `200` | negative | BR-14, BR-17 |
-| AC-F07-15 | Direct SQL | Rows that break each new constraint are written; the earlier shapes of an approved request are written | Each refused by its constraint; the controls, including an approval without a first approval, are accepted | negative | BR-10, BR-17, NFR-07 |
+| AC-F07-15 | Direct SQL | Rows that break each new constraint are written, among them first-approval columns on a `SUBMITTED` and on a `RETURNED` request and the requester as first approver of an approved one; the earlier shapes of an approved request are written | Each refused by its constraint; the controls, including an approval without a first approval, are accepted | negative | BR-10, BR-17, NFR-07 |
 | AC-F07-16 | An empty database, then a seeded one | The seed runs twice | Five accounts, three of them reviewers; the second run changes nothing | normal | FR-11 |
-| AC-F07-17 | Request Detail as each person of a waiting request | It is opened and used | The panel for an eligible second reviewer; the waiting line and no panel for the first approver; no return panel; the banners of §2.1 | role | FR-15, NFR-11 |
+| AC-F07-17 | Request Detail as each person of a waiting request, also of a resubmitted one | It is opened and used; the first approver acts from a page loaded before their approval | The panel for an eligible second reviewer; the waiting line and no panel for the first approver; no return panel; the banners of §2.1. `403 SAME_APPROVER_FORBIDDEN` shows its message and loads the request again, not "not available". On the resubmitted request the second reviewer's approval and rejection send `revision` | role | FR-15, NFR-11 |
 | AC-F07-18 | A waiting request | My Requests, the inbox, and the history are shown | The labels "Awaiting second approval", "Second approval", and "First approval by <name>" | normal | FR-06, FR-07 |
 | AC-F07-19 | The running stack | Ploy submits 250,000.00; Mint approves; Anan approves | Each screen shows the expected status; Ploy sees both approvals after a reload | normal | FR-15 |
 | AC-F07-20 | Requests made before the migration: one approved above the threshold, one still `SUBMITTED` above it | After the migration both are read, and the second is approved | The first stays `APPROVED`; the second becomes `AWAITING_SECOND_APPROVAL` | boundary | BR-17, NFR-07 |
@@ -227,7 +230,7 @@ Levels as in F-06. Server files are in `server/tests/sprint-2/`, client files in
 | TEST-F07-14 | AC-F07-14 | API-DB | Returned and resubmitted | Approvals with and without revision | As the AC | `second-approval.api.test.ts` |
 | TEST-F07-15 | AC-F07-15 | DB integration | Direct SQL in a rolled-back transaction | Controls and refused rows | SQLSTATE and constraint name | `second-approval-constraints.db.test.ts` |
 | TEST-F07-16 | AC-F07-16 | integration | Empty database | Migrate, seed twice | As the AC | `seed-accounts.test.ts` |
-| TEST-F07-17 | AC-F07-17 | component | Mocked details | Render and use | As the AC | `SecondApproval.test.tsx` |
+| TEST-F07-17 | AC-F07-17 | component | Mocked details, a mocked `403 SAME_APPROVER_FORBIDDEN`, and a detail with revision 1 | Render and use | Panels, messages, reload, bodies | `SecondApproval.test.tsx` |
 | TEST-F07-18 | AC-F07-18 | component | Mocked lists and detail | Render | Labels | `SecondApproval.test.tsx` |
 | TEST-F07-19 | AC-F07-19 | e2e | Running stack, seeded | The journey | As the AC | `second-approval.spec.ts` |
 | TEST-F07-20 | AC-F07-20 | DB integration | Rows inserted in the earlier shape | Read and approve through the API | As the AC | `second-approval-constraints.db.test.ts` |
@@ -249,7 +252,8 @@ loosened.
 | SRS BR-17, Q-06, D-14 | Confirmed values; no assignment of a second reviewer |
 | SRS NFR-07 | The database refuses a requester as decider and one person as both approvers |
 | F-03 and F-04 contracts | A version row for the changes of §1.7 |
-| F-05 contract | The fifth account. The README changes with the implementation |
+| F-05 contract | `AC-F05-01`, `-02`, `-19`, the summary, the account table, and the TEST rows say five accounts |
+| README, `.env.example`, `deploy/deploy.sh`, `deployment.md` | The account list, with the implementation |
 | System SDS, feature inventory, traceability | Statuses, columns, constraints, answers, and the AC rows |
 
 ## 6. Definition of Done (feature)
