@@ -28,6 +28,7 @@
 | 0.14 | 2026-11-27 | Menelaus122 | AC-F06-29 is listed in the rows of FR-14 and BR-11, specified and not implemented. | Second review of PR #73 |
 | 0.15 | 2026-11-27 | Menelaus122 | F-06 is implemented: the rows its ACs link to are Verified at `e6369bc`, and the new section 7 lists AC-F06-01 to AC-F06-29 with their tests. | Implementation of #71 (PR #73) |
 | 0.16 | 2026-11-28 | Menelaus122 | F-07 is implemented: the rows its ACs link to are Verified at `84aee97`, and the new section 8 lists AC-F07-01 to AC-F07-20 with their tests. AC-F05-02 and AC-F05-19 are marked as revised to five accounts. The two test gaps found in the review of PR #73 are covered at `073c02a` (a case under TEST-F06-17 and one under TEST-F06-22). | Implementation of #76 (PR #77) |
+| 0.17 | 2026-11-28 | Menelaus122 | The F-08 contract defines AC-F08-01 to AC-F08-22: the rows of FR-16, FR-17, and BR-18 are Specified, and the other rows that its ACs link to list them. Nothing of F-08 is implemented. | Issue #79 (F-08) |
 
 ---
 
@@ -44,9 +45,9 @@ How to read it:
 | FR-02 Sign out | F-01 | 1 | AC-F01-12, AC-F01-13, AC-F01-18, AC-F01-21 | Verified |
 | FR-03 Stay signed in | F-01 | 1 | AC-F01-09, AC-F01-17, AC-F01-19 | Verified |
 | FR-04 Submit a request | F-03 | 1 | AC-F03-01, AC-F03-02, AC-F03-10, AC-F03-15, AC-F03-16, AC-F03-17, AC-F03-20 | Verified |
-| FR-05 List own requests | F-03 | 1 | AC-F03-11, AC-F03-18, AC-F03-20, AC-F03-21 | Verified |
+| FR-05 List own requests | F-03; F-08 | 1 | AC-F03-11, AC-F03-18, AC-F03-20, AC-F03-21; Sprint 3 (F-08): AC-F08-10 | Verified; the F-08 ACs are specified, not implemented |
 | FR-06 Request detail and history | F-03, F-04; F-06; F-07 | 1 | AC-F03-12, AC-F03-19, AC-F03-21, AC-F04-13; revised (#65): AC-F04-32, AC-F04-34; Sprint 2 (F-06): AC-F06-23; Sprint 2 (F-07): AC-F07-10, AC-F07-18 | Verified; the ACs of #65 at `5890f39` (section 6); the F-06 ACs are verified at `e6369bc` (section 7); the F-07 ACs are verified at `84aee97` (section 8) |
-| FR-07 Review inbox | F-04; F-06; F-07 | 1 | AC-F04-01, AC-F04-02, AC-F04-15, AC-F04-16, AC-F04-20, AC-F04-23; Sprint 2 (F-06): AC-F06-07; Sprint 2 (F-07): AC-F07-11, AC-F07-18 | Verified; the F-06 ACs are verified at `e6369bc` (section 7); the F-07 ACs are verified at `84aee97` (section 8) |
+| FR-07 Review inbox | F-04; F-06; F-07; F-08 | 1 | AC-F04-01, AC-F04-02, AC-F04-15, AC-F04-16, AC-F04-20, AC-F04-23; Sprint 2 (F-06): AC-F06-07; Sprint 2 (F-07): AC-F07-11, AC-F07-18; Sprint 3 (F-08): AC-F08-08, AC-F08-12 | Verified; the F-06 ACs are verified at `e6369bc` (section 7); the F-07 ACs are verified at `84aee97` (section 8); the F-08 ACs are specified, not implemented |
 | FR-08 Approve | F-04 | 1 | AC-F04-03, AC-F04-04, AC-F04-18, AC-F04-20; revised (#65): AC-F04-26, AC-F04-31 | Verified; the ACs of #65 at `5890f39` (section 6) |
 | FR-09 Reject with a category and a reason | F-04 | 1 | AC-F04-05, AC-F04-13; revised (#65): AC-F04-25, AC-F04-29, AC-F04-32, AC-F04-34 | Verified; the ACs of #65 at `5890f39` (section 6) |
 | FR-10 Navigation by role | F-02; F-06 | 1 | AC-F02-11, AC-F02-12; Sprint 2 (F-06): AC-F06-20, AC-F06-26 | Verified; the F-06 ACs are verified at `e6369bc` (section 7) |
@@ -55,8 +56,8 @@ How to read it:
 | FR-13 Return for changes | F-06 | 2 | AC-F06-01, AC-F06-19, AC-F06-23, AC-F06-24 | Verified at `e6369bc` (section 7) |
 | FR-14 Edit and resubmit | F-06 | 2 | AC-F06-07, AC-F06-08, AC-F06-16, AC-F06-21, AC-F06-24, AC-F06-25, AC-F06-29 | Verified at `e6369bc` (section 7) |
 | FR-15 Second approval | F-07 | 2 | AC-F07-01, AC-F07-03, AC-F07-04, AC-F07-05, AC-F07-17, AC-F07-19 | Verified at `84aee97` (section 8) |
-| FR-16 Filter and search | F-08 | 3 | AC and TEST IDs are defined in the F-08 contract, written in Sprint 2 (plan.md section 3) | Planned |
-| FR-17 Decided requests | F-08 | 3 | AC and TEST IDs are defined in the F-08 contract, written in Sprint 2 (plan.md section 3) | Planned |
+| FR-16 Filter and search | F-08 | 3 | AC-F08-01, AC-F08-02, AC-F08-03, AC-F08-04, AC-F08-05, AC-F08-06, AC-F08-08, AC-F08-09, AC-F08-10, AC-F08-11, AC-F08-12, AC-F08-13, AC-F08-16, AC-F08-19, AC-F08-20, AC-F08-21, AC-F08-22 | Specified |
+| FR-17 Decided requests | F-08 | 3 | AC-F08-14, AC-F08-15, AC-F08-16, AC-F08-18 | Specified |
 | FR-18 Summaries | F-09 | 3 | AC and TEST IDs are defined in the F-09 contract, written in Sprint 2 (plan.md section 3) | Planned |
 | BR-01 Session required | F-02 | 1 | AC-F02-01 | Verified |
 | BR-02 One role, from the session | F-02 | 1 | AC-F02-07 | Verified |
@@ -65,7 +66,7 @@ How to read it:
 | BR-05 Title and description | F-03; F-06 | 1 | AC-F03-06; Sprint 2 (F-06): AC-F06-10, AC-F06-11 | Verified; the F-06 ACs are verified at `e6369bc` (section 7) |
 | BR-06 Reviewer rule | F-03 | 1 | AC-F03-07, AC-F03-08, AC-F03-09, AC-F03-10 | Verified |
 | BR-07 Number and first status | F-03 | 1 | AC-F03-01, AC-F03-03, AC-F03-04, AC-F03-09 | Verified |
-| BR-08 Who can see a request | F-03, F-04 (SYS-07); F-06; F-07 | 1 | AC-F03-11, AC-F03-12, AC-F03-13, AC-F04-01, AC-F04-09; Sprint 2 (F-06): AC-F06-04, AC-F06-12, AC-F06-26; Sprint 2 (F-07): AC-F07-09, AC-F07-10, AC-F07-11 | Verified; the F-06 ACs are verified at `e6369bc` (section 7); the F-07 ACs are verified at `84aee97` (section 8) |
+| BR-08 Who can see a request | F-03, F-04 (SYS-07); F-06; F-07; F-08 | 1 | AC-F03-11, AC-F03-12, AC-F03-13, AC-F04-01, AC-F04-09; Sprint 2 (F-06): AC-F06-04, AC-F06-12, AC-F06-26; Sprint 2 (F-07): AC-F07-09, AC-F07-10, AC-F07-11; Sprint 3 (F-08): AC-F08-07 | Verified; the F-06 ACs are verified at `e6369bc` (section 7); the F-07 ACs are verified at `84aee97` (section 8); the F-08 ACs are specified, not implemented |
 | BR-09 Only the assigned reviewer decides | F-02, F-04; F-07 | 1 | AC-F02-03, AC-F04-09, AC-F04-10, AC-F04-16; revised (#65): AC-F04-27; Sprint 2 (F-07): AC-F07-06, AC-F07-08, AC-F07-09 | Verified; the ACs of #65 at `5890f39` (section 6); the F-07 ACs are verified at `84aee97` (section 8) |
 | BR-10 No self-approval | F-04; F-06; F-07 | 1 | AC-F04-08, AC-F04-23; revised (#65): AC-F04-27; Sprint 2 (F-06): AC-F06-04; Sprint 2 (F-07): AC-F07-07, AC-F07-15 | Verified; the ACs of #65 at `5890f39` (section 6); the F-06 ACs are verified at `e6369bc` (section 7); the F-07 ACs are verified at `84aee97` (section 8) |
 | BR-11 Only SUBMITTED is decided | F-04; F-06; F-07 | 1 | AC-F04-07, AC-F04-11, AC-F04-19; revised (#65): AC-F04-24; Sprint 2 (F-06): AC-F06-05, AC-F06-06, AC-F06-13, AC-F06-29; Sprint 2 (F-07): AC-F07-12 | Verified; the ACs of #65 at `5890f39` (section 6); the F-06 ACs are verified at `e6369bc` (section 7); the F-07 ACs are verified at `84aee97` (section 8) |
@@ -75,18 +76,18 @@ How to read it:
 | BR-15 No edit after submission | F-03; F-06 | 1 | AC-F03-14; Sprint 2 (F-06): AC-F06-09, AC-F06-13 | Verified; the F-06 ACs are verified at `e6369bc` (section 7) |
 | BR-16 Return rules | F-06 | 2 | AC-F06-01, AC-F06-02, AC-F06-03, AC-F06-04, AC-F06-05, AC-F06-08, AC-F06-09, AC-F06-12, AC-F06-14, AC-F06-15, AC-F06-20, AC-F06-22 | Verified at `e6369bc` (section 7) |
 | BR-17 Multi-stage threshold | F-07 | 2 | AC-F07-01, AC-F07-02, AC-F07-06, AC-F07-07, AC-F07-14, AC-F07-15, AC-F07-20 | Verified at `84aee97` (section 8) |
-| BR-18 Scope of lists and reports | F-08, F-09 (SYS-07) | 3 | AC and TEST IDs are defined in the F-08 contract, written in Sprint 2 (plan.md section 3); Sprint 1 applies it to the two lists that exist (TEST-F03-11, TEST-F04-01) | Planned |
+| BR-18 Scope of lists and reports | F-08, F-09 (SYS-07) | 3 | AC-F08-07, AC-F08-08, AC-F08-14, AC-F08-17; Sprint 1 applies it to the two lists that exist (TEST-F03-11, TEST-F04-01) | Specified |
 | NFR-01 Authentication enforced | F-01, F-02, F-05 (SYS-03) | 1 | AC-F01-09, AC-F02-01, AC-F02-02, AC-F02-09, AC-F05-24 | Verified |
-| NFR-02 Authorization in the backend | F-02, F-03, F-04 (SYS-03); F-06; F-07 | 1 | AC-F02-03, AC-F02-04, AC-F02-05, AC-F02-06, AC-F02-07, AC-F02-08, AC-F02-09, AC-F02-12, AC-F02-14, AC-F03-13, AC-F04-09, AC-F04-10; revised (#65): AC-F04-27; Sprint 2 (F-06): AC-F06-04, AC-F06-09, AC-F06-12; Sprint 2 (F-07): AC-F07-08, AC-F07-09, AC-F07-10 | Verified; the ACs of #65 at `5890f39` (section 6); the F-06 ACs are verified at `e6369bc` (section 7); the F-07 ACs are verified at `84aee97` (section 8) |
+| NFR-02 Authorization in the backend | F-02, F-03, F-04 (SYS-03); F-06; F-07; F-08 | 1 | AC-F02-03, AC-F02-04, AC-F02-05, AC-F02-06, AC-F02-07, AC-F02-08, AC-F02-09, AC-F02-12, AC-F02-14, AC-F03-13, AC-F04-09, AC-F04-10; revised (#65): AC-F04-27; Sprint 2 (F-06): AC-F06-04, AC-F06-09, AC-F06-12; Sprint 2 (F-07): AC-F07-08, AC-F07-09, AC-F07-10; Sprint 3 (F-08): AC-F08-07, AC-F08-17 | Verified; the ACs of #65 at `5890f39` (section 6); the F-06 ACs are verified at `e6369bc` (section 7); the F-07 ACs are verified at `84aee97` (section 8); the F-08 ACs are specified, not implemented |
 | NFR-03 Password hashing | F-01, F-05 | 1 | AC-F01-01, AC-F05-05, AC-F05-07 | Verified |
 | NFR-04 Session protection | F-01 | 1 | AC-F01-01, AC-F01-06, AC-F01-10, AC-F01-11, AC-F01-12, AC-F01-19, AC-F01-21 | Verified |
 | NFR-05 Sign-in throttle | F-01 | 1 | AC-F01-05, AC-F01-07, AC-F01-08, AC-F01-16, AC-F01-20 | Verified |
-| NFR-06 Safe errors | F-01, F-02, F-05 (SYS-01) | 1 | AC-F01-04, AC-F02-05, AC-F02-10, AC-F02-13, AC-F02-15, AC-F05-10, AC-F05-24, AC-F05-25 | Verified |
+| NFR-06 Safe errors | F-01, F-02, F-05 (SYS-01); F-08 | 1 | AC-F01-04, AC-F02-05, AC-F02-10, AC-F02-13, AC-F02-15, AC-F05-10, AC-F05-24, AC-F05-25; Sprint 3 (F-08): AC-F08-06 | Verified; the F-08 ACs are specified, not implemented |
 | NFR-07 Database integrity | F-03, F-04 (SYS-04); F-06; F-07 | 1 | AC-F03-09, AC-F04-14; revised (#65): AC-F04-33; Sprint 2 (F-06): AC-F06-18; Sprint 2 (F-07): AC-F07-15, AC-F07-20 | Verified; the ACs of #65 at `5890f39` (section 6); the F-06 ACs are verified at `e6369bc` (section 7); the F-07 ACs are verified at `84aee97` (section 8) |
 | NFR-08 Persistence | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-05: a request created before a restart and a redeploy is still there afterwards, with before and after evidence on the deployed service | Verified (Lab 5 check C-05, section 5) |
 | NFR-09 Configuration and secrets | F-05 (SYS-02) | 1 | AC-F05-03, AC-F05-04, AC-F05-05, AC-F05-06, AC-F05-18, AC-F05-20, AC-F05-21, AC-F05-22, AC-F05-27 | Verified |
 | NFR-10 Reproducible build | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-03: a fresh clone builds, migrates, seeds, and answers 200 on `/api/ready` | Verified (Lab 5 check C-03, section 5) |
-| NFR-11 Basic usability | F-01, F-03, F-04 (SYS-06); F-06; F-07 | 1 | AC-F01-15, AC-F03-16, AC-F03-18, AC-F04-17; revised (#65): AC-F04-28, AC-F04-29; Sprint 2 (F-06): AC-F06-19, AC-F06-21, AC-F06-24, AC-F06-25, AC-F06-27; Sprint 2 (F-07): AC-F07-17 | Verified (automated, including the keyboard-only journey TEST-REL-04); the pass by a person (RD-7) was done by hand on 15 Nov 2026 (section 2); AC-F04-28 and AC-F04-29 verified at `5890f39` (section 6); the F-06 ACs are verified at `e6369bc` (section 7); the F-07 ACs are verified at `84aee97` (section 8) |
+| NFR-11 Basic usability | F-01, F-03, F-04 (SYS-06); F-06; F-07; F-08 | 1 | AC-F01-15, AC-F03-16, AC-F03-18, AC-F04-17; revised (#65): AC-F04-28, AC-F04-29; Sprint 2 (F-06): AC-F06-19, AC-F06-21, AC-F06-24, AC-F06-25, AC-F06-27; Sprint 2 (F-07): AC-F07-17; Sprint 3 (F-08): AC-F08-11, AC-F08-13, AC-F08-18, AC-F08-22 | Verified (automated, including the keyboard-only journey TEST-REL-04); the pass by a person (RD-7) was done by hand on 15 Nov 2026 (section 2); AC-F04-28 and AC-F04-29 verified at `5890f39` (section 6); the F-06 ACs are verified at `e6369bc` (section 7); the F-07 ACs are verified at `84aee97` (section 8); the F-08 ACs are specified, not implemented |
 | NFR-12 Accessibility (WCAG 2.1 AA) | F-10, SYS-06 | 3 | Playwright with axe on every main screen; TEST IDs in the F-10 contract | Planned |
 | NFR-13 Responsiveness | F-10, SYS-06 | 3 | Playwright screenshots and layout checks at 390 × 844, 820 × 1180, and 1440 × 900; TEST IDs in the F-10 contract | Planned |
 | NFR-14 Performance | F-10 | 3 | A scripted timing run of 50 requests per operation on the deployed service; TEST IDs in the F-10 contract | Planned |
@@ -103,7 +104,8 @@ Every requirement has a feature or responsibility and a sprint, so no requiremen
 | NFR-11 | The automated part (messages beside fields, `aria-describedby`, status as text) is verified. The keyboard-only journey TEST-REL-04 (Playwright, keyboard events only, no mouse) passes on the five main screens. It is not a pass by a person (RD-7). | Done by hand by WirachatTH on 15 Nov 2026 on the deployed service, whose server and client code are identical to the tag `v1.0.0-sprint1` (it is not the code of `v1.1.0-lab5`, which adds the build footer); recorded in Deliverable 1, Part F.5 (Figures 14 to 21). |
 | FR-13, FR-14, BR-16 | Verified by automated tests only; no check on a deployed service and no pass by a person yet. | After the Sprint 2 release (#71). |
 | FR-15, BR-17 | Verified by automated tests only; no check on a deployed service and no pass by a person yet. | After the Sprint 2 release (#76). |
-| FR-16 to FR-18, BR-18, NFR-12 to NFR-14 | No AC or TEST yet. | Allocated to F-06 to F-10 in section 1. The contract of each feature is written before its tests and code: at the start of Sprint 2 for F-06 and F-07, and during Sprint 2 for F-08, F-09, and F-10 (plan.md section 3). |
+| FR-16, FR-17, BR-18 | Specified in the F-08 contract, not implemented. | Tests, then the implementation, slice by slice (#79). |
+| FR-18, NFR-12 to NFR-14 | No AC or TEST yet. | Allocated to F-09 and F-10 in section 1. Their contracts are written during Sprint 2, before their tests and code (plan.md section 3). |
 | Q-05, Q-06, Q-07, Q-08 (SRS section 9) | Open questions that change F-06, F-07, F-09, and F-10. | Q-05 was decided in the F-06 contract (D-13). Q-06 was confirmed and recorded with the F-07 contract (D-14). Q-07 is decided in the F-09 contract and Q-08 in F-10 (Sprint 3). |
 
 Self-registration, password recovery, account administration, real payments, attachments, notifications, comments, delegation, single sign-on, and multiple organisations are excluded on purpose (SRS section 3.2), so they have no feature.

@@ -27,6 +27,7 @@
 | 0.7 | 2026-11-26 | Menelaus122 | Status: the v0.6 behaviour is implemented. No change to any AC, behaviour, or test. | Implementation of #65: green `5890f39` | #65 |
 | 0.8 | 2026-11-27 | Menelaus122 | `RequestDetail` gains `revision`, and the status and history values gain those of return and resubmission (F-06 contract §2.2). The exact key list of `TEST-F03-01` and `-12` gains `revision`. | Issue #71 (F-06) | #71 |
 | 0.9 | 2026-11-27 | Menelaus122 | `RequestDetail` gains `firstApproval`, and the detail is also visible to a reviewer while the request waits for a second approval and to the second decider (F-07 contract §2.2). The exact key list of `TEST-F03-01` and `-12` gains `firstApproval`. | Issue #76 (F-07) | #76 |
+| 0.10 | 2026-11-28 | Menelaus122 | My Requests accepts the filters of the F-08 contract (§1.4, §2.2). Without parameters it answers as before until F-08 slice 3 adds paging. | Issue #79 (F-08) | #79 |
 
 ---
 

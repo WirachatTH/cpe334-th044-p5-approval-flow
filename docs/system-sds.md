@@ -22,6 +22,7 @@
 | 0.9 | 2026-11-27 | Menelaus122 | Second approval (F-07): status `AWAITING_SECOND_APPROVAL`, history type `FIRST_APPROVED`, two first-approval columns, four `CHECK` constraints in two additive migrations, the error code `SAME_APPROVER_FORBIDDEN`, wider record scope for reviewers, and a third reviewer in the seed. | Issue #76 |
 | 0.10 | 2026-11-27 | Menelaus122 | Section 3.4: the new enum values of Sprint 2 are a decided exception to the rollback rule (SRS D-15). | Review of PR #73 |
 | 0.11 | 2026-11-27 | Menelaus122 | A fifth constraint of F-07, `request_first_approval_scope`. | Review of PR #77 |
+| 0.12 | 2026-11-28 | Menelaus122 | F-08: filters on the lists, the decided route and screen, and paging (slices 2 and 3 in Sprint 3). | Issue #79 (F-08) |
 
 ---
 
@@ -198,15 +199,16 @@ The submission handler enforces it inside the same transaction as the insert.
 | Screen | Route | Roles | Purpose |
 |---|---|---|---|
 | Login | `/login` | unauthenticated | Email and password; one generic error for wrong credentials |
-| My Requests | `/requests` | `REQUESTER`, `REVIEWER` | The caller's own requests, newest first: number, title, amount, status, assigned reviewer |
+| My Requests | `/requests` | `REQUESTER`, `REVIEWER` | The caller's own requests, newest first: number, title, amount, status, assigned reviewer; with filters (F-08) |
 | New Request | `/requests/new` | `REQUESTER`, `REVIEWER` | Title, description, amount (THB), and reviewer (a list of active reviewers excluding the caller) |
 | Request Detail | `/requests/:id` | the requester, or the assigned reviewer | Fields, status, decision, and history. The assigned reviewer of a `SUBMITTED` request sees the decision panel and the return panel; the requester of a `RETURNED` request sees the resubmit form. An eligible second reviewer of a waiting request sees the decision panel. |
-| Review Inbox | `/reviews` | `REVIEWER` | `SUBMITTED` requests assigned to the caller and waiting requests the caller may decide, oldest first |
+| Review Inbox | `/reviews` | `REVIEWER` | `SUBMITTED` requests assigned to the caller and waiting requests the caller may decide, oldest first; with filters (F-08) |
+| Decided (F-08 slice 2) | `/reviews/decided` | `REVIEWER` | The requests the caller approved or rejected, newest decision first, with filters |
 
 The header shows the product name, the navigation for the caller's role, the caller's name and role, and
 **Log out**. Navigation by role:
 - `REQUESTER`: My Requests and New Request.
-- `REVIEWER`: Review Inbox, My Requests, and New Request.
+- `REVIEWER`: Review Inbox, My Requests, and New Request; and Decided from F-08 slice 2.
 
 After login, a requester lands on My Requests and a reviewer on Review Inbox.
 
@@ -216,7 +218,7 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 |---|---|
 | Validation | Each message appears beneath its field and is linked with `aria-describedby`. Typed values are kept and focus moves to the first invalid field. The client checks the same rules as the API for fast feedback, and the API's `fields` messages are shown the same way. |
 | Loading | Lists and details show a spinner with a text label. A submitting button is disabled and reads "Saving…", which also prevents double submission. |
-| Empty | My Requests: "You have not submitted any requests yet", with a link to New Request. Review Inbox: "No requests are waiting for your review." |
+| Empty | My Requests: "You have not submitted any requests yet", with a link to New Request. Review Inbox: "No requests are waiting for your review." A filtered list without a match: "No requests match these filters." (F-08) |
 | Error | `500` or a network failure: a message with a **Try again** action; values in a form are kept. |
 | Unauthenticated (`401`) | Back to Login, with "Your session has ended. Please log in again." |
 | Forbidden or not found (`403`/`404`) | "This page is not available to you", with no record data. A requester who types `/reviews` sees this. |
@@ -233,7 +235,7 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 | Guard order | 1 origin guard (state-changing methods) → 2 policy lookup (an unlisted method or path → `404`; routing is case-sensitive and strict) → 3 session, only for `roles` and `optional` routes → 4 role → 5 record scope → 6 validation → 7 business rules. The first failure answers. The JSON body is read only after step 4, so a caller who may not use a route learns nothing by sending one. `public` routes such as `/api/health` and `/api/ready` never look up a session. |
 | Success | `200` read or decision, `201` create (with the created resource), `204` logout. |
 | Error envelope | `{ "error": { "code": "VALIDATION_ERROR", "message": "Some fields need attention.", "fields": { "amount": "Enter an amount greater than 0." } } }`. `message` is always safe to show: no stack trace, SQL, file path, or secret. |
-| Lists | Sprint 1 lists are not paginated (the data set is small). F-08 (Sprint 3) adds filtering and pagination. |
+| Lists | My Requests, the Review Inbox, and the decided requests accept the filters of the F-08 contract as query parameters; a filter only narrows what the caller may already see (BR-18). The lists are not paginated until F-08 slice 3 adds `page`, `pageSize`, and `total`. |
 | Logging | One line per request (method, path, status, duration, user ID). Never a password, token, cookie, or `DATABASE_URL`. |
 
 **Endpoints** (detailed in the contracts):
@@ -250,6 +252,7 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 | `GET /api/requests/mine` | `REQUESTER`, `REVIEWER` | F-03 |
 | `GET /api/requests/:id` | `REQUESTER`, `REVIEWER`; record scope | F-03 |
 | `GET /api/reviews/inbox` | `REVIEWER` | F-04 |
+| `GET /api/reviews/decided` | `REVIEWER`; the caller's decisions | F-08 |
 | `POST /api/requests/:id/decision` | `REVIEWER`; record scope and rules | F-04 |
 | `POST /api/requests/:id/return` | `REVIEWER`; record scope and rules | F-06 |
 | `POST /api/requests/:id/resubmission` | `REQUESTER`, `REVIEWER`; requester only | F-06 |
@@ -296,6 +299,7 @@ the caller.
 | List my requests | ❌ 401 | ✅ | ✅ | `requesterId = caller` |
 | View request detail and history | ❌ 401 | ✅ own | ✅ own, assigned, waiting for a second approval, or second decider | Otherwise `404`, no data |
 | List review inbox | ❌ 401 | ❌ 403 | ✅ | `SUBMITTED` assigned to the caller; waiting requests the caller may decide |
+| List decided requests (F-08) | ❌ 401 | ❌ 403 | ✅ | Requests with a decision recorded by the caller |
 | Approve or reject | ❌ 401 | ❌ 403 | ✅ assigned, or second reviewer | Own request → `403 SELF_APPROVAL_FORBIDDEN`; first approver of a waiting request → `403 SAME_APPROVER_FORBIDDEN`; not visible → `404`; decided → `409` |
 | Return a request | ❌ 401 | ❌ 403 | ✅ assigned only | Own request → `403 SELF_REVIEW_FORBIDDEN`; unrelated → `404`; not `SUBMITTED` → `409` |
 | Resubmit a returned request | ❌ 401 | ✅ own | ✅ own | Assigned reviewer → `403 NOT_REQUESTER`; unrelated → `404`; not `RETURNED` → `409` |
