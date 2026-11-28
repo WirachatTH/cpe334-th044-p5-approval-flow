@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-08 |
 | Sprint | 3 (slice 1 delivered for Deliverable 2) |
-| Status | Agreed (v0.2: the review of PR #80 agreed the contract once these changes were in) (Draft → Agreed → Implemented → Verified) |
+| Status | Agreed at v0.2; slice 1 implemented (not yet reviewed); slices 2 and 3 not implemented (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-16, FR-17; FR-05, FR-07; BR-08, BR-18; NFR-02, NFR-06, NFR-11 |
 | GitHub Issue | #79 |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -20,6 +20,7 @@
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-28 | Menelaus122 | First complete draft | Issue #79 | |
 | 0.2 | 2026-11-28 | Menelaus122 | AC-F08-08 adds requests that match the filters but are not in the inbox, and a status the inbox never holds; §1.3 keeps the scope and the search apart. §1.4 says that `from` and `to` compare the day of the first submission, and that a filter written as a list or an object is refused (AC-F08-09). AC-F08-03 covers both midnights. | Review of PR #80, points 1 to 5; agreed with these changes | #80 |
+| 0.3 | 2026-11-28 | Menelaus122 | Slice 1 is implemented: status, section 6, and section 7 filled in; two further cases under TEST-F08-10. No change to any AC or behaviour. | Evidence of the implementation | #80 |
 
 ---
 
@@ -208,17 +209,17 @@ exactly `{ "requests": [] }`, changes.
 
 The [Product Definition of Done](../sprint-1/README.md#product-definition-of-done) applies, plus, for each slice:
 
-- [ ] The AC of the slice have a passing automated test
-- [ ] TDD evidence: a failing test commit, then a passing implementation commit
-- [ ] The whole earlier regression passes on the same commit
+- [x] The AC of the slice have a passing automated test (slice 1)
+- [x] TDD evidence: a failing test commit, then a passing implementation commit (slice 1)
+- [x] The whole earlier regression passes on the same commit (slice 1; end to end with one worker)
 
 ## 7. Completion evidence (fill in after implementation)
 
 | Item | Value |
 |---|---|
-| Contract commit(s) | |
-| Red commit(s) and failing test | |
-| Green commit(s) | |
-| PR (author → reviewer) | |
-| Test run (command, commit, pass / fail / skip) | |
-| Known limitations | |
+| Contract commit(s) | `6531308` v0.1; `82fe87a` v0.2 with the five points of the contract review (PR #80), both before any test |
+| Red commit(s) and failing test | `94b6bb2`: server 33 failed and 205 passed (the new test that passed is the case of `TEST-F08-09` for blank and unknown parameters, which guards earlier behaviour); client 11 failed and 93 passed; end to end 1 failed (`TEST-F08-13`) and 11 passed; type check exit 0 |
+| Green commit(s) | `8c571af`. Then `f00597a` adds two cases to `TEST-F08-10` (a late answer must not replace a newer list; clearing empties values never applied): both passed when written, and each fails when the code it covers is removed. `71e32d1` removes a date guard that no test needed, because the database accepts the earliest date |
+| PR (author → reviewer) | #80 (`Menelaus122` → `WirachatTH`) |
+| Test run (command, commit, pass / fail / skip) | At `71e32d1`, local, 28 November: `cd server && npm test` 28 files, **238 passed, 0 failed, 0 skipped**; `cd client && npm test` 15 files, **106 passed**; `cd client && npm run e2e -- --workers=1` **12 passed**; type check and build exit 0 |
+| Known limitations | Those of section 1.5. Slices 2 and 3 are not implemented. No pass by a person on the filter bar; not deployed; no performance measurement (NFR-14, F-10) |
