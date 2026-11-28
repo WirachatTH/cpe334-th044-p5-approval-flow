@@ -115,6 +115,20 @@ export function RequestDetail() {
         <dd>{formatDateTime(request.createdAt)}</dd>
       </dl>
 
+      {/* Above the panel, so that a second reviewer reads the first approval before deciding (F-07 contract §2.1). */}
+      {request.decidedAt && (
+        <div className="decision" role="group" aria-labelledby="decision-title">
+          <h2 id="decision-title">Decision</h2>
+          {/* While the request waits, the decision on it so far is the first approval. */}
+          <p>{`${waiting ? EVENT_LABEL.FIRST_APPROVED : STATUS_LABEL[request.status]} by ${request.decidedBy?.name ?? ""} · ${formatDateTime(request.decidedAt)}`}</p>
+          {/* A rejection made before the category existed has none, and says so (F-04 contract section 2.1). */}
+          {request.status === "REJECTED" && (
+            <p>{`Category: ${request.decisionCategory ? CATEGORY_LABEL[request.decisionCategory] : "Not recorded"}`}</p>
+          )}
+          {request.decisionReason && <p className="multiline">{request.decisionReason}</p>}
+        </div>
+      )}
+
       {(assignedTurn || secondTurn) && (
         <DecisionPanel
           requestId={request.id}
@@ -139,19 +153,6 @@ export function RequestDetail() {
         />
       )}
       {firstApprover && <p>Waiting for a second reviewer.</p>}
-
-      {request.decidedAt && (
-        <div className="decision" role="group" aria-labelledby="decision-title">
-          <h2 id="decision-title">Decision</h2>
-          {/* While the request waits, the decision on it so far is the first approval. */}
-          <p>{`${waiting ? EVENT_LABEL.FIRST_APPROVED : STATUS_LABEL[request.status]} by ${request.decidedBy?.name ?? ""} · ${formatDateTime(request.decidedAt)}`}</p>
-          {/* A rejection made before the category existed has none, and says so (F-04 contract section 2.1). */}
-          {request.status === "REJECTED" && (
-            <p>{`Category: ${request.decisionCategory ? CATEGORY_LABEL[request.decisionCategory] : "Not recorded"}`}</p>
-          )}
-          {request.decisionReason && <p className="multiline">{request.decisionReason}</p>}
-        </div>
-      )}
 
       {canResubmit && (
         <ResubmitForm

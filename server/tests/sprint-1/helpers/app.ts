@@ -69,7 +69,7 @@ export function tokenOf(res: { headers: Record<string, unknown> }): string {
   return cookie!.split(";")[0].slice("af_session=".length);
 }
 
-// The ids of the four seeded accounts.
+// The ids of the four seeded accounts that Sprint 1 uses; the seed also creates a third reviewer (F-07).
 export async function userIds(t: TestApp) {
   const users = await t.prisma.user.findMany({ where: { email: { in: Object.values(ACCOUNTS) } } });
   const id = (email: string) => users.find((u) => u.email === email)!.id;

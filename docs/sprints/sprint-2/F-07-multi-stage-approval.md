@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-07 |
 | Sprint | 2 |
-| Status | Implemented (the contract was agreed at v0.2 in the review of PR #77; the implementation is not yet reviewed) (Draft → Agreed → Implemented → Verified) |
+| Status | Implemented (agreed at v0.2, then reviewed and merged in PR #77; the changes of v0.4 wait for the review of PR #80) (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-15; FR-06, FR-07, FR-11; BR-08, BR-09, BR-10, BR-11, BR-12, BR-13, BR-14, BR-17; NFR-02, NFR-07, NFR-11 |
 | GitHub Issue | #76 |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -21,6 +21,8 @@
 | 0.1 | 2026-11-27 | Menelaus122 | First complete draft | Issue #76; Q-06 confirmed by WirachatTH on 27 November, with the two-reviewer gap | |
 | 0.2 | 2026-11-27 | Menelaus122 | AC-F07-17 covers `403 SAME_APPROVER_FORBIDDEN` on the screen and the revision sent by the second reviewer. A fifth constraint keeps the first approval off other states and off the requester (AC-F07-15). The answer of a write that changes no row is defined, and BR-14 follows. The F-05 contract and the feature inventory say five accounts; Q-06 is worded like BR-17; the live seed and the files that change with the implementation are named; rollback refers to D-15. Brings in F-06 v0.2. | Review of PR #77 | #77 |
 | 0.3 | 2026-11-28 | Menelaus122 | Status: Implemented; section 7 and the Definition of Done filled in; three cases added under TEST-F07-17. No change to any AC or behaviour. | Evidence of the implementation | #77 |
+| 0.4 | 2026-11-28 | Menelaus122 | The first approval stands above the decision panel (§2.1, AC-F07-17), so a second reviewer reads it before deciding. AC-F07-15 names a rejected request with one person as both approvers, and AC-F07-17 any other `403`; the constraint and that message were already specified. | Approving review of PR #77, points a, b, and d | #80 |
+| 0.5 | 2026-11-28 | Menelaus122 | Section 7: the evidence of the changes made after the review of PR #77. No change to any AC or behaviour. | Evidence of the follow-ups | #80 |
 
 ---
 
@@ -145,7 +147,7 @@ No new input. The decision body is that of F-04 and F-06.
 | Screen / element | Behaviour |
 |---|---|
 | Status | "Awaiting second approval" as a text badge; history entry "First approval by <name>" |
-| Request Detail, waiting | A section "Decision" shows "First approval by <name> · <time>" with the reason if any |
+| Request Detail, waiting | A section "Decision" shows "First approval by <name> · <time>" with the reason if any. It stands above the decision panel |
 | Decision panel | Shown to the assigned reviewer of a `SUBMITTED` request and to an eligible second reviewer of a waiting one |
 | First approver of a waiting request | No panel; the line "Waiting for a second reviewer." |
 | Return panel (F-06) | Only while `SUBMITTED` |
@@ -201,9 +203,9 @@ creates this account on the live database with the shared demo password; whoever
 | AC-F07-12 | A waiting request, and one approved by Mint and then Anan | Mint returns the first and Ploy resubmits it; Mint and Anan decide the second | `409` with the matching message; nothing changes | negative | BR-11 |
 | AC-F07-13 | A waiting request; a `SUBMITTED` one above the threshold | Korn and Anan decide the first at the same time; Mint sends two approvals of the second at the same time | One `200` each time and one new entry. The other call is refused: `409`, or, if it arrives after the winner is stored, `404` for the second reviewer and `403` for the first approver | boundary | BR-14 |
 | AC-F07-14 | A resubmitted request above the threshold | Each approval is sent without and with the current revision | `409 STALE_REVISION`; then `200` | negative | BR-14, BR-17 |
-| AC-F07-15 | Direct SQL | Rows that break each new constraint are written, among them first-approval columns on a `SUBMITTED` and on a `RETURNED` request and the requester as first approver of an approved one; the earlier shapes of an approved request are written | Each refused by its constraint; the controls, including an approval without a first approval, are accepted | negative | BR-10, BR-17, NFR-07 |
+| AC-F07-15 | Direct SQL | Rows that break each new constraint are written, among them first-approval columns on a `SUBMITTED` and on a `RETURNED` request, the requester as first approver of an approved one, and one person as both approvers of a rejected one; the earlier shapes of an approved request are written | Each refused by its constraint; the controls, including an approval without a first approval, are accepted | negative | BR-10, BR-17, NFR-07 |
 | AC-F07-16 | An empty database, then a seeded one | The seed runs twice | Five accounts, three of them reviewers; the second run changes nothing | normal | FR-11 |
-| AC-F07-17 | Request Detail as each person of a waiting request, also of a resubmitted one | It is opened and used; the first approver acts from a page loaded before their approval | The panel for an eligible second reviewer; the waiting line and no panel for the first approver; no return panel; the banners of §2.1. `403 SAME_APPROVER_FORBIDDEN` shows its message and loads the request again, not "not available". On the resubmitted request the second reviewer's approval and rejection send `revision` | role | FR-15, NFR-11 |
+| AC-F07-17 | Request Detail as each person of a waiting request, also of a resubmitted one | It is opened and used; the first approver acts from a page loaded before their approval | The panel for an eligible second reviewer, below the section with the first approval; the waiting line and no panel for the first approver; no return panel; the banners of §2.1. `403 SAME_APPROVER_FORBIDDEN` shows its message and loads the request again, not "not available"; any other `403` says "not available" (F-04 §2.1). On the resubmitted request the second reviewer's approval and rejection send `revision` | role | FR-15, NFR-11 |
 | AC-F07-18 | A waiting request | My Requests, the inbox, and the history are shown | The labels "Awaiting second approval", "Second approval", and "First approval by <name>" | normal | FR-06, FR-07 |
 | AC-F07-19 | The running stack | Ploy submits 250,000.00; Mint approves; Anan approves | Each screen shows the expected status; Ploy sees both approvals after a reload | normal | FR-15 |
 | AC-F07-20 | Requests made before the migration: one approved above the threshold, one still `SUBMITTED` above it | After the migration both are read, and the second is approved | The first stays `APPROVED`; the second becomes `AWAITING_SECOND_APPROVAL` | boundary | BR-17, NFR-07 |
@@ -231,7 +233,7 @@ Levels as in F-06. Server files are in `server/tests/sprint-2/`, client files in
 | TEST-F07-14 | AC-F07-14 | API-DB | Returned and resubmitted | Approvals with and without revision | As the AC | `second-approval.api.test.ts` |
 | TEST-F07-15 | AC-F07-15 | DB integration | Direct SQL in a rolled-back transaction | Controls and refused rows | SQLSTATE and constraint name | `second-approval-constraints.db.test.ts` |
 | TEST-F07-16 | AC-F07-16 | integration | Empty database | Migrate, seed twice | As the AC | `seed-accounts.test.ts` |
-| TEST-F07-17 | AC-F07-17 | component | Mocked details, a mocked `403 SAME_APPROVER_FORBIDDEN`, and a detail with revision 1 | Render and use | Panels, messages, reload, bodies | `SecondApproval.test.tsx` |
+| TEST-F07-17 | AC-F07-17 | component | Mocked details, a mocked `403 SAME_APPROVER_FORBIDDEN` and another `403`, and a detail with revision 1 | Render and use | Panels, their order, messages, reload, bodies | `SecondApproval.test.tsx` |
 | TEST-F07-18 | AC-F07-18 | component | Mocked lists and detail | Render | Labels | `SecondApproval.test.tsx` |
 | TEST-F07-19 | AC-F07-19 | e2e | Running stack, seeded | The journey | As the AC | `second-approval.spec.ts` |
 | TEST-F07-20 | AC-F07-20 | DB integration | Rows inserted in the earlier shape | Read and approve through the API | As the AC | `second-approval-constraints.db.test.ts` |
@@ -274,4 +276,5 @@ The [Product Definition of Done](../sprint-1/README.md#product-definition-of-don
 | Green commit(s) | `2a268ad`. Then `84aee97` adds three cases to `TEST-F07-17`: a reviewer who submitted the request, and another requester, see no panel; the section shows the reason of the first approval. They passed when written, and each fails when the code it covers is broken on purpose |
 | PR (author → reviewer) | #77 (`Menelaus122` → `WirachatTH`) |
 | Test run (command, commit, pass / fail / skip) | At `84aee97`, local, 28 November: `cd server && npm test` 25 files, **203 passed, 0 failed, 0 skipped**; `cd client && npm test` 13 files, **91 passed**; `cd client && npm run e2e -- --workers=1` **11 passed**; type check and build exit 0 |
+| Changes after the review of PR #77 (PR #80) | `920b78e` adds the rejected row to `TEST-F07-15` and the other `403` to `TEST-F07-17`. Both passed when written, and each fails when the code it covers is broken on purpose (the constraint limited to `APPROVED`: 1 failed, 12 passed in its file; the line for other codes removed: 1 failed, 13 passed in its file). The order on the screen: red `3932403` (client 1 failed, 92 passed), green `965bfa6`. At `fcdba09`, local, 28 November: server 25 files, **204 passed, 0 failed, 0 skipped**; client 13 files, **93 passed**; end to end **11 passed** (`--workers=1`); type check and build exit 0 |
 | Known limitations | Those of section 1.5. The condition on who may act in the write of section 1.2 step 8 has no test of its own: no operation changes those columns between the read and the write, so removing it fails no test. No keyboard pass by a person on the new screens; not yet deployed |
