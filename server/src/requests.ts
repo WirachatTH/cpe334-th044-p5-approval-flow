@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import type { AuthLocals } from "./authorization.js";
 import { sendError } from "./errors.js";
+import { readFilters } from "./filters.js";
 import { findRequest } from "./requestActions.js";
 
 // Submitting a request and viewing your own requests (F-03 contract). The requester is always the signed-in user;
@@ -237,10 +238,12 @@ export function registerRequestRoutes(app: Express, { prisma }: { prisma: Prisma
   });
 
   // Before /api/requests/:id, so "mine" is not read as an id.
-  app.get("/api/requests/mine", async (_req, res, next) => {
+  app.get("/api/requests/mine", async (req, res, next) => {
     try {
+      const filters = readFilters(req.query);
+      if (!filters.ok) return sendError(res, 400, "VALIDATION_ERROR", "Some fields need attention.", filters.fields);
       const rows = await prisma.approvalRequest.findMany({
-        where: { requesterId: me(res.locals).id },
+        where: { AND: [{ requesterId: me(res.locals).id }, ...filters.where] },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         include: { assignedReviewer: person },
       });

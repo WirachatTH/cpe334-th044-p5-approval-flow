@@ -1,34 +1,20 @@
-import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { FilterBar } from "../components/FilterBar.js";
 import { StatusBadge } from "../components/StatusBadge.js";
-import { useApi } from "../context/AuthContext.js";
-import { formatAmount, formatDate, type RequestSummary } from "../format.js";
+import { STATUS_LABEL, formatAmount, formatDate, type RequestStatus, type RequestSummary } from "../format.js";
+import { useFilteredList } from "../useFilteredList.js";
 
-// My Requests (F-03 contract §2.1): the requests I submitted, newest first, with loading, empty, and error states.
+const STATUSES = Object.keys(STATUS_LABEL) as RequestStatus[];
+
+// My Requests (F-03 contract §2.1, changed by F-08): the requests I submitted, newest first, with filters and with
+// loading, empty, and error states.
 export function MyRequests() {
-  const api = useApi();
-  const [state, setState] = useState<
-    { kind: "loading" } | { kind: "error" } | { kind: "ready"; requests: RequestSummary[] }
-  >({ kind: "loading" });
-
-  const load = useCallback(async () => {
-    setState({ kind: "loading" });
-    try {
-      const res = await api("/api/requests/mine");
-      if (!res.ok) return setState({ kind: "error" });
-      setState({ kind: "ready", requests: (await res.json()).requests });
-    } catch {
-      setState({ kind: "error" });
-    }
-  }, [api]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const { state, reload, filtered, bar } = useFilteredList<RequestSummary>("/api/requests/mine");
 
   return (
     <section>
       <h1>My Requests</h1>
+      <FilterBar {...bar} statuses={STATUSES} />
       {state.kind === "loading" && (
         <div className="centered" role="status">
           <div className="spinner" aria-hidden="true" />
@@ -40,12 +26,13 @@ export function MyRequests() {
           <p role="alert" className="form-error">
             Something went wrong. Please try again.
           </p>
-          <button type="button" onClick={() => void load()}>
+          <button type="button" onClick={() => void reload()}>
             Try again
           </button>
         </div>
       )}
-      {state.kind === "ready" && state.requests.length === 0 && (
+      {state.kind === "ready" && state.requests.length === 0 && filtered && <p>No requests match these filters.</p>}
+      {state.kind === "ready" && state.requests.length === 0 && !filtered && (
         <p>
           You have not submitted any requests yet. <Link to="/requests/new">New Request</Link>
         </p>
