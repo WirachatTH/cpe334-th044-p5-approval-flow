@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-08 |
 | Sprint | 3 (slice 1 delivered for Deliverable 2) |
-| Status | Draft (Draft → Agreed → Implemented → Verified) |
+| Status | Agreed (v0.2: the review of PR #80 agreed the contract once these changes were in) (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-16, FR-17; FR-05, FR-07; BR-08, BR-18; NFR-02, NFR-06, NFR-11 |
 | GitHub Issue | #79 |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -19,6 +19,7 @@
 | Version | Date | Author | Change | Reason | Commit / PR |
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-28 | Menelaus122 | First complete draft | Issue #79 | |
+| 0.2 | 2026-11-28 | Menelaus122 | AC-F08-08 adds requests that match the filters but are not in the inbox, and a status the inbox never holds; §1.3 keeps the scope and the search apart. §1.4 says that `from` and `to` compare the day of the first submission, and that a filter written as a list or an object is refused (AC-F08-09). AC-F08-03 covers both midnights. | Review of PR #80, points 1 to 5; agreed with these changes | #80 |
 
 ---
 
@@ -50,7 +51,7 @@ slices, each usable on its own.
 
 | BR | How it is enforced (layer) |
 |---|---|
-| BR-08, BR-18: only visible requests | Every filter is added to the query that is already scoped to the session user; no parameter names a user (server) |
+| BR-08, BR-18: only visible requests | Every filter is added to the query that is already scoped to the session user; no parameter names a user (server). The scope and each filter are separate conditions that must all hold: the alternatives inside the search (number or title) never replace those inside the inbox scope |
 | BR-18 for decided requests | The list is built from history entries whose actor is the session user (server) |
 
 ### 1.4 Validation (query parameters)
@@ -61,9 +62,9 @@ All parameters are optional. An empty or blank value is ignored, and so is a par
 |---|---|---|
 | `q` | Trimmed, at most 120 characters (code points). Matches any part of the request number or the title, ignoring case; `%`, `_`, and `\` match themselves | "Search text must be 120 characters or fewer." |
 | `status` | One request status | "Choose a status from the list." |
-| `from`, `to` | A real calendar date `YYYY-MM-DD`. The days are those of Asia/Bangkok, and both are included | "Enter a date as YYYY-MM-DD." and, for `to` before `from`, `fields.to` "The end date is before the start date." |
+| `from`, `to` | A real calendar date `YYYY-MM-DD`, compared with the day of `createdAt`: the first submission, shown as "Submitted", which a resubmission does not change. The days are those of Asia/Bangkok, and both are included | "Enter a date as YYYY-MM-DD." and, for `to` before `from`, `fields.to` "The end date is before the start date." |
 | `minAmount`, `maxAmount` | The amount format of F-03 §1.4 without its range (0 is allowed); both limits are included | "Enter the amount as a number, for example 1250.50." and, for a maximum below the minimum, `fields.maxAmount` "The maximum is below the minimum." |
-| Any of the above given twice | Refused | "Give this filter once." |
+| Any of the above that is not one text value: given twice, or written as a list or an object (`status[]=APPROVED`, `q[a]=x`) | Refused, never a server error | "Give this filter once." |
 | `page` (slice 3) | A whole number from 1; default 1 | "Page must be 1 or more." |
 | `pageSize` (slice 3) | A whole number from 1 to 100; default 20 | "Page size must be between 1 and 100." |
 
@@ -137,13 +138,13 @@ changes.
 |---|---|---|---|---|---|---|
 | AC-F08-01 | 1 | Ploy has a request in each of the five statuses | She asks for each status | Only that status, newest first | normal | FR-16 |
 | AC-F08-02 | 1 | Titles that differ in case and contain `%`, `_`, and `\` | Ploy searches part of a number and of a title | The matching requests only; the three characters match themselves | boundary | FR-16 |
-| AC-F08-03 | 1 | Requests made just before and after midnight in Bangkok | Ploy gives `from` and `to` for one day | Exactly that day's requests | boundary | FR-16 |
+| AC-F08-03 | 1 | Requests made just before and just after each of the two midnights that start and end one day in Bangkok | Ploy gives `from` and `to` for that day | Exactly that day's requests | boundary | FR-16 |
 | AC-F08-04 | 1 | Amounts 99.99, 100.00, 200.00, and 200.01 | Ploy asks from 100 to 200.00 | 100.00 and 200.00 only | boundary | FR-16 |
 | AC-F08-05 | 1 | Several requests | Ploy combines all filters; then a combination that matches nothing | Only requests matching all of them; then `200` with an empty list | normal | FR-16 |
 | AC-F08-06 | 1 | Any list | Invalid values of §1.4, several at once | `400` with the exact `fields` | negative | FR-16, NFR-06 |
 | AC-F08-07 | 1 | Requests of Ploy and of Nattapong | Nattapong searches Ploy's number and title and adds `requesterId`; no session asks; a requester asks the inbox with filters | Nothing of Ploy's; `401`; `403` | role | BR-08, BR-18, NFR-02 |
-| AC-F08-08 | 1 | Mint has submitted requests, requests that wait for her second approval, and decided ones | She filters her inbox by status, text, dates, and amounts | Only the matching requests of her inbox, oldest first | normal | FR-07, FR-16, BR-18 |
-| AC-F08-09 | 1 | Any list | Blank and unknown parameters; a filter given twice | Ignored; `400` "Give this filter once." | boundary | FR-16 |
+| AC-F08-08 | 1 | Mint has submitted requests, requests that wait for her second approval, and decided ones. Matching the same filters, but not in her inbox, are a `SUBMITTED` request assigned to another reviewer, a waiting one that she approved first, and a waiting one that she submitted | She filters her inbox by status, text, dates, and amounts, and asks for `APPROVED` | Only the matching requests of her inbox, oldest first, and none of those three; for `APPROVED` an empty list | role | FR-07, FR-16, BR-18 |
+| AC-F08-09 | 1 | Any list | Blank and unknown parameters; a filter given twice, as a list, and as an object | Blank and unknown ones are ignored; each of the others `400` "Give this filter once." | boundary | FR-16 |
 | AC-F08-10 | 1 | My Requests | Ploy applies filters, reloads, clears; then filters to nothing | The address and list follow; the fields keep their values; the full list returns; the no-match message | normal | FR-05, FR-16 |
 | AC-F08-11 | 1 | The filter bar | Invalid values, and a `400` from the API | Messages beside the fields with focus; nothing sent for the first; the API messages shown | negative | FR-16, NFR-11 |
 | AC-F08-12 | 1 | Review Inbox | Mint applies and clears filters | As AC-F08-10; the status field offers "All", "Submitted", and "Awaiting second approval" | normal | FR-07, FR-16 |
@@ -167,13 +168,13 @@ Levels as in F-06. Server files are in `server/tests/sprint-3/`, client files in
 |---|---|---|---|---|---|---|
 | TEST-F08-01 | AC-F08-01 | API-DB | Requests in each state | One call per status | As the AC | `filters.api.test.ts` |
 | TEST-F08-02 | AC-F08-02 | API-DB | Titles with the special characters | Searches | As the AC | `filters.api.test.ts` |
-| TEST-F08-03 | AC-F08-03 | API-DB | `created_at` set around 17:00 UTC | One-day range | As the AC | `filters.api.test.ts` |
+| TEST-F08-03 | AC-F08-03 | API-DB | `created_at` set on both sides of 17:00 UTC at the start and at the end of the day | One-day range | As the AC | `filters.api.test.ts` |
 | TEST-F08-04 | AC-F08-04 | API-DB | The four amounts | Range | As the AC | `filters.api.test.ts` |
 | TEST-F08-05 | AC-F08-05 | API-DB | Mixed requests | Combined | As the AC | `filters.api.test.ts` |
 | TEST-F08-06 | AC-F08-06 | API-DB | Table of invalid queries | Call | `400`, exact `fields` | `filter-validation.api.test.ts` |
 | TEST-F08-07 | AC-F08-07 | API-DB | Two requesters | The calls | As the AC | `filter-access.api.test.ts` |
-| TEST-F08-08 | AC-F08-08 | API-DB | Both statuses of the inbox, and decided requests | Filter the inbox | As the AC | `filters.api.test.ts` |
-| TEST-F08-09 | AC-F08-09 | API-DB | | Blank, unknown, repeated | As the AC | `filter-validation.api.test.ts` |
+| TEST-F08-08 | AC-F08-08 | API-DB | Both statuses of the inbox, decided requests, and the three others, all matching the filters | Filter the inbox | As the AC | `filters.api.test.ts` |
+| TEST-F08-09 | AC-F08-09 | API-DB | | Blank, unknown, repeated, list, object | As the AC | `filter-validation.api.test.ts` |
 | TEST-F08-10 | AC-F08-10 | component | Mocked API | Apply, reload, clear, no match | Calls, address, messages | `MyRequestsFilters.test.tsx` |
 | TEST-F08-11 | AC-F08-11 | component | Mocked API | Invalid values; mocked `400` | As the AC | `MyRequestsFilters.test.tsx` |
 | TEST-F08-12 | AC-F08-12 | component | Mocked API | Apply, clear | As the AC | `ReviewInboxFilters.test.tsx` |
