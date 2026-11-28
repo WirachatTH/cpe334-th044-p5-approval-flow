@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { DecisionPanel } from "../components/DecisionPanel.js";
+import { ResubmitForm } from "../components/ResubmitForm.js";
+import { ReturnPanel } from "../components/ReturnPanel.js";
 import { StatusBadge } from "../components/StatusBadge.js";
 import { useApi, useAuth } from "../context/AuthContext.js";
-import { CATEGORY_LABEL, STATUS_LABEL, formatAmount, formatDateTime, type RequestDetail as Detail } from "../format.js";
+import {
+  CATEGORY_LABEL, EVENT_LABEL, STATUS_LABEL, formatAmount, formatDateTime, type RequestDetail as Detail,
+} from "../format.js";
 
 // Request Detail (F-03 contract §2.1): the fields, the decision when there is one, and the history, oldest first.
-// For the assigned reviewer of a SUBMITTED request it also shows the decision panel (F-04 contract §2.1).
+// For the assigned reviewer of a SUBMITTED request it also shows the decision panel (F-04 contract §2.1) and the
+// return panel, and for the requester of a RETURNED request the resubmit form (F-06 contract §2.1). While a request
+// waits for the second approval, the panel is shown to a reviewer who may give it (F-07 contract §2.1).
 // Text from the request is always rendered as text by React, never as markup.
 export function RequestDetail() {
   const api = useApi();
@@ -16,8 +22,8 @@ export function RequestDetail() {
   const [state, setState] = useState<
     { kind: "loading" } | { kind: "missing" } | { kind: "error" } | { kind: "ready"; request: Detail }
   >({ kind: "loading" });
-  // What the last decision led to: the success banner, or the "already decided" notice. Kept outside `state` so that
-  // loading the request again does not clear it.
+  // What the last action led to: the success banner, or the message of a 409. Kept outside `state` so that loading the
+  // request again does not clear it.
   const [notice, setNotice] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
   const load = useCallback(async (spinner = true) => {
@@ -67,7 +73,21 @@ export function RequestDetail() {
   }
 
   const { request } = state;
-  const canDecide = request.status === "SUBMITTED" && user?.id === request.assignedReviewer.id;
+  const waiting = request.status === "AWAITING_SECOND_APPROVAL";
+  const assignedTurn = request.status === "SUBMITTED" && user?.id === request.assignedReviewer.id;
+  const firstApprover = waiting && user?.id === request.firstApproval?.by.id;
+  const secondTurn =
+    waiting && user?.role === "REVIEWER" && user.id !== request.requester.id && !firstApprover;
+  const canResubmit = request.status === "RETURNED" && user?.id === request.requester.id;
+  const done = (changed: Detail, text: string) => {
+    setState({ kind: "ready", request: changed });
+    setNotice({ kind: "success", text });
+  };
+  const conflict = (text: string) => {
+    setNotice({ kind: "error", text });
+    void load(false);
+  };
+  const unavailable = () => setState({ kind: "missing" });
   return (
     <section>
       {notice ? (
@@ -95,25 +115,36 @@ export function RequestDetail() {
         <dd>{formatDateTime(request.createdAt)}</dd>
       </dl>
 
-      {canDecide && (
+      {(assignedTurn || secondTurn) && (
         <DecisionPanel
           requestId={request.id}
+          revision={request.revision}
           onDecided={(decided, choice) => {
-            setState({ kind: "ready", request: decided });
-            setNotice({ kind: "success", text: choice === "APPROVE" ? "Request approved." : "Request rejected." });
+            if (decided.status === "AWAITING_SECOND_APPROVAL") {
+              return done(decided, "Request approved. A second approval is needed.");
+            }
+            done(decided, choice === "APPROVE" ? "Request approved." : "Request rejected.");
           }}
-          onConflict={() => {
-            setNotice({ kind: "error", text: "This request has already been decided." });
-            void load(false);
-          }}
-          onUnavailable={() => setState({ kind: "missing" })}
+          onConflict={conflict}
+          onUnavailable={unavailable}
         />
       )}
+      {assignedTurn && (
+        <ReturnPanel
+          requestId={request.id}
+          revision={request.revision}
+          onReturned={(returned) => done(returned, "Request returned.")}
+          onConflict={conflict}
+          onUnavailable={unavailable}
+        />
+      )}
+      {firstApprover && <p>Waiting for a second reviewer.</p>}
 
       {request.decidedAt && (
         <div className="decision" role="group" aria-labelledby="decision-title">
           <h2 id="decision-title">Decision</h2>
-          <p>{`${STATUS_LABEL[request.status]} by ${request.decidedBy?.name ?? ""} · ${formatDateTime(request.decidedAt)}`}</p>
+          {/* While the request waits, the decision on it so far is the first approval. */}
+          <p>{`${waiting ? EVENT_LABEL.FIRST_APPROVED : STATUS_LABEL[request.status]} by ${request.decidedBy?.name ?? ""} · ${formatDateTime(request.decidedAt)}`}</p>
           {/* A rejection made before the category existed has none, and says so (F-04 contract section 2.1). */}
           {request.status === "REJECTED" && (
             <p>{`Category: ${request.decisionCategory ? CATEGORY_LABEL[request.decisionCategory] : "Not recorded"}`}</p>
@@ -122,11 +153,20 @@ export function RequestDetail() {
         </div>
       )}
 
+      {canResubmit && (
+        <ResubmitForm
+          request={request}
+          onResubmitted={(resubmitted) => done(resubmitted, "Request resubmitted.")}
+          onConflict={conflict}
+          onUnavailable={unavailable}
+        />
+      )}
+
       <h2>History</h2>
       <ol className="history">
         {request.history.map((entry) => (
           <li key={entry.id}>
-            <span>{`${STATUS_LABEL[entry.type]} by ${entry.actor.name} · ${formatDateTime(entry.createdAt)}`}</span>
+            <span>{`${EVENT_LABEL[entry.type]} by ${entry.actor.name} · ${formatDateTime(entry.createdAt)}`}</span>
             {entry.category && <p>{`Category: ${CATEGORY_LABEL[entry.category]}`}</p>}
             {entry.reason && <p className="multiline">{entry.reason}</p>}
           </li>

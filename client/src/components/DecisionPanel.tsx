@@ -2,8 +2,8 @@ import { useRef, useState } from "react";
 import { useApi } from "../context/AuthContext.js";
 import { CATEGORY_LABEL, type RejectionCategory, type RequestDetail } from "../format.js";
 
-// The decision panel on Request Detail (F-04 contract §2.1). The caller shows it only to the assigned reviewer of a
-// SUBMITTED request; the API checks the same thing again, so hiding it is a convenience and not the rule.
+// The decision panel on Request Detail (F-04 contract §2.1, changed by F-06). The caller shows it only to the assigned
+// reviewer of a SUBMITTED request; the API checks the same thing again, so hiding it is a convenience and not the rule.
 
 const REJECTION_REASON_MIN = 10;
 const REASON_MAX = 1000;
@@ -34,15 +34,17 @@ function reasonProblem(choice: Choice, reason: string): string | null {
 
 interface Props {
   requestId: number;
+  // Sent with the decision when the request has been resubmitted (F-06 contract §1.4).
+  revision: number;
   // The request after the decision, from the API's answer.
   onDecided: (request: RequestDetail, choice: Choice) => void;
-  // Someone else decided first (409): the caller loads the request again.
-  onConflict: () => void;
+  // 409, for example someone else acted first: the caller shows the message and loads the request again.
+  onConflict: (message: string) => void;
   // 403 or 404: the request is not available to this user.
   onUnavailable: () => void;
 }
 
-export function DecisionPanel({ requestId, onDecided, onConflict, onUnavailable }: Props) {
+export function DecisionPanel({ requestId, revision, onDecided, onConflict, onUnavailable }: Props) {
   const api = useApi();
   const [reason, setReason] = useState("");
   const [category, setCategory] = useState("");
@@ -80,11 +82,24 @@ export function DecisionPanel({ requestId, onDecided, onConflict, onUnavailable 
           decision: choice,
           ...(trimmed === "" ? {} : { reason: trimmed }),
           ...(choice === "REJECT" ? { category } : {}),
+          ...(revision > 0 ? { revision } : {}),
         }),
       });
       if (res.ok) return onDecided((await res.json()).request, choice);
-      if (res.status === 409) return onConflict();
-      if (res.status === 403 || res.status === 404) return onUnavailable();
+      if (res.status === 409) {
+        const answer = await res.json().catch(() => null);
+        // The panel stays when only the content changed, so it must be usable again.
+        setBusy(null);
+        return onConflict(answer?.error?.message ?? "Something went wrong. Please try again.");
+      }
+      if (res.status === 403) {
+        const refusal = await res.json().catch(() => null);
+        // The first approver, acting from a page loaded before their approval (F-07 contract §2.1).
+        if (refusal?.error?.code !== "SAME_APPROVER_FORBIDDEN") return onUnavailable();
+        setBusy(null);
+        return onConflict(refusal.error.message);
+      }
+      if (res.status === 404) return onUnavailable();
       const data = await res.json().catch(() => null);
       const fields = res.status === 400 ? data?.error?.fields : undefined;
       const refused: Problems = {

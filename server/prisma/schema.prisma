@@ -32,6 +32,7 @@ model User {
   requestsSubmitted ApprovalRequest[] @relation("RequestRequester")
   requestsAssigned  ApprovalRequest[] @relation("RequestReviewer")
   requestsDecided   ApprovalRequest[] @relation("RequestDecider")
+  requestsFirstApproved ApprovalRequest[] @relation("RequestFirstApprover")
   requestEvents     RequestEvent[]
 
   // "user" is a reserved word in PostgreSQL.
@@ -56,12 +57,17 @@ enum RequestStatus {
   SUBMITTED
   APPROVED
   REJECTED
+  RETURNED
+  AWAITING_SECOND_APPROVAL
 }
 
 enum RequestEventType {
   SUBMITTED
   APPROVED
   REJECTED
+  RETURNED
+  RESUBMITTED
+  FIRST_APPROVED
 }
 
 // Why a request was rejected (BR-12, F-04 contract section 2.3). The list is fixed. The CHECK constraints that keep a
@@ -95,12 +101,18 @@ model ApprovalRequest {
   decisionReason     String?       @map("decision_reason") @db.VarChar(1000)
   decisionCategory   RejectionCategory? @map("decision_category")
   decidedAt          DateTime?     @map("decided_at") @db.Timestamptz
+  // 0 at submission, one higher after each resubmission (BR-16, F-06 contract section 1.1).
+  revision           Int           @default(0)
+  // The first of two approvals, above the multi-stage threshold (BR-17, F-07 contract section 2.3).
+  firstApprovedById  Int?          @map("first_approved_by_id")
+  firstApprovedAt    DateTime?     @map("first_approved_at") @db.Timestamptz
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
   requester        User           @relation("RequestRequester", fields: [requesterId], references: [id], onDelete: Restrict)
   assignedReviewer User           @relation("RequestReviewer", fields: [assignedReviewerId], references: [id], onDelete: Restrict)
   decidedBy        User?          @relation("RequestDecider", fields: [decidedById], references: [id], onDelete: Restrict)
+  firstApprovedBy  User?          @relation("RequestFirstApprover", fields: [firstApprovedById], references: [id], onDelete: Restrict)
   events           RequestEvent[]
 
   @@index([requesterId, createdAt])

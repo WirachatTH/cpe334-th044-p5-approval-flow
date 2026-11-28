@@ -70,7 +70,7 @@ Check what answers before you trust a result: `/api/health` of this project retu
 
 ## Demo accounts
 
-The seed creates four synthetic accounts. All use the password you set as `DEMO_USER_PASSWORD`.
+The seed creates five synthetic accounts. All use the password you set as `DEMO_USER_PASSWORD`.
 
 | Name | Email | Role |
 |---|---|---|
@@ -78,9 +78,11 @@ The seed creates four synthetic accounts. All use the password you set as `DEMO_
 | Nattapong Kaewdee | `nattapong.requester@example.com` | Requester |
 | Mint Chaiyaporn | `mint.reviewer@example.com` | Reviewer |
 | Korn Thanakit | `korn.reviewer@example.com` | Reviewer |
+| Anan Wongsawat | `anan.reviewer@example.com` | Reviewer |
 
-Two of each role make the access rules demonstrable: a second requester for ownership, and a second reviewer for an
-unrelated reviewer. Share the password with other people privately, never in the repository.
+A second requester makes ownership demonstrable, and a second reviewer an unrelated reviewer. The third reviewer gives
+a reviewer's own request above 100,000.00 THB a second approver. Share the password with other people privately, never
+in the repository.
 
 ## Run the whole application in containers
 

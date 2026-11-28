@@ -68,7 +68,7 @@ describe("the review inbox", () => {
     expect(res.status, res.text).toBe(200);
     expect(res.body.requests.map((r: { id: number }) => r.id)).toEqual([first.id, second.id]);
     for (const item of res.body.requests) {
-      expect(Object.keys(item).sort()).toEqual(["amount", "createdAt", "id", "requestNumber", "requester", "title"]);
+      expect(Object.keys(item).sort()).toEqual(["amount", "createdAt", "id", "requestNumber", "requester", "status", "title"]);
       expect(item.requester).toEqual({ id: requester.id, name: requester.name });
     }
   });
