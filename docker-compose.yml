@@ -23,7 +23,7 @@ services:
       timeout: 3s
       retries: 20
 
-  # Applies the migrations and seeds the four demo accounts, then exits. Uses the same image as the application.
+  # Applies the migrations and seeds the five demo accounts, then exits. Uses the same image as the application.
   migrate:
     profiles: ["app"]
     build: .

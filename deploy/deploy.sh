@@ -218,7 +218,7 @@ else
 fi
 
 # ==============================================================================
-# 7. Password of the four demo accounts (secret, created once). It meets the seed's rules (10 to 128 characters with
+# 7. Password of the five demo accounts (secret, created once). It meets the seed's rules (10 to 128 characters with
 #    a letter and a digit). It is read by the migration job's seed, never by the running service.
 # ==============================================================================
 if [ "$DRY_RUN" = "1" ]; then
