@@ -23,6 +23,7 @@
 | 0.3 | 2026-11-14 | Menelaus122 | The policy lookup comes before the session, and sessions are attached only for `roles` and `optional` routes, so `public` routes never touch the session table. Routing is exact (case-sensitive, strict). A body over 100 KB answers `413`. AC-F02-04 asserts on the policy error codes and skips `public` routes. AC-F02-13 (no session lookup on public routes), AC-F02-14 (path variants), and AC-F02-15 (`413`) added. Status: Agreed. | Review of PR #23 | #26 |
 | 0.4 | 2026-11-15 | Menelaus122 | AC-F02-15 and TEST-F02-15 use exact sizes: a JSON body of 102,400 bytes (Express's 100 KB limit) is not refused for size, and one of 102,401 bytes answers `413`. | Review of PR #26 | #9 |
 | 0.5 | 2026-11-15 | Menelaus122 | AC-F02-15 and TEST-F02-15: a body of 102,400 bytes is not refused for its size, but only the login route has a handler in #9, so `POST /api/requests` answers `404` until F-03 adds its handler (then `400`). The contract contradicted its own section 1.5 ("handler not built yet: 404"). | Found while writing the #9 tests | #9 |
+| 0.6 | 2026-11-28 | Menelaus122 | F-09 adds the route `GET /api/reports/summary` and the link "Summary" for both roles: AC-F02-11 and TEST-F02-11 are revised with that implementation. No change until then. | Issue #84 (F-09) | #84 |
 
 ---
 
