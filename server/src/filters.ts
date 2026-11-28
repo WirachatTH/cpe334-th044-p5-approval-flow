@@ -19,8 +19,6 @@ const ONCE = "Give this filter once.";
 const STATUSES: readonly string[] = Object.values(RequestStatus);
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
-// The first instant the database can hold.
-const FIRST_INSTANT = Date.parse("0001-01-01T00:00:00.000Z");
 
 export type Filters =
   | { ok: true; where: Prisma.ApprovalRequestWhereInput[] }
@@ -80,7 +78,7 @@ export function readFilters(query: Record<string, unknown>): Filters {
   if (to === null) fields.to = DATE_FORMAT;
   else if (typeof from === "number" && typeof to === "number" && to < from) fields.to = DATE_ORDER;
   // Both days are included: from the start of the first one to before the start of the day after the last one.
-  if (typeof from === "number" && from >= FIRST_INSTANT) where.push({ createdAt: { gte: new Date(from) } });
+  if (typeof from === "number") where.push({ createdAt: { gte: new Date(from) } });
   if (typeof to === "number") where.push({ createdAt: { lt: new Date(to + DAY) } });
 
   const min = given.minAmount === undefined ? undefined : amountOf(given.minAmount);
