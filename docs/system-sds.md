@@ -25,6 +25,7 @@
 | 0.12 | 2026-11-28 | Menelaus122 | F-08: filters on the lists, the decided route and screen, and paging (slices 2 and 3 in Sprint 3). | Issue #79 (F-08) |
 | 0.13 | 2026-11-28 | Menelaus122 | F-09: the Summary screen and its route. | Issue #84 (F-09) |
 | 0.14 | 2026-11-28 | Menelaus122 | F-10: the shared sign-in count (planned), the error page, and the sign-out of other tabs. | Issue #84 (F-10) |
+| 0.15 | 2026-11-29 | Menelaus122 | F-10: the columns and the clearing of the shared sign-in table (D-17, decided), and a second user in another tab. | Review of PR #85 |
 
 ---
 
@@ -222,7 +223,7 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 | Validation | Each message appears beneath its field and is linked with `aria-describedby`. Typed values are kept and focus moves to the first invalid field. The client checks the same rules as the API for fast feedback, and the API's `fields` messages are shown the same way. |
 | Loading | Lists and details show a spinner with a text label. A submitting button is disabled and reads "Saving…", which also prevents double submission. |
 | Empty | My Requests: "You have not submitted any requests yet", with a link to New Request. Review Inbox: "No requests are waiting for your review." A filtered list without a match: "No requests match these filters." (F-08) |
-| Screen failure (F-10) | If a screen fails while it renders: "Something went wrong" with **Reload**, and no technical detail. After a sign-out in another tab, a tab that gets focus shows Login. |
+| Screen failure (F-10) | If a screen fails while it renders: "Something went wrong" with **Reload**, and no technical detail. After a sign-out in another tab, a tab that gets focus shows Login, or the start page of a user who has signed in since, without any data of the earlier user. |
 | Error | `500` or a network failure: a message with a **Try again** action; values in a form are kept. |
 | Unauthenticated (`401`) | Back to Login, with "Your session has ended. Please log in again." |
 | Forbidden or not found (`403`/`404`) | "This page is not available to you", with no record data. A requester who types `/reviews` sees this. |
@@ -323,13 +324,13 @@ the caller.
 | Expiry | 8 hours from login, checked on every request. An expired session is treated as none (`401`) and its row is deleted. A deactivated user's sessions are not honoured. |
 | Current user | `GET /api/auth/me` (and a successful login) returns `{ "user": { id, name, email, role } }` from the session, never the hash or the token. The SPA calls it on load to decide between Login and the app. |
 | Logout | `POST /api/auth/logout` deletes the session row and clears the cookie. The old cookie then answers `401`. |
-| Throttling | 5 failed logins per normalised email in a sliding 15-minute window → `429 TOO_MANY_ATTEMPTS` with `Retry-After`. Attempts are reserved before the password check, so a burst cannot slip past the limit. Unknown emails count the same as real ones. From F-10 (D-17, proposed) the failures are counted in the table `login_attempt` (`email_key`, `attempted_at`), shared by all instances. |
+| Throttling | 5 failed logins per normalised email in a sliding 15-minute window → `429 TOO_MANY_ATTEMPTS` with `Retry-After`. Attempts are reserved before the password check, so a burst cannot slip past the limit. Unknown emails count the same as real ones. From F-10 (D-17) the attempts are kept in the table `login_attempt` (`email_key`, `failed`, `attempted_at`), shared by all instances; reservations and failures older than the window are removed. |
 | Cross-origin guard | A `POST` whose `Origin` header is present and not in `CLIENT_ORIGINS` answers `403 FORBIDDEN_ORIGIN` before the session lookup. This adds to `SameSite=Strict`. The comparison is an exact match of scheme, host, and port, with no trailing slash. `Origin: null` (sandboxed frames) is refused. A request **without** an `Origin` header is not checked: Supertest, `curl`, the smoke test, and other server-to-server calls send none, and browsers always send one on a `POST`. Browsers send it even for a same-origin `POST`, which is why `CLIENT_ORIGINS` must list every URL users open (§8). |
 | Not in Sprint 1 | Self-registration, password recovery, password change, and account administration (SRS §3.2 exclusions). Accounts come only from the seed. |
 
 **Known limitation (decision for the SRS).** The login throttle lives in each process's memory, as it did in
 TokTickIT. On Cloud Run, with up to 3 instances and scale-to-zero, each instance counts separately and a restart
-clears the count. Sprint 1 accepts this; F-10 (hardening) can move the counter into the database.
+clears the count. Sprint 1 accepts this; F-10 (hardening) moves the counter into the database (D-17).
 
 ## 8. Configuration and secrets
 

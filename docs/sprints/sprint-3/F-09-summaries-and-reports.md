@@ -8,7 +8,7 @@
 |---|---|
 | Feature ID | F-09 |
 | Sprint | 3 |
-| Status | Draft (Draft → Agreed → Implemented → Verified) |
+| Status | Agreed at v0.2 (review of PR #85); not implemented (Draft → Agreed → Implemented → Verified) |
 | Linked requirements | FR-18; BR-08, BR-18; NFR-01, NFR-02, NFR-06, NFR-11 |
 | GitHub Issue | #84 |
 | Author / reviewer | `Menelaus122` / `WirachatTH` |
@@ -19,6 +19,7 @@
 | Version | Date | Author | Change | Reason | Commit / PR |
 |---|---|---|---|---|---|
 | 0.1 | 2026-11-28 | Menelaus122 | First complete draft; proposes the answer to Q-07 | Issue #84 | |
+| 0.2 | 2026-11-29 | Menelaus122 | A period without a submitted request can still hold decisions: `byStatus` and `total` are zero while `myDecisions` follows the decision day (§1.5, §2.1, `AC-F09-09`); `AC-F09-06` names a request submitted before the period and decisions on both sides of both midnights; the counts are read in one `REPEATABLE READ` transaction; Q-07 is decided: no export. | Review of PR #85 | #85 |
 
 ---
 
@@ -46,7 +47,7 @@ A request belongs to the period by the day of `createdAt`, its first submission,
 is the caller and whose own day is in the period. A first of two approvals counts as an approval. A return is not a
 decision. This count follows the day of the decision, not of the submission.
 
-**Q-07, proposed:** no export. The summary is read on the screen; a file download is not part of the product (D-16).
+**Q-07, decided:** no export. The summary is read on the screen; a file download is not part of the product (D-16).
 
 ### 1.2 Workflow and state transitions
 
@@ -70,10 +71,13 @@ A blank value is ignored, and so is any other parameter. Every problem is report
 
 ### 1.5 Failure and boundary cases
 
-- **A period without requests:** `200`; every count `0` and every amount `"0.00"`.
+- **A period without a submitted request:** `200`; every count of `byStatus` and `total` is `0` and every amount is
+  `"0.00"`. `myDecisions` follows the day of the decision (§1.1), so it can be above zero in such a period: decisions on
+  requests submitted earlier.
 - **Money:** amounts are added as decimals in the database and returned as strings with two decimals.
 - **Day boundaries:** as F-08 §1.5.
-- **Consistency:** the counts of one answer are read in one transaction.
+- **Consistency:** the counts of one answer are read in one `REPEATABLE READ` transaction, so they show one state of
+  the database. A transaction at the default isolation level would not.
 - **A reviewer's counts change** when another reviewer decides a waiting request, because it then leaves their scope.
 - **Known limitations:** no export, no chart, and no breakdown by person or by rejection category.
 
@@ -100,7 +104,7 @@ A blank value is ignored, and so is any other parameter. Every problem is report
 | Period | "From" and "To" (`YYYY-MM-DD`), **Apply** and **Clear**; the values are kept in the address; checks and messages as F-08 §2.1 |
 | By status | A table "Status", "Requests", "Total amount (THB)": one row for each of the five statuses in the order Submitted, Awaiting second approval, Returned, Approved, Rejected, then a row "Total" |
 | Your decisions | Reviewer only: "Approved: n" and "Rejected: n" under the heading "Your decisions in this period" |
-| States | Loading; "No requests in this period." above the table of zeros; an error with **Try again** |
+| States | Loading; "No requests in this period." above the table of zeros when the total is 0, also when the decision counts are above zero; an error with **Try again** |
 
 ### 2.2 API
 
@@ -139,10 +143,10 @@ uses the same index, and whichever comes first adds it.
 | AC-F09-03 | Requests on both sides of both midnights of a period | She gives `from` and `to` | Only those submitted in the Bangkok days of the period | boundary | FR-18 |
 | AC-F09-04 | Requests of Ploy and of Nattapong | Each asks, also with a user id in the query | Each sees only their own numbers | role | BR-08, BR-18, NFR-02 |
 | AC-F09-05 | Requests of every relation to Mint, and one of another reviewer's that Mint has no part in | Mint asks | Her own, her assigned ones, the waiting ones, and her second decisions are counted; the other is not | role | BR-08, BR-18 |
-| AC-F09-06 | Mint approved, gave a first approval, rejected, and returned requests, some outside the period; Korn decided others | Mint asks for the period | "approved" counts both kinds of approval and "rejected" the rejections, by the decision day; no return, nothing of Korn's | boundary | FR-18, BR-18 |
+| AC-F09-06 | Mint approved, gave a first approval, rejected, and returned requests: among them a request submitted before the period and decided inside it, and decisions just before and just after each of the two midnights of the period; Korn decided others | Mint asks for the period | "approved" counts both kinds of approval and "rejected" the rejections, by the decision day: the decision on the earlier request counts, and only the decisions inside the two midnights count; no return, nothing of Korn's | boundary | FR-18, BR-18 |
 | AC-F09-07 | | Invalid dates, an end before the start, and a date given twice | `400` with the exact `fields` | negative | FR-18, NFR-06 |
 | AC-F09-08 | | No session asks | `401` with no data | role | NFR-01 |
-| AC-F09-09 | A period without requests | A user asks | `200`; five rows of zero; `myDecisions` zero for a reviewer and `null` for a requester | boundary | FR-18 |
+| AC-F09-09 | A period with no request submitted in it and no decision of the caller in it | A user asks | `200`; five rows of zero and a total of zero; `myDecisions` zero for a reviewer and `null` for a requester | boundary | FR-18 |
 | AC-F09-10 | The Summary screen | A user applies a period, reloads, and clears it | The address and the table follow; an empty period says "No requests in this period." | normal | FR-18 |
 | AC-F09-11 | The Summary screen | Invalid dates; the API fails | Messages beside the fields with focus and nothing sent; an error with **Try again** | negative | FR-18, NFR-11 |
 | AC-F09-12 | A requester and a reviewer signed in | They look at the navigation and the screen | "Summary" for both; "Your decisions in this period" for the reviewer only | role | FR-18, NFR-11 |
@@ -160,10 +164,10 @@ Each test makes its own users and requests.
 | TEST-F09-03 | AC-F09-03 | API-DB | `created_at` set around 17:00 UTC | One period | As the AC | `summary.api.test.ts` |
 | TEST-F09-04 | AC-F09-04 | API-DB | Two requesters | Calls | As the AC | `summary-access.api.test.ts` |
 | TEST-F09-05 | AC-F09-05 | API-DB | The relations of §1.1 | Call | As the AC | `summary-access.api.test.ts` |
-| TEST-F09-06 | AC-F09-06 | API-DB | History entries inside and outside the period | Call | As the AC | `summary.api.test.ts` |
+| TEST-F09-06 | AC-F09-06 | API-DB | History entries set around both midnights; a request submitted before the period and decided inside it | Call | As the AC | `summary.api.test.ts` |
 | TEST-F09-07 | AC-F09-07 | API-DB | Table of invalid queries | Call | `400`, exact `fields` | `summary-access.api.test.ts` |
 | TEST-F09-08 | AC-F09-08 | API-DB | | No session | `401` | `summary-access.api.test.ts` |
-| TEST-F09-09 | AC-F09-09 | API-DB | Empty period | Both roles | As the AC | `summary.api.test.ts` |
+| TEST-F09-09 | AC-F09-09 | API-DB | A period with neither a submission nor a decision | Both roles | As the AC | `summary.api.test.ts` |
 | TEST-F09-10 | AC-F09-10 | component | Mocked API | Apply, reload, clear | As the AC | `Summary.test.tsx` |
 | TEST-F09-11 | AC-F09-11 | component | Mocked API | Invalid values; mocked `500` | As the AC | `Summary.test.tsx` |
 | TEST-F09-12 | AC-F09-12 | component | Mocked sessions | Navigation and screen | As the AC | `Summary.test.tsx` |

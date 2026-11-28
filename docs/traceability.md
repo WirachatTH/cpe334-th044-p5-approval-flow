@@ -33,6 +33,7 @@
 | 0.19 | 2026-11-28 | Menelaus122 | F-08 slice 1 is implemented: AC-F08-01 to AC-F08-13 are verified at `71e32d1` (new section 9). The ACs of slices 2 and 3 stay specified. | Implementation of #79 (PR #80) |
 | 0.20 | 2026-11-28 | Menelaus122 | The F-09 contract defines AC-F09-01 to AC-F09-13: the rows of FR-18 are Specified, and the other rows that its ACs link to list them. Nothing of F-09 is implemented. | Issue #84 (F-09) |
 | 0.21 | 2026-11-28 | Menelaus122 | The F-10 contract defines AC-F10-01 to AC-F10-11: the rows of NFR-12 to NFR-14 are Specified, and the other rows that its ACs link to list them. Nothing of F-10 is implemented. | Issue #84 (F-10) |
+| 0.22 | 2026-11-29 | Menelaus122 | `AC-F10-12` is added to the row of NFR-05; Q-07 and Q-08 are decided. `AC-F09-06`, `AC-F09-09`, `AC-F10-04`, `AC-F10-05`, `AC-F10-07`, and `AC-F10-10` are revised. Nothing of F-09 or F-10 is implemented. | Review of PR #85 |
 
 ---
 
@@ -85,7 +86,7 @@ How to read it:
 | NFR-02 Authorization in the backend | F-02, F-03, F-04 (SYS-03); F-06; F-07; F-08; F-09; F-10 | 1 | AC-F02-03, AC-F02-04, AC-F02-05, AC-F02-06, AC-F02-07, AC-F02-08, AC-F02-09, AC-F02-12, AC-F02-14, AC-F03-13, AC-F04-09, AC-F04-10; revised (#65): AC-F04-27; Sprint 2 (F-06): AC-F06-04, AC-F06-09, AC-F06-12; Sprint 2 (F-07): AC-F07-08, AC-F07-09, AC-F07-10; Sprint 3 (F-08): AC-F08-07, AC-F08-17; Sprint 3 (F-09): AC-F09-04; Sprint 3 (F-10): AC-F10-11 | Verified; the ACs of #65 at `5890f39` (section 6); the F-06 ACs are verified at `e6369bc` (section 7); the F-07 ACs are verified at `84aee97` (section 8); AC-F08-07 is verified at `71e32d1` (section 9); AC-F08-17 is specified, not implemented; the F-09 ACs are specified, not implemented; the F-10 ACs are specified, not implemented |
 | NFR-03 Password hashing | F-01, F-05 | 1 | AC-F01-01, AC-F05-05, AC-F05-07 | Verified |
 | NFR-04 Session protection | F-01; F-10 | 1 | AC-F01-01, AC-F01-06, AC-F01-10, AC-F01-11, AC-F01-12, AC-F01-19, AC-F01-21; Sprint 3 (F-10): AC-F10-10 | Verified; the F-10 ACs are specified, not implemented |
-| NFR-05 Sign-in throttle | F-01; F-10 | 1 | AC-F01-05, AC-F01-07, AC-F01-08, AC-F01-16, AC-F01-20; Sprint 3 (F-10): AC-F10-06, AC-F10-07, AC-F10-08 | Verified; the F-10 ACs are specified, not implemented |
+| NFR-05 Sign-in throttle | F-01; F-10 | 1 | AC-F01-05, AC-F01-07, AC-F01-08, AC-F01-16, AC-F01-20; Sprint 3 (F-10): AC-F10-06, AC-F10-07, AC-F10-08, AC-F10-12 | Verified; the F-10 ACs are specified, not implemented |
 | NFR-06 Safe errors | F-01, F-02, F-05 (SYS-01); F-08; F-09; F-10 | 1 | AC-F01-04, AC-F02-05, AC-F02-10, AC-F02-13, AC-F02-15, AC-F05-10, AC-F05-24, AC-F05-25; Sprint 3 (F-08): AC-F08-06; Sprint 3 (F-09): AC-F09-07; Sprint 3 (F-10): AC-F10-09 | Verified; the F-08 ACs are verified at `71e32d1` (section 9); the F-09 ACs are specified, not implemented; the F-10 ACs are specified, not implemented |
 | NFR-07 Database integrity | F-03, F-04 (SYS-04); F-06; F-07 | 1 | AC-F03-09, AC-F04-14; revised (#65): AC-F04-33; Sprint 2 (F-06): AC-F06-18; Sprint 2 (F-07): AC-F07-15, AC-F07-20 | Verified; the ACs of #65 at `5890f39` (section 6); the F-06 ACs are verified at `e6369bc` (section 7); the F-07 ACs are verified at `84aee97` (section 8) |
 | NFR-08 Persistence | F-05, SYS-05 | Lab 5 (Sprint 1 release) | Lab 5 check C-05: a request created before a restart and a redeploy is still there afterwards, with before and after evidence on the deployed service | Verified (Lab 5 check C-05, section 5) |
@@ -111,7 +112,7 @@ Every requirement has a feature or responsibility and a sprint, so no requiremen
 | FR-16, FR-17, BR-18 | F-08 slice 1 (filtering and search) is implemented and verified (section 9). Slices 2 (FR-17, decided requests) and 3 (paging) are specified, not implemented. | Slices 2 and 3 in Sprint 3 (#79). |
 | FR-18 | Specified in the F-09 contract, not implemented. | Tests, then the implementation, in Sprint 3. |
 | NFR-12 to NFR-14 | Specified in the F-10 contract, not implemented. NFR-14 needs a measurement on the deployed service. | Sprint 3, after F-08 slice 3. |
-| Q-05, Q-06, Q-07, Q-08 (SRS section 9) | Open questions that change F-06, F-07, F-09, and F-10. | Q-05 was decided in the F-06 contract (D-13). Q-06 was confirmed and recorded with the F-07 contract (D-14). Q-07 is decided in the F-09 contract and Q-08 in F-10 (Sprint 3). |
+| Q-05, Q-06, Q-07, Q-08 (SRS section 9) | Open questions that change F-06, F-07, F-09, and F-10. | Q-05 was decided in the F-06 contract (D-13). Q-06 was confirmed and recorded with the F-07 contract (D-14). Q-07 (no export, D-16) and Q-08 (a shared count, D-17) were decided with the F-09 and F-10 contracts (PR #85). |
 
 Self-registration, password recovery, account administration, real payments, attachments, notifications, comments, delegation, single sign-on, and multiple organisations are excluded on purpose (SRS section 3.2), so they have no feature.
 
