@@ -17,6 +17,8 @@
 | 0.6 | 2026-11-27 | Menelaus122 | F-07: confirmed values (Q-06), the third reviewer, the further requirements it touches, and the link to its contract. | Issue #76 |
 | 0.7 | 2026-11-27 | Menelaus122 | F-05: five demo accounts, following F-07. | Review of PR #77 |
 | 0.8 | 2026-11-28 | Menelaus122 | F-08: the link to its contract, its dependencies on F-06 and F-07, and the further requirements it touches. | Issue #79 (F-08) |
+| 0.9 | 2026-11-28 | Menelaus122 | F-09: the link to its contract and the requirements it touches. | Issue #84 (F-09) |
+| 0.10 | 2026-11-28 | Menelaus122 | F-10: the link to its contract and the requirements it touches. | Issue #84 (F-10) |
 
 ---
 
@@ -37,8 +39,8 @@ written before any test or code of its feature.
 | F-06 | Return and resubmission | The assigned reviewer returns a `SUBMITTED` request with a comment (`RETURNED`); the requester edits and resubmits it under the same number and reviewer; the history shows each return and resubmission. This is the only way to change a request after submission. Decides Q-05 (a reviewer who can no longer decide). | FR-06, FR-07, FR-10, FR-13, FR-14; BR-04, BR-05, BR-08, BR-10, BR-11, BR-13, BR-14, BR-15, BR-16; NFR-02, NFR-07, NFR-11 | F-03, F-04 | 2 | [F-06](sprints/sprint-2/F-06-return-and-resubmission.md) |
 | F-07 | Multi-stage approval | A request above 100,000.00 THB needs a second approval from a different reviewer (Q-06). It becomes `APPROVED` only after both approvals, and the reviewer whose turn it is can reject it. A third reviewer account is seeded. | FR-06, FR-07, FR-11, FR-15; BR-08, BR-09, BR-10, BR-11, BR-12, BR-13, BR-14, BR-17; NFR-02, NFR-07, NFR-11 | F-04, F-06 | 2 | [F-07](sprints/sprint-2/F-07-multi-stage-approval.md) |
 | F-08 | Filtering, search, and decided requests | Filter and search My Requests, the Review Inbox, and the decided requests by status, date range, amount range, and number or title text; a reviewer's list of requests they decided; paging for the lists (A-04). | FR-05, FR-07, FR-16, FR-17; BR-08, BR-18; NFR-02, NFR-06, NFR-11 | F-03, F-04, F-06, F-07 | 3 | [F-08](sprints/sprint-2/F-08-filtering-and-search.md) |
-| F-09 | Decision summaries and reports | Counts and totals by status for a chosen period, and for a reviewer the number approved and rejected, limited to the requests the viewer may see. Decides Q-07 (export). | FR-18; BR-18 | F-04, F-07, F-08 | 3 | Written in Sprint 2 (plan.md section 3) |
-| F-10 | Product hardening | Full accessibility (axe on every main screen), responsive layouts at three sizes, a timed performance run, a decision on a throttle shared between instances (Q-08, D-10), error pages, and a regression run over all earlier features. | NFR-12, NFR-13, NFR-14 | F-01 to F-09 | 3 | Written in Sprint 2 (plan.md section 3) |
+| F-09 | Decision summaries and reports | Counts and totals by status for a chosen period, and for a reviewer the number approved and rejected, limited to the requests the viewer may see. Decides Q-07 (export). | FR-18; BR-08, BR-18; NFR-01, NFR-02, NFR-06, NFR-11 | F-04, F-07, F-08 | 3 | [F-09](sprints/sprint-3/F-09-summaries-and-reports.md) |
+| F-10 | Product hardening | Full accessibility (axe on every main screen), responsive layouts at three sizes, a timed performance run, a decision on a throttle shared between instances (Q-08, D-10), error pages, and a regression run over all earlier features. Signing out also clears other open tabs (UAT finding X-03). | NFR-12, NFR-13, NFR-14; NFR-02, NFR-04, NFR-05, NFR-06, NFR-11, NFR-15 | F-01 to F-09 | 3 | [F-10](sprints/sprint-3/F-10-product-hardening.md) |
 
 ## 2. Cross-cutting system responsibilities
 

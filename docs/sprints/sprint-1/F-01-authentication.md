@@ -22,6 +22,7 @@
 | 0.2 | 2026-11-14 | Menelaus122 | First complete draft | Issue #7 (F-01 part) | #23 |
 | 0.3 | 2026-11-14 | Menelaus122 | Sessions are looked up only for `roles` and `optional` routes (F-02 v0.3). AC-F01-05 now sends six invalid bodies for one email. AC-F01-08 pins the exact 15:00 boundary. AC-F01-20 (burst) and AC-F01-21 (independent sessions) added. `roles` instead of `any`. AC-F01-06 relinked. Non-string fields covered in §1.4. Status: Agreed. | Review of PR #23 | #26 |
 | 0.4 | 2026-11-15 | Menelaus122 | §1.5 says an attempt is refused until the oldest failure is *at least* 15 minutes old, so exactly 15:00.000 is allowed, as AC-F01-08 already specifies. | Review of PR #26 | this PR |
+| 0.5 | 2026-11-28 | Menelaus122 | F-10 proposes to count failed sign-ins in PostgreSQL (D-17): AC-F01-07, -08, -16, and -20 still hold, and TEST-F01-08 moves to the shared store. No change until then. | Issue #84 (F-10) | #84 |
 
 ---
 

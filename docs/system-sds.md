@@ -23,6 +23,9 @@
 | 0.10 | 2026-11-27 | Menelaus122 | Section 3.4: the new enum values of Sprint 2 are a decided exception to the rollback rule (SRS D-15). | Review of PR #73 |
 | 0.11 | 2026-11-27 | Menelaus122 | A fifth constraint of F-07, `request_first_approval_scope`. | Review of PR #77 |
 | 0.12 | 2026-11-28 | Menelaus122 | F-08: filters on the lists, the decided route and screen, and paging (slices 2 and 3 in Sprint 3). | Issue #79 (F-08) |
+| 0.13 | 2026-11-28 | Menelaus122 | F-09: the Summary screen and its route. | Issue #84 (F-09) |
+| 0.14 | 2026-11-28 | Menelaus122 | F-10: the shared sign-in count (planned), the error page, and the sign-out of other tabs. | Issue #84 (F-10) |
+| 0.15 | 2026-11-29 | Menelaus122 | F-10: the columns and the clearing of the shared sign-in table (D-17, decided), and a second user in another tab. | Review of PR #85 |
 
 ---
 
@@ -204,11 +207,12 @@ The submission handler enforces it inside the same transaction as the insert.
 | Request Detail | `/requests/:id` | the requester, or the assigned reviewer | Fields, status, decision, and history. The assigned reviewer of a `SUBMITTED` request sees the decision panel and the return panel; the requester of a `RETURNED` request sees the resubmit form. An eligible second reviewer of a waiting request sees the decision panel. |
 | Review Inbox | `/reviews` | `REVIEWER` | `SUBMITTED` requests assigned to the caller and waiting requests the caller may decide, oldest first; with filters (F-08) |
 | Decided (F-08 slice 2) | `/reviews/decided` | `REVIEWER` | The requests the caller approved or rejected, newest decision first, with filters |
+| Summary (F-09) | `/summary` | `REQUESTER`, `REVIEWER` | Counts and totals by status for a period; a reviewer also sees their own decisions |
 
 The header shows the product name, the navigation for the caller's role, the caller's name and role, and
 **Log out**. Navigation by role:
 - `REQUESTER`: My Requests and New Request.
-- `REVIEWER`: Review Inbox, My Requests, and New Request; and Decided from F-08 slice 2.
+- `REVIEWER`: Review Inbox, My Requests, and New Request; and Decided from F-08 slice 2. Both roles gain Summary with F-09.
 
 After login, a requester lands on My Requests and a reviewer on Review Inbox.
 
@@ -219,6 +223,7 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 | Validation | Each message appears beneath its field and is linked with `aria-describedby`. Typed values are kept and focus moves to the first invalid field. The client checks the same rules as the API for fast feedback, and the API's `fields` messages are shown the same way. |
 | Loading | Lists and details show a spinner with a text label. A submitting button is disabled and reads "Saving…", which also prevents double submission. |
 | Empty | My Requests: "You have not submitted any requests yet", with a link to New Request. Review Inbox: "No requests are waiting for your review." A filtered list without a match: "No requests match these filters." (F-08) |
+| Screen failure (F-10) | If a screen fails while it renders: "Something went wrong" with **Reload**, and no technical detail. After a sign-out in another tab, a tab that gets focus shows Login, or the start page of a user who has signed in since, without any data of the earlier user. |
 | Error | `500` or a network failure: a message with a **Try again** action; values in a form are kept. |
 | Unauthenticated (`401`) | Back to Login, with "Your session has ended. Please log in again." |
 | Forbidden or not found (`403`/`404`) | "This page is not available to you", with no record data. A requester who types `/reviews` sees this. |
@@ -253,6 +258,7 @@ After login, a requester lands on My Requests and a reviewer on Review Inbox.
 | `GET /api/requests/:id` | `REQUESTER`, `REVIEWER`; record scope | F-03 |
 | `GET /api/reviews/inbox` | `REVIEWER` | F-04 |
 | `GET /api/reviews/decided` | `REVIEWER`; the caller's decisions | F-08 |
+| `GET /api/reports/summary` | `REQUESTER`, `REVIEWER`; the requests the caller may see | F-09 |
 | `POST /api/requests/:id/decision` | `REVIEWER`; record scope and rules | F-04 |
 | `POST /api/requests/:id/return` | `REVIEWER`; record scope and rules | F-06 |
 | `POST /api/requests/:id/resubmission` | `REQUESTER`, `REVIEWER`; requester only | F-06 |
@@ -300,6 +306,7 @@ the caller.
 | View request detail and history | ❌ 401 | ✅ own | ✅ own, assigned, waiting for a second approval, or second decider | Otherwise `404`, no data |
 | List review inbox | ❌ 401 | ❌ 403 | ✅ | `SUBMITTED` assigned to the caller; waiting requests the caller may decide |
 | List decided requests (F-08) | ❌ 401 | ❌ 403 | ✅ | Requests with a decision recorded by the caller |
+| Read the summary (F-09) | ❌ 401 | ✅ | ✅ | The requests of BR-08 |
 | Approve or reject | ❌ 401 | ❌ 403 | ✅ assigned, or second reviewer | Own request → `403 SELF_APPROVAL_FORBIDDEN`; first approver of a waiting request → `403 SAME_APPROVER_FORBIDDEN`; not visible → `404`; decided → `409` |
 | Return a request | ❌ 401 | ❌ 403 | ✅ assigned only | Own request → `403 SELF_REVIEW_FORBIDDEN`; unrelated → `404`; not `SUBMITTED` → `409` |
 | Resubmit a returned request | ❌ 401 | ✅ own | ✅ own | Assigned reviewer → `403 NOT_REQUESTER`; unrelated → `404`; not `RETURNED` → `409` |
@@ -317,13 +324,13 @@ the caller.
 | Expiry | 8 hours from login, checked on every request. An expired session is treated as none (`401`) and its row is deleted. A deactivated user's sessions are not honoured. |
 | Current user | `GET /api/auth/me` (and a successful login) returns `{ "user": { id, name, email, role } }` from the session, never the hash or the token. The SPA calls it on load to decide between Login and the app. |
 | Logout | `POST /api/auth/logout` deletes the session row and clears the cookie. The old cookie then answers `401`. |
-| Throttling | 5 failed logins per normalised email in a sliding 15-minute window → `429 TOO_MANY_ATTEMPTS` with `Retry-After`. Attempts are reserved before the password check, so a burst cannot slip past the limit. Unknown emails count the same as real ones. |
+| Throttling | 5 failed logins per normalised email in a sliding 15-minute window → `429 TOO_MANY_ATTEMPTS` with `Retry-After`. Attempts are reserved before the password check, so a burst cannot slip past the limit. Unknown emails count the same as real ones. From F-10 (D-17) the attempts are kept in the table `login_attempt` (`email_key`, `failed`, `attempted_at`), shared by all instances; reservations and failures older than the window are removed. |
 | Cross-origin guard | A `POST` whose `Origin` header is present and not in `CLIENT_ORIGINS` answers `403 FORBIDDEN_ORIGIN` before the session lookup. This adds to `SameSite=Strict`. The comparison is an exact match of scheme, host, and port, with no trailing slash. `Origin: null` (sandboxed frames) is refused. A request **without** an `Origin` header is not checked: Supertest, `curl`, the smoke test, and other server-to-server calls send none, and browsers always send one on a `POST`. Browsers send it even for a same-origin `POST`, which is why `CLIENT_ORIGINS` must list every URL users open (§8). |
 | Not in Sprint 1 | Self-registration, password recovery, password change, and account administration (SRS §3.2 exclusions). Accounts come only from the seed. |
 
 **Known limitation (decision for the SRS).** The login throttle lives in each process's memory, as it did in
 TokTickIT. On Cloud Run, with up to 3 instances and scale-to-zero, each instance counts separately and a restart
-clears the count. Sprint 1 accepts this; F-10 (hardening) can move the counter into the database.
+clears the count. Sprint 1 accepts this; F-10 (hardening) moves the counter into the database (D-17).
 
 ## 8. Configuration and secrets
 
