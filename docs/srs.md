@@ -18,6 +18,7 @@
 | 0.8 | 2026-11-27 | Menelaus122 | BR-10 and BR-14 cover return and resubmission; D-15 records the rollback exception of the new request states. | Review of PR #73 |
 | 0.9 | 2026-11-27 | Menelaus122 | BR-14 includes the answers of a late second operation; Q-06 is worded like BR-17. | Review of PR #77 |
 | 0.10 | 2026-11-28 | Menelaus122 | Q-07: the F-09 contract proposes no export (D-16), to be confirmed in its review. | Issue #84 (F-09) |
+| 0.11 | 2026-11-28 | Menelaus122 | Q-08: the F-10 contract proposes a shared count of failed sign-ins (D-17), to be confirmed in its review. | Issue #84 (F-10) |
 
 ---
 
@@ -168,6 +169,7 @@ Priority uses MoSCoW: **M**ust, **S**hould, **C**ould.
 | D-14 | **The second approver is not assigned:** any eligible reviewer may give the second approval (Q-06) | The requester or the first approver chooses the second reviewer | No new choice or screen, and one absent reviewer does not block the request. A third reviewer account is seeded, so that a reviewer's own request also has a second approver. | 2026-11-27 |
 | D-15 | **Rollback exception for the new request states:** after the first return (F-06), or the first of two approvals (F-07), an image from before those features cannot read the affected rows, and such a release is corrected by rolling forward | Release the code that reads the new values first and enable the operations in a second release; keep the old values and add flag columns | The migrations stay additive and a rollback stays possible until the first row with a new value. Two releases or a second state model do not fit the time of Sprint 2. Accepted by WIRACHAT in the review of PR #73. | 2026-11-27 |
 | D-16 | **No export of summaries** (Q-07, proposed): a summary is read on the screen | A CSV download; a printable report | No need for a file is recorded, and an export would need its own access rules and tests. | 2026-11-28 |
+| D-17 | **Failed sign-ins are counted in PostgreSQL** (Q-08, proposed), replacing D-10 when F-10 is released | Keep the count in each process; run one instance only | Every instance sees the same count and a restart keeps it, without a new service. | 2026-11-28 |
 
 ## 9. Open questions and resolutions
 
@@ -180,4 +182,4 @@ Priority uses MoSCoW: **M**ust, **S**hould, **C**ould.
 | Q-05 | What happens to waiting requests if their reviewer is deactivated? | No reassignment is built, because no function deactivates an account (D-11, D-13). If an operator deactivates a reviewer in the database, their requests keep waiting. | 2026-11-27 / Menelaus122 |
 | Q-06 | What is the multi-stage threshold, and who may give the second approval? | Above 100,000.00 THB two approvals are needed (exactly 100,000.00 THB needs one). The second approver is any reviewer who is neither the requester nor the first approver, and the interim status is `AWAITING_SECOND_APPROVAL`. The reviewer whose turn it is may reject; after approving, the first approver cannot reject (BR-17, D-14). | 2026-11-27 / WirachatTH |
 | Q-07 | Do summaries need an export (for example CSV)? | Proposed in the F-09 contract: no export (D-16). To be confirmed in the review of that contract. | 2026-11-28 / team |
-| Q-08 | Should the login throttle be shared between Cloud Run instances? | Not in Sprint 1 (D-10). Revisit in F-10 (Sprint 3). | 2026-11-14 / team |
+| Q-08 | Should the login throttle be shared between Cloud Run instances? | Not in Sprint 1 (D-10). Proposed in the F-10 contract: yes, counted in PostgreSQL (D-17). To be confirmed in the review of that contract. | 2026-11-28 / team |
