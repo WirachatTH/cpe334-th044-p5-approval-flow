@@ -49,6 +49,12 @@ describe("Request Detail while a request waits for the second approval", () => {
     expect(posts()[0].body).toEqual({ decision: "APPROVE" });
   });
 
+  it("TEST-F07-17 / AC-F07-17: the second reviewer meets the first approval before the decision panel", async () => {
+    await openDetail(ANAN as unknown as typeof MINT, ok(waitingDetail()));
+    const firstApproval = screen.getByRole("group", { name: "Decision" });
+    expect(firstApproval.compareDocumentPosition(decisionPanel()!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it("TEST-F07-17 / AC-F07-17: the first approver sees a waiting line and no panel", async () => {
     await openDetail(MINT, ok(waitingDetail()));
     expect(screen.getByText("Waiting for a second reviewer.")).toBeInTheDocument();
