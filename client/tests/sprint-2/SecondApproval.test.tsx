@@ -102,6 +102,15 @@ describe("Request Detail while a request waits for the second approval", () => {
     expect(screen.queryByText("This request is not available to you.")).not.toBeInTheDocument();
   });
 
+  it("TEST-F07-17 / AC-F07-17: another 403 on a decision says the request is not available", async () => {
+    const { typing } = await openDetail(ANAN as unknown as typeof MINT, ok(waitingDetail()), {
+      [DECISION]: failure(403, "FORBIDDEN", "You do not have access to this."),
+    });
+    await typing.click(screen.getByRole("button", { name: "Approve" }));
+    expect(await screen.findByText("This request is not available to you.")).toBeInTheDocument();
+    expect(decisionPanel()).not.toBeInTheDocument();
+  });
+
   it.each([
     ["approval", async () => undefined, "Approve", { decision: "APPROVE", revision: 1 }],
     [
