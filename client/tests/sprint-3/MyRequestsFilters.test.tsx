@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PLOY, mockApi, renderApp, requestSummary } from "../sprint-1/helpers.js";
@@ -78,6 +78,43 @@ describe("My Requests filters", () => {
     await open("/requests", list());
     expect(await screen.findByText("You have not submitted any requests yet.")).toBeInTheDocument();
     expect(screen.queryByText(NO_MATCH)).not.toBeInTheDocument();
+  });
+
+  it("TEST-F08-10 / AC-F08-10: an answer that arrives late does not replace the newer list", async () => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const slow = async () => {
+      await held;
+      return ALL;
+    };
+    mockApi({ ...SIGNED_IN, [`GET ${MINE}`]: [slow, ONE] });
+    renderApp("/requests", <AddressProbe />);
+    const typing = userEvent.setup();
+    await typing.type(await screen.findByLabelText("Search number or title"), "lab{Enter}");
+    expect(await screen.findByRole("link", { name: "REQ-000013" })).toBeInTheDocument();
+
+    await act(async () => {
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(row("REQ-000012")).not.toBeInTheDocument();
+    expect(row("REQ-000013")).toBeInTheDocument();
+  });
+
+  it("TEST-F08-10 / AC-F08-10: clearing also empties values that were never applied", async () => {
+    const { api, typing } = await open("/requests", ALL);
+    await typing.type(field("q"), "lab");
+    await typing.type(field("from"), "soon");
+    await typing.click(screen.getByRole("button", { name: "Apply filters" }));
+    expect(field("from")).toHaveAttribute("aria-invalid", "true");
+
+    await typing.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(field("q")).toHaveValue("");
+    expect(field("from")).toHaveValue("");
+    expect(field("from")).not.toHaveAttribute("aria-invalid");
+    expect(queries(api, MINE)).toHaveLength(1);
   });
 
   it("TEST-F08-11 / AC-F08-11: invalid values are shown beside their fields and nothing is sent", async () => {
