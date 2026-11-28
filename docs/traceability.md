@@ -29,6 +29,7 @@
 | 0.15 | 2026-11-27 | Menelaus122 | F-06 is implemented: the rows its ACs link to are Verified at `e6369bc`, and the new section 7 lists AC-F06-01 to AC-F06-29 with their tests. | Implementation of #71 (PR #73) |
 | 0.16 | 2026-11-28 | Menelaus122 | F-07 is implemented: the rows its ACs link to are Verified at `84aee97`, and the new section 8 lists AC-F07-01 to AC-F07-20 with their tests. AC-F05-02 and AC-F05-19 are marked as revised to five accounts. The two test gaps found in the review of PR #73 are covered at `073c02a` (a case under TEST-F06-17 and one under TEST-F06-22). | Implementation of #76 (PR #77) |
 | 0.17 | 2026-11-28 | Menelaus122 | The F-08 contract defines AC-F08-01 to AC-F08-22: the rows of FR-16, FR-17, and BR-18 are Specified, and the other rows that its ACs link to list them. Nothing of F-08 is implemented. | Issue #79 (F-08) |
+| 0.18 | 2026-11-28 | Menelaus122 | The two test gaps and the screen order found in the review of PR #77 are covered at `920b78e`, `3932403`, and `965bfa6` (cases under TEST-F07-15 and TEST-F07-17); the suites passed at `fcdba09` (section 8). | Follow-ups of the review of PR #77 (PR #80) |
 
 ---
 
@@ -355,7 +356,7 @@ they were when that release was verified.
 
 ## 8. Sprint 2: F-07, multi-stage approval
 
-[F-07](sprints/sprint-2/F-07-multi-stage-approval.md) v0.3. The figures in sections 4 and 7 stay as they were. The revised AC-F05-02 and AC-F05-19 (five accounts) passed in the same server run.
+[F-07](sprints/sprint-2/F-07-multi-stage-approval.md) v0.5. The figures in sections 4 and 7 stay as they were. The revised AC-F05-02 and AC-F05-19 (five accounts) passed in the same server run.
 
 | Item | Value |
 |---|---|
@@ -364,6 +365,7 @@ they were when that release was verified.
 | Client | `cd client && npm test`: 13 files, **91 passed, 0 failed, 0 skipped** |
 | End-to-end | `cd client && npm run e2e -- --workers=1` against an API from the same commit on a local database: **11 passed** |
 | Not run | The deployed service, a pass by a person, and the previous image against the new values |
+| After the review of PR #77 | At `fcdba09` (branch `feat/79-filtering-and-search`, PR #80): server **204 passed**, client **93 passed**, end to end **11 passed** (`--workers=1`), 0 failed |
 
 | AC | TEST | Level | File | Result |
 |---|---|---|---|---|
