@@ -78,6 +78,7 @@ describe("second approval constraints", () => {
     ["a waiting request without a first approval", () => ({ ...waiting(), firstById: null, firstAt: false }), "request_awaiting_second_approval"],
     ["a waiting request decided by someone else", () => ({ ...waiting(), decidedById: ids.korn }), "request_awaiting_second_approval"],
     ["one person as both approvers", () => ({ ...approvedByTwo(), decidedById: ids.mint }), "request_second_approver_differs"],
+    ["one person as both approvers of a rejected request", () => ({ ...approvedByTwo(), status: "REJECTED", decidedById: ids.mint, reason: "Already ordered last week." }), "request_second_approver_differs"],
     ["the requester as decider", () => ({ ...approvedEarlier(), decidedById: ids.ploy }), "request_decider_not_requester"],
     ["a first approval on a submitted request", () => ({ status: "SUBMITTED", decidedById: null, reason: null, firstById: ids.mint, firstAt: true }), "request_first_approval_scope"],
     ["a first approval on a returned request", () => ({ status: "RETURNED", decidedById: ids.mint, reason: "Add it.", firstById: ids.mint, firstAt: true }), "request_first_approval_scope"],

@@ -31,6 +31,7 @@
 | 0.11 | 2026-11-26 | Menelaus122 | Status: Implemented; section 6 and the Definition of Done filled in for #65. No change to any AC, behaviour, or test. | Evidence of the implementation of #65 | #65 |
 | 0.12 | 2026-11-27 | Menelaus122 | The decision also checks the request's revision (`409 STALE_REVISION`, after step 6, and in the conditional update of step 7) and answers a returned request with its own message (F-06 contract §1.2 and §1.4). A request that was never resubmitted behaves as before. | Issue #71 (F-06) | #71 |
 | 0.13 | 2026-11-27 | Menelaus122 | F-07 changes who may decide and see: a second stage above 100,000.00 THB, `403 SAME_APPROVER_FORBIDDEN`, and an inbox that also lists waiting requests and gives each row its `status` (F-07 contract §1.2 and §2.2). The key list of `TEST-F04-01` gains `status`. A request up to 100,000.00 THB is decided as before. | Issue #76 (F-07) | #76 |
+| 0.14 | 2026-11-28 | Menelaus122 | The Review Inbox accepts the filters of the F-08 contract (§1.4, §2.2). Without parameters it answers as before until F-08 slice 3 adds paging. | Issue #79 (F-08) | #79 |
 
 ---
 

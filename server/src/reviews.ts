@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { Prisma, RejectionCategory, type PrismaClient, type RequestEventType, type RequestStatus } from "@prisma/client";
 import type { AuthLocals } from "./authorization.js";
 import { sendError } from "./errors.js";
+import { readFilters } from "./filters.js";
 import {
   REVISION_INVALID, findRequest, isStale, readRevision, refuseLostWrite, refuseStale, refuseStatus,
 } from "./requestActions.js";
@@ -111,19 +112,23 @@ export function registerReviewRoutes(app: Express, { prisma }: { prisma: PrismaC
 
   // What the caller may decide next, oldest first: the SUBMITTED requests assigned to them (F-04 section 1.2), and the
   // waiting requests they neither submitted nor approved first (F-07 section 2.2).
-  app.get("/api/reviews/inbox", async (_req, res, next) => {
+  app.get("/api/reviews/inbox", async (req, res, next) => {
     try {
+      const filters = readFilters(req.query);
+      if (!filters.ok) return sendError(res, 400, "VALIDATION_ERROR", "Some fields need attention.", filters.fields);
+      // The filters are added with AND: the search has its own OR, which must not replace the one of the scope (BR-18).
+      const scope: Prisma.ApprovalRequestWhereInput = {
+        OR: [
+          { status: "SUBMITTED", assignedReviewerId: me(res.locals).id },
+          {
+            status: "AWAITING_SECOND_APPROVAL",
+            requesterId: { not: me(res.locals).id },
+            firstApprovedById: { not: me(res.locals).id },
+          },
+        ],
+      };
       const rows = await prisma.approvalRequest.findMany({
-        where: {
-          OR: [
-            { status: "SUBMITTED", assignedReviewerId: me(res.locals).id },
-            {
-              status: "AWAITING_SECOND_APPROVAL",
-              requesterId: { not: me(res.locals).id },
-              firstApprovedById: { not: me(res.locals).id },
-            },
-          ],
-        },
+        where: { AND: [scope, ...filters.where] },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         include: { requester: person },
       });

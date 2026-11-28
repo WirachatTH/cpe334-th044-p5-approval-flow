@@ -49,6 +49,12 @@ describe("Request Detail while a request waits for the second approval", () => {
     expect(posts()[0].body).toEqual({ decision: "APPROVE" });
   });
 
+  it("TEST-F07-17 / AC-F07-17: the second reviewer meets the first approval before the decision panel", async () => {
+    await openDetail(ANAN as unknown as typeof MINT, ok(waitingDetail()));
+    const firstApproval = screen.getByRole("group", { name: "Decision" });
+    expect(firstApproval.compareDocumentPosition(decisionPanel()!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it("TEST-F07-17 / AC-F07-17: the first approver sees a waiting line and no panel", async () => {
     await openDetail(MINT, ok(waitingDetail()));
     expect(screen.getByText("Waiting for a second reviewer.")).toBeInTheDocument();
@@ -100,6 +106,15 @@ describe("Request Detail while a request waits for the second approval", () => {
     await waitFor(() => expect(loads()).toHaveLength(2));
     expect(await screen.findByText("Waiting for a second reviewer.")).toBeInTheDocument();
     expect(screen.queryByText("This request is not available to you.")).not.toBeInTheDocument();
+  });
+
+  it("TEST-F07-17 / AC-F07-17: another 403 on a decision says the request is not available", async () => {
+    const { typing } = await openDetail(ANAN as unknown as typeof MINT, ok(waitingDetail()), {
+      [DECISION]: failure(403, "FORBIDDEN", "You do not have access to this."),
+    });
+    await typing.click(screen.getByRole("button", { name: "Approve" }));
+    expect(await screen.findByText("This request is not available to you.")).toBeInTheDocument();
+    expect(decisionPanel()).not.toBeInTheDocument();
   });
 
   it.each([

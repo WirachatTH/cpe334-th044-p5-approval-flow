@@ -31,7 +31,7 @@ Run the commands from the repository root. On Windows, use Git Bash, or replace 
 2. **Choose your own passwords** (never reuse a real one):
    - In `.env`, set `POSTGRES_PASSWORD`.
    - In `server/.env`, put the **same** password into `DATABASE_URL` (replace `change-me`), and set
-     `DEMO_USER_PASSWORD` (10 to 128 characters, with a letter and a digit). It is the password of the four demo
+     `DEMO_USER_PASSWORD` (10 to 128 characters, with a letter and a digit). It is the password of the five demo
      accounts below, and it is never printed.
 3. **Start the database** (PostgreSQL 16 in Docker, on host port **5433** so it does not clash with a local
    PostgreSQL on 5432):
